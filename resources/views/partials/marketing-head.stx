@@ -16,7 +16,7 @@
   component script and stripped from the output.
 -->
 {{-- Favicons, font preconnects and the font stylesheet moved to
-     config/stx.ts app.head (stx-standards 04-head): injected into full
+     config/ui.ts app.head (stx-standards 04-head): injected into full
      documents via injectConfigHeadTags (href-deduped) and into fragments
      via the document shell, so pages including this partial must not
      re-add them. --}}

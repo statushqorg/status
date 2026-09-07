@@ -385,7 +385,7 @@ if (!statusPageForHost && faqs && faqs.length)
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{-- Favicons + fonts come from config/stx.ts app.head (stx-standards 04-head). --}}
+    {{-- Favicons + fonts come from config/ui.ts app.head (stx-standards 04-head). --}}
     {{-- Title/description/og/twitter/canonical come from the server
          script's useSeoMeta + useHead calls (stx-standards 04). --}}
     @include('../partials/marketing-head.stx')

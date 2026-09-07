@@ -346,7 +346,7 @@ function bannerDotClass(tone) {
 // @yield. The old layered useHead produced a SECOND <title> that lost to
 // the layout's anyway ('stx App' was an upstream shell-detection bug,
 // fixed in the vendored stx; see STX-MIGRATION-PLAN.md Phase 1).
-// Favicons come from config/stx.ts app.head.
+// Favicons come from config/ui.ts app.head.
 </script>
 
 @section('title', docTitle)

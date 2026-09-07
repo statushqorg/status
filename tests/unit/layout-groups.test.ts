@@ -122,7 +122,7 @@ describe('layout groups', () => {
     // router also has to find somewhere to put the incoming HTML. It
     // resolves that as
     //   querySelector(containerSel) || '[data-stx-content]' || 'main'
-    // and config/stx.ts sets no container override, so the default 'main'
+    // and config/ui.ts sets no container override, so the default 'main'
     // applies. When nothing matches it takes the
     //   if (!newContent) { location.href = url }
     // branch — a silent fall back to a full page load. Nothing errors,

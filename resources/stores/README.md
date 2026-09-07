@@ -1,6 +1,6 @@
 # resources/stores
 
-Client-side stores live here. `config/stx.ts` pins `storesDir` to this path and
+Client-side stores live here. `config/ui.ts` pins `storesDir` to this path and
 the store loader resolves `path.resolve(root, storesDir)` at boot, so the
 directory must exist even while empty — same reason as
 `resources/components/README.md`.

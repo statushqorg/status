@@ -25,7 +25,7 @@ re-derive decisions from them:**
    have a sanctioned deletion path (Phase 5).
 2. *"router/strict config isn't honored"*: **false in this build** —
    `pantry/bun-plugin-stx/dist/serve.js` forwards `strict`, `router`,
-   `app`, and the SEO keys from `config/stx.ts`.
+   `app`, and the SEO keys from `config/ui.ts`.
 
 The genuinely load-bearing deviation stays: the documented, unresolved
 `:for expected an array` hydration bug (see
@@ -91,7 +91,7 @@ via the `/api/passkeys/*` URL strings.
   in `monitors/index.stx` broke script-boundary parsing (the constraint
   `partials/app-head.stx` documents). Rephrased; the hygiene test chokes
   on the same pattern, so recurrence gets caught.
-- Config made true (stx-standards 01-topology): `config/stx.ts` pins
+- Config made true (stx-standards 01-topology): `config/ui.ts` pins
   `root: '.'` + `pagesDir`/`layoutsDir`/`partialsDir`/`storesDir`
   cwd-relative (both loaders agree; see the file's header comment),
   enables `strict` in warning mode, and sets
@@ -106,7 +106,7 @@ via the `/api/passkeys/*` URL strings.
   `resources/functions/` keeps a README — the framework scans it
   unconditionally. `site-mode.js` is live (index.stx) and stays.
 - Toolchain sees the config now: tsconfig `include` gains `.stx/*.d.ts`,
-  `config/stx.ts`, `config/crosswind.ts` (so `satisfies UiOptions` is
+  `config/ui.ts`, `config/crosswind.ts` (so `satisfies UiOptions` is
   finally evaluated) and drops the phantom `app/Services|Support` globs.
   Pre-commit lint glob gains `stx`. Full `config/**` and `app/**`
   inclusion is Phase 7 (measured: 11 upstream-type errors in stock config
@@ -117,7 +117,7 @@ full suite + app-code typecheck + `buddy lint` + pickier green.
 
 ## Phase 1 — Centralize the head ✅ shipped 2026-08-14
 
-- `config/stx.ts` gains `app.head.link` (favicon trio, font preconnects +
+- `config/ui.ts` gains `app.head.link` (favicon trio, font preconnects +
   stylesheet), `defaultTitle`, `defaultDescription`, `skipDefaultSeoTags`
   — all serve-forwarded. NOT charset/viewport: the fragment shell
   auto-emits its own pair, so config copies double them (verified against
@@ -209,7 +209,7 @@ injection indent).
 - Render harness (proven on features/uptime-monitoring.stx): pages render
   headlessly via `NODE_PATH=<repo>/pantry bun` + `processDirectives` from
   `pantry/@stacksjs/stx/dist/process.js` with the pinned dirs from
-  config/stx.ts — no dev server needed for the per-page byte-diffs.
+  config/ui.ts — no dev server needed for the per-page byte-diffs.
 - Delete the dead `resources/views/layouts/marketing.stx` document-style
   layout first; it was never resolvable.
 

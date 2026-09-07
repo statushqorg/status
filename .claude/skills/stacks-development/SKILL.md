@@ -17,7 +17,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 - Buddy CLI dev commands: `storage/framework/core/buddy/src/commands/dev.ts`
 - Preloader: `storage/framework/defaults/resources/plugins/preloader.ts`
 - Port config: `config/ports.ts`
-- STX config: `config/stx.ts`
+- STX config: `config/ui.ts`
 - IDE defaults: `storage/framework/defaults/ide/`
 - SSL setup: `storage/framework/core/actions/src/setup/ssl.ts`
 - Bun config: `bunfig.toml`
@@ -268,7 +268,7 @@ Default configurations provided at `storage/framework/defaults/ide/`:
 - `.env` file presence (warn if missing, not a failure)
 - `APP_KEY` is set (warn if not, suggests `buddy key:generate`)
 
-## STX Configuration (config/stx.ts)
+## STX Configuration (config/ui.ts)
 
 ```typescript
 {

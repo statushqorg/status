@@ -185,7 +185,7 @@ function statusBadgeClass(status) {
 }
 
 // No useHead: the title flows through @section('title') -> the layout's
-// @yield (see the status page's note); favicons come from config/stx.ts
+// @yield (see the status page's note); favicons come from config/ui.ts
 // app.head.
 </script>
 

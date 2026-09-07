@@ -12,7 +12,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{-- Favicons + fonts come from config/stx.ts app.head. --}}
+    {{-- Favicons + fonts come from config/ui.ts app.head. --}}
     {{-- Title/description/robots come from each page's useSeoMeta call
          (stx-standards 04); the framework splices them in server-side. --}}
     @include('../partials/theme-init.stx')
@@ -64,7 +64,7 @@
       }
       /* The routed container. The stx router resolves its swap target as
          `document.querySelector(containerSel) || '[data-stx-content]' ||
-         'main'`, and config/stx.ts sets no container override, so the
+         'main'`, and config/ui.ts sets no container override, so the
          default 'main' is what applies. This layout had no such element,
          so the lookup returned null and the router took its
          `if (!newContent) { location.href = url }` branch — every StxLink

@@ -17,7 +17,7 @@ The Stacks admin dashboard provides a full-featured admin panel with 136+ routes
 - Dashboard layouts: `storage/framework/defaults/layouts/dashboard/`
 - Dashboard router types: `storage/framework/types/dashboard-router.d.ts` (136+ routes)
 - Dashboard actions: `storage/framework/defaults/actions/Dashboard/`
-- Configuration: `config/stx.ts`
+- Configuration: `config/ui.ts`
 
 ## Dashboard Sections
 
