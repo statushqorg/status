@@ -43,7 +43,7 @@ Color is a scarce resource, used only for semantic meaning or subtle accents.
   - Pale Green: `#EDF3EC` (Text: `#346538`)
   - Pale Yellow: `#FBF3DB` (Text: `#956400`)
 
-Expose these as Crosswind theme tokens or CSS custom properties in `config/ui.ts` so dark mode (`dark:` + `useColorMode()` / `useDark()`) stays consistent.
+Expose these as Crosswind theme tokens or CSS custom properties in `config/stx.ts` so dark mode (`dark:` + `useColorMode()` / `useDark()`) stays consistent.
 
 ## 5. Component Specifications
 - Bento Box Feature Grids:

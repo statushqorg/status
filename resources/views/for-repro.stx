@@ -1,0 +1,78 @@
+{{--
+  TEMPORARY probe page for the `:for expected an array` hydration bug that
+  resources/views/dashboard/monitors/index.stx documents as the reason this
+  app is server-rendered plain scripts instead of script-client + state().
+
+  Four variants of the same list, so the failure can be attributed to the
+  expression form rather than to `:for` as a whole:
+
+    A  plain const array                     — the form the framework's own
+                                              shipped dashboard pages use
+    B  signal CALL, `monitors()`             — the form that failed here
+    C  bare signal reference, `monitors`     — what the warning's own hint
+                                              suggests ("try the bare
+                                              reference")
+    D  defensive call, `(monitors() ?? [])`  — the framework's form where it
+                                              does iterate a signal result
+
+  Each block prints how many rows rendered. Delete this file once the
+  question is settled; it is not part of the product.
+--}}
+<script server>
+const NAV_ACTIVE = ''
+useHead({ title: 'for-repro', meta: [{ name: 'robots', content: 'noindex' }] })
+</script>
+
+<div style="font-family: ui-monospace, monospace; max-width: 60rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.6;">
+  <h1 style="font-size: 1.25rem;">:for hydration probe</h1>
+  <p>Each section should list three rows: alpha, beta, gamma. A section that
+  renders zero rows is the failure. Check the console for
+  <code>[STX] :for expected an array</code>.</p>
+
+  <h2 style="font-size: 1rem; margin-top: 2rem;">A — plain const array</h2>
+  <ul data-probe="a">
+    <template :for="item in plainItems">
+      <li>{{ item }}</li>
+    </template>
+  </ul>
+
+  <h2 style="font-size: 1rem; margin-top: 2rem;">B — signal call: monitors()</h2>
+  <ul data-probe="b">
+    <template :for="item in monitors()">
+      <li>{{ item }}</li>
+    </template>
+  </ul>
+
+  <h2 style="font-size: 1rem; margin-top: 2rem;">C — bare signal: monitors</h2>
+  <ul data-probe="c">
+    <template :for="item in monitors">
+      <li>{{ item }}</li>
+    </template>
+  </ul>
+
+  <h2 style="font-size: 1rem; margin-top: 2rem;">D — defensive: (monitors() ?? [])</h2>
+  <ul data-probe="d">
+    <template :for="item in (monitors() ?? [])">
+      <li>{{ item }}</li>
+    </template>
+  </ul>
+
+  <h2 style="font-size: 1rem; margin-top: 2rem;">Result</h2>
+  <pre data-probe="result" style="background: #111; color: #eee; padding: 1rem; border-radius: 6px;">counting…</pre>
+</div>
+
+<script client>
+const plainItems = ['alpha', 'beta', 'gamma']
+const monitors = state(['alpha', 'beta', 'gamma'])
+
+// Report what actually rendered, so the page states its own verdict.
+setTimeout(() => {
+  const counts = ['a', 'b', 'c', 'd'].map((key) => {
+    const list = document.querySelector('[data-probe="' + key + '"]')
+    return key.toUpperCase() + '=' + (list ? list.querySelectorAll('li').length : 'missing')
+  })
+  const out = document.querySelector('[data-probe="result"]')
+  if (out)
+    out.textContent = counts.join('  ') + '\n(each should be 3)'
+}, 300)
+</script>

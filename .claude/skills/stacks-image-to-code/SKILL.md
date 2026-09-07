@@ -329,7 +329,7 @@ Use standard `<img>` with explicit `width`/`height` to reserve space and avoid C
 
 ### 12.H Dark mode
 
-Crosswind `dark:` variant (`bg-white dark:bg-neutral-900`). Runtime toggle via `useColorMode()` / `useDark()`. Config in `config/ui.ts`.
+Crosswind `dark:` variant (`bg-white dark:bg-neutral-900`). Runtime toggle via `useColorMode()` / `useDark()`. Config in `config/stx.ts`.
 
 ### 12.I Motion: CSS + composables (no GSAP / Motion / Framer)
 

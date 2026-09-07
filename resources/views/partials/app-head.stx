@@ -17,7 +17,7 @@
   stx parser constraints; see marketing-head.stx).
 -->
 {{-- Favicons, font preconnects and the font stylesheet moved to
-     config/ui.ts app.head (stx-standards 04-head); dashboard pages are
+     config/stx.ts app.head (stx-standards 04-head); dashboard pages are
      fragments, so the document shell merges them into the generated
      head. --}}
 <style>

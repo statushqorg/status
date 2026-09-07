@@ -79,7 +79,7 @@ describe('views use StxLink for internal navigation', () => {
   })
 
   test('nothing carries both StxLink and the router opt-out', () => {
-    // StxLink IS the opt-in (config/ui.ts sets interceptAllLinks: false),
+    // StxLink IS the opt-in (config/stx.ts sets interceptAllLinks: false),
     // so data-no-router on one is a contradiction that reads as "this link
     // is deliberately excluded" while behaving as the opposite.
     const offenders: string[] = []

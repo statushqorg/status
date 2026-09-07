@@ -43,7 +43,7 @@ before doing non-trivial work in that area rather than guessing an API.
     intercepted new-tab link would open in place instead.
   - external `http(s)://` URLs.
 - `data-no-router` should not appear on anything you are converting; StxLink IS the opt-in
-  (`interceptAllLinks: false` in `config/ui.ts`), so the attribute is contradictory there.
+  (`interceptAllLinks: false` in `config/stx.ts`), so the attribute is contradictory there.
 
 ### Dependencies
 - **buddy-bot** handles dependency updates, not renovatebot.

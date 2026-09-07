@@ -261,7 +261,7 @@ export default {
   // ID, so a checkout without this set renders no tag and beacons at nothing.
   // That is what keeps a laptop and CI out of production's numbers without
   // anyone remembering to switch it off. Declared in types/env.d.ts too, and
-  // here that is load-bearing rather than tidiness: its reader is config/ui.ts,
+  // here that is load-bearing rather than tidiness: its reader is config/stx.ts,
   // which unlike the other config files IS in the tsconfig program, so leaving
   // the augmentation out fails the build outright.
   ANALYTICSHQ_APP_ID: {

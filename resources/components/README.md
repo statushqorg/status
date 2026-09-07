@@ -1,6 +1,6 @@
 # resources/components
 
-stx components live here. `config/ui.ts` pins `componentsDir` to this path, and
+stx components live here. `config/stx.ts` pins `componentsDir` to this path, and
 the stx loader resolves it at boot — so the directory must exist even while
 empty, or `buddy dev` prints:
 

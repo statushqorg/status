@@ -19,7 +19,7 @@ For premium, non-templated UI (layout, typography, color, motion) built on stx +
 ## Key Paths
 - Core package: `storage/framework/core/ui/src/`
 - Components: `storage/framework/core/ui/src/components/`
-- UI config: `config/ui.ts` (Crosswind)
+- UI config: `config/stx.ts` (Crosswind)
 - STX config: `config/stx.ts`
 - STX engine: `node_modules/@stacksjs/stx/`
 - Crosswind: `node_modules/@cwcss/crosswind/`
@@ -161,7 +161,7 @@ const isOnline = useOnline()
 const cleanup = useClickOutside(elementRef, handler)
 ```
 
-## Crosswind Configuration (config/ui.ts)
+## Crosswind Configuration (config/stx.ts)
 
 ```typescript
 export default {
