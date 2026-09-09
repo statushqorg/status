@@ -170,22 +170,23 @@ describe('Monitor dashboard forms (create / update / delete)', () => {
     expect(String(heartbeat!.ping_token).length).toBeGreaterThan(16)
   })
 
-  test('enabling metrics mints an agent token once and keeps it across saves', async () => {
+  test('the dashboard mints no agent token and stores no thresholds', async () => {
+    // Both moved to the Server. The form still being ABLE to post these keys
+    // is the hazard, so this pins that they are ignored rather than honoured.
     await DashboardCreateMonitorAction.handle(fakeRequest({
       name: 'Web box', url: 'https://example.com', type: 'uptime', check_interval_seconds: '300', reports_metrics: 'on', cpu_threshold: '80',
     }, token))
 
     const monitor = (await Monitor.where('team_id', teamId).get())[0]
-    const firstToken = (await db.selectFrom('monitors').where('id', '=', monitor.id).select(['metrics_token']).executeTakeFirst())!.metrics_token
-    expect(String(firstToken).length).toBeGreaterThan(16)
-    expect(JSON.parse(monitor.config)).toEqual({ cpuThreshold: 80 })
+    const row = (await db.selectFrom('monitors').where('id', '=', monitor.id).select(['metrics_token']).executeTakeFirst())!
+    expect(row.metrics_token ?? null).toBeNull()
+    expect(JSON.parse(monitor.config)).toEqual({})
 
     await DashboardUpdateMonitorAction.handle(fakeRequest({
       monitorId: String(monitor.id), name: 'Web box', url: 'https://example.com', type: 'uptime', check_interval_seconds: '300', reports_metrics: 'on',
     }, token))
-    const afterToken = (await db.selectFrom('monitors').where('id', '=', monitor.id).select(['metrics_token']).executeTakeFirst())!.metrics_token
-    // Rotating on every save would silently break an installed agent.
-    expect(afterToken).toBe(firstToken)
+    const after = (await db.selectFrom('monitors').where('id', '=', monitor.id).select(['metrics_token']).executeTakeFirst())!
+    expect(after.metrics_token ?? null).toBeNull()
   })
 
   test('the edit form updates fields and rewrites config for the new type', async () => {

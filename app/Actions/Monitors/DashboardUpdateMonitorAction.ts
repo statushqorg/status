@@ -5,6 +5,7 @@ import { planForTeam } from '../../../config/plans'
 import { parseMonitorForm } from '../../lib/monitorForm'
 import HeartbeatMonitor from '../../Models/HeartbeatMonitor'
 import Monitor from '../../Models/Monitor'
+import Server from '../../Models/Server'
 import { requireTeamId } from '../../lib/teamGuard'
 
 /**
@@ -37,7 +38,6 @@ export default new Action({
       type: request.get('type'),
       enabled: request.get('enabled'),
       check_interval_seconds: request.get('check_interval_seconds'),
-      reports_metrics: request.get('reports_metrics'),
       port: request.get('port'),
       path: request.get('path'),
       // Both forms have rendered these two since the health type shipped and
@@ -57,13 +57,20 @@ export default new Action({
       alert_on_fingerprint_change: request.get('alert_on_fingerprint_change'),
       origin_ip: request.get('origin_ip'),
       lighthouse_device: request.get('lighthouse_device'),
-      cpu_threshold: request.get('cpu_threshold'),
-      ram_threshold: request.get('ram_threshold'),
-      disk_threshold: request.get('disk_threshold'),
       expected_interval_seconds: request.get('expected_interval_seconds'),
       grace_seconds: request.get('grace_seconds'),
       cron_expression: request.get('cron_expression'),
     })
+
+    // Team-checked rather than trusted, for the same reason as the create.
+    let serverId: number | null = null
+    const rawServerId = String(request.get('server_id') ?? '').trim()
+    if (rawServerId !== '') {
+      const server = await Server.where('id', Number(rawServerId)).where('team_id', authTeamId).first()
+      if (!server)
+        return back('?error=server_not_found')
+      serverId = Number(server.id)
+    }
 
     if (parsed.error)
       return back(`?error=${parsed.error}`)
@@ -81,12 +88,9 @@ export default new Action({
       enabled: parsed.values.enabled,
       check_interval_seconds: parsed.values.check_interval_seconds,
       config: parsed.values.config,
-      reports_metrics: parsed.values.reports_metrics,
-      // Mint on first enable, keep thereafter: rotating the token on every
-      // save would silently break an already-installed agent.
-      ...(parsed.values.reports_metrics && !monitor.metrics_token
-        ? { metrics_token: randomUUIDv7().replace(/-/g, '') }
-        : {}),
+      // Never touches an existing monitors.metrics_token in either direction.
+      // It never cleared one, and it no longer sets one.
+      server_id: serverId,
     })
 
     // Keep the heartbeat row in step with the monitor's type: switching TO

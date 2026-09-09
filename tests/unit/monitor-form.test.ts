@@ -122,64 +122,62 @@ describe('acceptsBareHost', () => {
 
 describe('buildMonitorConfig', () => {
   test('writes only keys meaningful for the type', () => {
-    const cfg = buildMonitorConfig('tcp_port', { port: '5432', path: '/health', ping_count: '5' }, false)
+    const cfg = buildMonitorConfig('tcp_port', { port: '5432', path: '/health', ping_count: '5' })
     expect(cfg).toEqual({ port: 5432 })
   })
 
   test('omits blank fields so job defaults apply', () => {
-    expect(buildMonitorConfig('tcp_port', { port: '' }, false)).toEqual({})
-    expect(buildMonitorConfig('health', { path: '   ' }, false)).toEqual({})
+    expect(buildMonitorConfig('tcp_port', { port: '' })).toEqual({})
+    expect(buildMonitorConfig('health', { path: '   ' })).toEqual({})
   })
 
   test('health endpoints carry their secret and freshness window', () => {
     // The secret is what makes a spatie/laravel-health endpoint reachable at
     // all; without a form field it could only be set by writing config JSON.
-    expect(buildMonitorConfig('health', { path: '/oh-dear-health-check-results', health_secret: 'sh4red', health_max_age_seconds: '300' }, false))
+    expect(buildMonitorConfig('health', { path: '/oh-dear-health-check-results', health_secret: 'sh4red', health_max_age_seconds: '300' }))
       .toEqual({ path: '/oh-dear-health-check-results', healthSecret: 'sh4red', healthMaxAgeSeconds: 300 })
   })
 
   test('health secret and freshness are omitted when blank, so defaults apply', () => {
-    expect(buildMonitorConfig('health', { path: '/health', health_secret: '  ', health_max_age_seconds: '' }, false))
+    expect(buildMonitorConfig('health', { path: '/health', health_secret: '  ', health_max_age_seconds: '' }))
       .toEqual({ path: '/health' })
   })
 
   test('an out-of-range freshness window is dropped rather than stored', () => {
-    expect(buildMonitorConfig('health', { health_max_age_seconds: '5' }, false)).toEqual({})
-    expect(buildMonitorConfig('health', { health_max_age_seconds: '999999' }, false)).toEqual({})
+    expect(buildMonitorConfig('health', { health_max_age_seconds: '5' })).toEqual({})
+    expect(buildMonitorConfig('health', { health_max_age_seconds: '999999' })).toEqual({})
   })
 
   test('health keys are not written for other types', () => {
-    expect(buildMonitorConfig('uptime', { health_secret: 'x', health_max_age_seconds: '300' }, false)).toEqual({})
+    expect(buildMonitorConfig('uptime', { health_secret: 'x', health_max_age_seconds: '300' })).toEqual({})
   })
 
   test('per-type keys use the names the jobs actually read', () => {
-    expect(buildMonitorConfig('ping', { ping_count: '4', packet_loss_threshold_percent: '20' }, false))
+    expect(buildMonitorConfig('ping', { ping_count: '4', packet_loss_threshold_percent: '20' }))
       .toEqual({ pingCount: 4, packetLossThresholdPercent: 20 })
-    expect(buildMonitorConfig('ssl', { alert_on_fingerprint_change: 'on' }, false))
+    expect(buildMonitorConfig('ssl', { alert_on_fingerprint_change: 'on' }))
       .toEqual({ alertOnFingerprintChange: true })
-    expect(buildMonitorConfig('port_scan', { full_scan: 'on', expected_ports: '22,443' }, false))
+    expect(buildMonitorConfig('port_scan', { full_scan: 'on', expected_ports: '22,443' }))
       .toEqual({ fullScan: true, expectedPorts: [22, 443] })
-    expect(buildMonitorConfig('lighthouse', { lighthouse_device: 'desktop' }, false))
+    expect(buildMonitorConfig('lighthouse', { lighthouse_device: 'desktop' }))
       .toEqual({ device: 'desktop' })
-    expect(buildMonitorConfig('dns_blocklist', { origin_ip: '203.0.113.10' }, false))
+    expect(buildMonitorConfig('dns_blocklist', { origin_ip: '203.0.113.10' }))
       .toEqual({ origin_ip: '203.0.113.10' })
   })
 
   test('latency threshold applies only to the request-shaped checks', () => {
-    expect(buildMonitorConfig('uptime', { latency_threshold_ms: '800' }, false)).toEqual({ latencyThresholdMs: 800 })
-    expect(buildMonitorConfig('dns', { latency_threshold_ms: '800' }, false)).toEqual({})
+    expect(buildMonitorConfig('uptime', { latency_threshold_ms: '800' })).toEqual({ latencyThresholdMs: 800 })
+    expect(buildMonitorConfig('dns', { latency_threshold_ms: '800' })).toEqual({})
   })
 
-  test('metric thresholds only when the host reports metrics', () => {
-    expect(buildMonitorConfig('uptime', { cpu_threshold: '80', disk_threshold: '70' }, false)).toEqual({})
-    expect(buildMonitorConfig('uptime', { cpu_threshold: '80', disk_threshold: '70' }, true))
-      .toEqual({ cpuThreshold: 80, diskThreshold: 70 })
-    // 0 is meaningful (disables that threshold), not "blank".
-    expect(buildMonitorConfig('uptime', { cpu_threshold: '0' }, true)).toEqual({ cpuThreshold: 0 })
+  test('resource thresholds are no longer a monitor concern', () => {
+    // They live on the Server now, with the agent credential. A monitor form
+    // that still posts these keys must have them ignored, not written.
+    expect(buildMonitorConfig('uptime', { cpu_threshold: '80', ram_threshold: '60', disk_threshold: '70' } as any)).toEqual({})
   })
 
   test('an unknown lighthouse device is ignored rather than stored', () => {
-    expect(buildMonitorConfig('lighthouse', { lighthouse_device: 'watch' }, false)).toEqual({})
+    expect(buildMonitorConfig('lighthouse', { lighthouse_device: 'watch' })).toEqual({})
   })
 })
 

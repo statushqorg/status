@@ -3,9 +3,10 @@ import { randomUUIDv7 } from 'bun'
 import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
 import { limitReachedMessage, planForTeam } from '../../../config/plans'
-import { coerceCheckbox, heartbeatAttributesFor, isMonitorType } from '../../lib/monitorForm'
+import { heartbeatAttributesFor, isMonitorType } from '../../lib/monitorForm'
 import HeartbeatMonitor from '../../Models/HeartbeatMonitor'
 import Monitor from '../../Models/Monitor'
+import Server from '../../Models/Server'
 import { requireTeamId } from '../../lib/teamGuard'
 
 export default new Action({
@@ -46,7 +47,27 @@ export default new Action({
     }
 
     const type = request.get('type')
-    const reportsMetrics = coerceCheckbox(request.get('reports_metrics'))
+
+    // 422 rather than ignoring it. This field used to mint an agent
+    // credential; a caller still sending it is asking for something that no
+    // longer happens, and a quiet 201 would leave them waiting for pushes.
+    const sentReportsMetrics = request.get('reports_metrics')
+    if (sentReportsMetrics !== undefined && sentReportsMetrics !== null) {
+      return response.json(
+        { error: 'reports_metrics has moved: create a server with POST /api/servers and pass server_id' },
+        { status: 422 },
+      )
+    }
+
+    // The box this monitor reports for, checked against the caller's team.
+    let serverId: number | null = null
+    const rawServerId = String(request.get('server_id') ?? '').trim()
+    if (rawServerId !== '') {
+      const server = await Server.where('id', Number(rawServerId)).where('team_id', teamId).first()
+      if (!server)
+        return response.json({ error: 'server_id must name a server in your team' }, { status: 422 })
+      serverId = Number(server.id)
+    }
 
     const monitor = await Monitor.create({
       teamId: teamId,
@@ -56,11 +77,7 @@ export default new Action({
       enabled: request.get('enabled') ?? true,
       checkIntervalSeconds: checkIntervalSeconds,
       config: request.get('config'),
-      reportsMetrics: reportsMetrics,
-      // metrics_token is hidden:true, so the auto-CRUD layer strips it from
-      // write bodies — nothing else would ever mint one, and a metrics
-      // monitor created here could never receive an agent push.
-      metrics_token: reportsMetrics ? randomUUIDv7().replace(/-/g, '') : undefined,
+      server_id: serverId,
       status: 'unknown',
     })
 

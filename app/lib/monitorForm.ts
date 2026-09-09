@@ -122,7 +122,6 @@ export interface MonitorFormInput {
   type?: unknown
   enabled?: unknown
   check_interval_seconds?: unknown
-  reports_metrics?: unknown
   // type-specific / advanced
   port?: unknown
   path?: unknown
@@ -134,9 +133,6 @@ export interface MonitorFormInput {
   alert_on_fingerprint_change?: unknown
   origin_ip?: unknown
   lighthouse_device?: unknown
-  cpu_threshold?: unknown
-  ram_threshold?: unknown
-  disk_threshold?: unknown
   // health (type: health)
   health_secret?: unknown
   health_max_age_seconds?: unknown
@@ -155,7 +151,6 @@ export interface MonitorFormResult {
     enabled: boolean
     check_interval_seconds: number
     config: string
-    reports_metrics: boolean
   }
   /** Heartbeat row attributes, only for type 'cron'. */
   heartbeat: { expected_interval_seconds: number, grace_seconds: number, cron_expression: string | null } | null
@@ -188,7 +183,7 @@ export function heartbeatAttributesFor(type: MonitorType, input: MonitorFormInpu
  * and a key the operator left blank is omitted entirely (every job reader
  * falls back to its own documented default rather than to a null).
  */
-export function buildMonitorConfig(type: MonitorType, input: MonitorFormInput, reportsMetrics: boolean): Record<string, unknown> {
+export function buildMonitorConfig(type: MonitorType, input: MonitorFormInput): Record<string, unknown> {
   const config: Record<string, unknown> = {}
 
   if (type === 'tcp_port') {
@@ -253,19 +248,6 @@ export function buildMonitorConfig(type: MonitorType, input: MonitorFormInput, r
       config.latencyThresholdMs = latency
   }
 
-  // Agent-pushed resource thresholds are orthogonal to type.
-  if (reportsMetrics) {
-    const cpu = intInRange(input.cpu_threshold, 0, 100)
-    if (cpu !== null)
-      config.cpuThreshold = cpu
-    const ram = intInRange(input.ram_threshold, 0, 100)
-    if (ram !== null)
-      config.ramThreshold = ram
-    const disk = intInRange(input.disk_threshold, 0, 100)
-    if (disk !== null)
-      config.diskThreshold = disk
-  }
-
   return config
 }
 
@@ -281,7 +263,7 @@ export function parseMonitorForm(input: MonitorFormInput): MonitorFormResult {
   const type = input.type
 
   const fail = (error: string): MonitorFormResult => ({
-    values: { name, url, type: isMonitorType(type) ? type : 'uptime', enabled: true, check_interval_seconds: 60, config: '{}', reports_metrics: false },
+    values: { name, url, type: isMonitorType(type) ? type : 'uptime', enabled: true, check_interval_seconds: 60, config: '{}' },
     heartbeat: null,
     error,
   })
@@ -320,8 +302,7 @@ export function parseMonitorForm(input: MonitorFormInput): MonitorFormResult {
   if (interval === null)
     return fail('interval_invalid')
 
-  const reportsMetrics = coerceCheckbox(input.reports_metrics)
-  const config = buildMonitorConfig(type, input, reportsMetrics)
+  const config = buildMonitorConfig(type, input)
 
   const heartbeat = heartbeatAttributesFor(type, input)
 
@@ -333,7 +314,6 @@ export function parseMonitorForm(input: MonitorFormInput): MonitorFormResult {
       enabled: coerceCheckbox(input.enabled, true),
       check_interval_seconds: interval,
       config: JSON.stringify(config),
-      reports_metrics: reportsMetrics,
     },
     heartbeat,
     error: null,

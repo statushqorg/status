@@ -36,6 +36,18 @@ const TEAM_CTX = await resolveHealedTeamContext(
 )
 const AUTH_USER = TEAM_CTX.user
 const TEAM_ID = TEAM_CTX.teamId ?? -1
+
+// The team's boxes, for the "runs on" select. Projected off the raw rows in
+// the same statement: a servers row carries metrics_token, and stx's bridge
+// serialises any un-prefixed binding whose name word-matches a plain <script>,
+// which is how raw monitor rows leaked a token once already.
+const __serverRows = await db.selectFrom('servers')
+  .where('team_id', '=', TEAM_ID)
+  .select(['id', 'name'])
+  .orderBy('name', 'asc')
+  .execute()
+  .catch(() => [])
+const serverChoices = __serverRows.map((r: any) => ({ id: Number(r.id), name: String(r.name ?? '') }))
 const NAV_ACTIVE = 'monitors'
 
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
@@ -182,6 +194,19 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
               </select>
             </div>
           </div>
+          {{-- Which box this runs on. Optional, and it applies to every type,
+               so it sits in the basics rather than behind a data-types gate.
+               The agent credential belongs to the server, not to this row. --}}
+          <div class="field">
+            <label for="server_id">Runs on</label>
+            <select id="server_id" name="server_id" class="select">
+              <option value="">Not on a tracked server</option>
+              @foreach (serverChoices as choice)
+                <option value="{{ choice.id }}">{{ choice.name }}</option>
+              @endforeach
+            </select>
+            <p class="help">Attach this monitor to a server to see its CPU, memory and disk beside the check. You can change it later.</p>
+          </div>
         </div>
       </section>
 
@@ -302,35 +327,6 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
         </div>
       </section>
 
-      <section class="card" aria-label="Server metrics" style="margin-top: 1.25rem;">
-        <div class="card-head">
-          <h2>Server metrics</h2>
-          <span class="sub">Optional, works with any type</span>
-        </div>
-        <div class="card-body">
-          <div class="field">
-            <label for="reports_metrics">
-              <input id="reports_metrics" type="checkbox" name="reports_metrics" value="on" /> This host pushes CPU, memory and disk samples
-            </label>
-            <p class="help">Turning this on issues an agent token. The install snippet appears on the monitor page after you save.</p>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="cpu_threshold">CPU alert above (%)</label>
-              <input id="cpu_threshold" type="number" name="cpu_threshold" class="input" min="0" max="100" placeholder="90" />
-            </div>
-            <div class="field">
-              <label for="ram_threshold">Memory alert above (%)</label>
-              <input id="ram_threshold" type="number" name="ram_threshold" class="input" min="0" max="100" placeholder="90" />
-            </div>
-          </div>
-          <div class="field">
-            <label for="disk_threshold">Disk alert above (%)</label>
-            <input id="disk_threshold" type="number" name="disk_threshold" class="input" min="0" max="100" placeholder="85" />
-            <p class="help">0 disables a threshold. Defaults are 90/90/85.</p>
-          </div>
-        </div>
-      </section>
 
       <div class="actions" style="margin-top: 1.25rem;">
         <button type="submit" class="button primary">Create monitor</button>

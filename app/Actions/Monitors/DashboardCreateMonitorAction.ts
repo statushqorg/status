@@ -5,6 +5,7 @@ import { limitReachedMessage, planForTeam } from '../../../config/plans'
 import { parseMonitorForm } from '../../lib/monitorForm'
 import HeartbeatMonitor from '../../Models/HeartbeatMonitor'
 import Monitor from '../../Models/Monitor'
+import Server from '../../Models/Server'
 import { requireTeamId } from '../../lib/teamGuard'
 
 /**
@@ -35,7 +36,6 @@ export default new Action({
       type: request.get('type'),
       enabled: request.get('enabled'),
       check_interval_seconds: request.get('check_interval_seconds'),
-      reports_metrics: request.get('reports_metrics'),
       port: request.get('port'),
       path: request.get('path'),
       // See the same pair in DashboardUpdateMonitorAction: rendered by the
@@ -51,13 +51,22 @@ export default new Action({
       alert_on_fingerprint_change: request.get('alert_on_fingerprint_change'),
       origin_ip: request.get('origin_ip'),
       lighthouse_device: request.get('lighthouse_device'),
-      cpu_threshold: request.get('cpu_threshold'),
-      ram_threshold: request.get('ram_threshold'),
-      disk_threshold: request.get('disk_threshold'),
       expected_interval_seconds: request.get('expected_interval_seconds'),
       grace_seconds: request.get('grace_seconds'),
       cron_expression: request.get('cron_expression'),
     })
+
+    // The server this monitor reports for. Team-checked here rather than
+    // trusted: the column is fillable and the generated PATCH does not check
+    // it, which is why every read path joins on team_id too.
+    let serverId: number | null = null
+    const rawServerId = String(request.get('server_id') ?? '').trim()
+    if (rawServerId !== '') {
+      const server = await Server.where('id', Number(rawServerId)).where('team_id', authTeamId).first()
+      if (!server)
+        return back('?error=server_not_found')
+      serverId = Number(server.id)
+    }
 
     if (parsed.error)
       return back(`?error=${parsed.error}`)
@@ -79,12 +88,10 @@ export default new Action({
       enabled: parsed.values.enabled,
       checkIntervalSeconds: parsed.values.check_interval_seconds,
       config: parsed.values.config,
-      reportsMetrics: parsed.values.reports_metrics,
-      // The agent ingest credential is minted here because nothing else in
-      // the app ever did: metrics_token is hidden:true, so the auto-CRUD
-      // layer strips it from write bodies and a metrics monitor created
-      // through the API could never receive a push.
-      metrics_token: parsed.values.reports_metrics ? randomUUIDv7().replace(/-/g, '') : undefined,
+      // Nothing here mints a metrics token any more. The agent credential
+      // belongs to a Server, and one minted on a monitor would be stranded:
+      // the backfill nulls it and no ingest path would ever read it.
+      server_id: serverId,
       status: 'unknown',
     })
 

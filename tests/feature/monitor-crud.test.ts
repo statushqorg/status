@@ -209,8 +209,10 @@ describe('Monitor CRUD (stacksjs/status#1 Phase 1)', () => {
    * bodies. Nothing else mints one, so a metrics monitor created here used to
    * have no credential and could never accept an agent push.
    */
-  test('a metrics-reporting monitor is created with an ingest token', async () => {
-    // Same free-tier headroom problem as the cron cases above.
+  test('reports_metrics is refused rather than silently ignored', async () => {
+    // It used to mint an agent credential here. Metrics moved to the Server,
+    // so a caller still sending this is asking for something that no longer
+    // happens, and a quiet 201 would leave them waiting for pushes forever.
     for (const id of createdIds.splice(0)) {
       const stale = await Monitor.find(id)
       if (stale) await stale.delete()
@@ -222,12 +224,28 @@ describe('Monitor CRUD (stacksjs/status#1 Phase 1)', () => {
       check_interval_seconds: '300',
       reports_metrics: 'true',
     }, ownerToken))
+    expect(response.status).toBe(422)
+    expect((await response.json()).error).toContain('POST /api/servers')
+  })
+
+  test('creating a monitor mints no agent credential of its own', async () => {
+    for (const id of createdIds.splice(0)) {
+      const stale = await Monitor.find(id)
+      if (stale) await stale.delete()
+    }
+    const response: any = await CreateMonitorAction.handle(fakeRequest({
+      name: 'No token please',
+      url: 'https://example.com',
+      type: 'uptime',
+      check_interval_seconds: '300',
+    }, ownerToken))
     expect(response.status).toBe(201)
     const created = await response.json()
     createdIds.push(created.id)
 
+    // The column survives until step 6; nothing writes it. A token minted
+    // here would be stranded, with no server to receive its pushes.
     const monitor = await Monitor.find(created.id)
-    expect(monitor!.reports_metrics).toBeTruthy()
-    expect(String(monitor!.metrics_token).length).toBeGreaterThan(16)
+    expect(monitor!.metrics_token ?? null).toBeNull()
   })
 })
