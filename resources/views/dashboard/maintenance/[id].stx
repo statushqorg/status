@@ -55,7 +55,8 @@ const attachedLinks = win
 const attachedIds = attachedLinks.map(l => l.monitor_id)
 
 // SECURITY: project to display fields immediately — raw monitor rows carry
-// metrics_token, the agent-ingest credential, and stx's server->client
+// metrics_token, a dormant column whose live counterpart is now on `servers`
+// rows (the agent-ingest credential), and stx's server->client
 // bridge serializes any server binding word-matched by a plain script.
 // Same discipline as monitors/index.stx, enforced by bridge-hygiene tests.
 const teamMonitors = win

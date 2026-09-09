@@ -97,7 +97,9 @@ function idxRangeUrl(r) {
 // One unfiltered fetch of the team's fleet; types, the filtered display
 // list, and the fleet tally are all derived from it in JS (dialect-agnostic).
 // SECURITY: project to display fields immediately — the raw rows carry
-// metrics_token (the agent-ingest credential the Monitor model hides from
+// metrics_token, a column that survives until the Server model's step 6 and
+// whose live counterpart now lives on `servers` rows (the agent-ingest
+// credential the model hides from
 // API responses), and stx's server->client bridge serializes any server
 // binding whose name word-matches a plain <script> below into the page
 // HTML. The projection keeps credentials out of every derived binding, and
