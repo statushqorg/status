@@ -176,6 +176,23 @@ route.post('/monitor-forms/create', 'Actions/Monitors/DashboardCreateMonitorActi
 route.post('/monitor-forms/{monitorId}/update', 'Actions/Monitors/DashboardUpdateMonitorAction')
 route.post('/monitor-forms/{monitorId}/delete', 'Actions/Monitors/DashboardDeleteMonitorAction')
 
+// Server form posts. The same /*-forms/ prefix as the monitor block above,
+// and for a mechanical reason: dashboard/servers/[id].stx would collide with
+// /dashboard/servers/*. Every action is team-scoped through servers.team_id
+// and, where a monitor is named, monitors.team_id as well.
+//
+// There is deliberately no generated PATCH or DELETE /servers/{id}: the
+// generated update filters by `fillable` alone, which would let a caller set
+// status or last_sample_at, and the generated destroy deletes only the row,
+// leaving detached monitors, orphaned samples and open incidents behind.
+route.post('/servers', 'Actions/Servers/CreateServerAction')
+route.post('/server-forms/create', 'Actions/Servers/DashboardCreateServerAction')
+route.post('/server-forms/{serverId}/update', 'Actions/Servers/DashboardUpdateServerAction')
+route.post('/server-forms/{serverId}/delete', 'Actions/Servers/DashboardDeleteServerAction')
+route.post('/server-forms/{serverId}/rotate-token', 'Actions/Servers/DashboardRotateServerTokenAction')
+route.post('/server-forms/{serverId}/monitors', 'Actions/Servers/DashboardSaveServerMonitorsAction')
+route.post('/server-forms/monitors/{monitorId}/server', 'Actions/Servers/DashboardAttachServerAction')
+
 // Response-assertion form posts on the monitor detail page (dot-path health
 // assertions and header/status/response-time checks) — same plain-POST,
 // team-scoped convention as the notification-channel forms above.

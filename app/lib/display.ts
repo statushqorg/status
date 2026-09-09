@@ -12,6 +12,8 @@
  * the difference is an argument, not a second function.
  */
 
+import { incidentSeverity } from './notificationSeverity'
+
 /** Values `monitors.status` is constrained to; anything else is a data bug. */
 export type MonitorStatus = 'up' | 'down' | 'degraded' | 'paused' | 'unknown'
 
@@ -130,4 +132,44 @@ export function siteHost(url: string | null | undefined): string {
 /** URL-safe slug for a host, as used in /dashboard/sites/{slug}. */
 export function siteSlug(host: string | null | undefined): string {
   return String(host ?? '').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()
+}
+
+/**
+ * Server status pill.
+ *
+ * `quiet` (the agent stopped pushing) is amber, not red. `--danger` is
+ * reserved for a site being unreachable; a box whose agent went silent may be
+ * a perfectly healthy box behind a stopped cron, and painting it the same red
+ * as a real outage is the over-alarming the severity split exists to stop.
+ */
+export function serverStatusPill(status: string | null | undefined): { cls: string, label: string } {
+  if (status === 'healthy')
+    return { cls: 'pill pill-up', label: 'Reporting' }
+  if (status === 'hot')
+    return { cls: 'pill pill-degraded', label: 'Hot' }
+  if (status === 'quiet')
+    return { cls: 'pill pill-degraded', label: 'Quiet' }
+  return { cls: 'pill pill-unknown', label: 'No samples yet' }
+}
+
+/**
+ * Lifted from `monitors/[id].stx`, where it was a local function, so the
+ * server page and the incidents index classify an incident the same way.
+ *
+ * An open issue reads amber whatever its workflow state. Painting "a host
+ * crossed 51% against a 50% CPU threshold" in the red reserved for "this site
+ * is unreachable" is the same over-alarming `serverStatusPill` avoids, and it
+ * would be the red the check row beside it no longer uses.
+ */
+export function incidentPillClass(
+  incident: { resolved_at?: string | null, status?: string | null, impacted_checks?: string | null },
+  monitorType = '',
+): string {
+  if (incident.resolved_at || incident.status === 'resolved')
+    return 'pill pill-unknown'
+  if (incident.status === 'monitoring')
+    return 'pill pill-degraded'
+  if (incidentSeverity(monitorType, incident.impacted_checks) === 'issue')
+    return 'pill pill-degraded'
+  return 'pill pill-down'
 }
