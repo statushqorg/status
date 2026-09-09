@@ -15,7 +15,10 @@ import { describe, expect, test } from 'bun:test'
  */
 
 const ROOT = resolve(import.meta.dir, '../..')
-const VIEW = readFileSync(`${ROOT}/resources/views/dashboard/monitors/[id].stx`, 'utf8')
+// The agent setup card lives on the SERVER page now, not the monitor page:
+// the credential belongs to the box that pushes, not to one of the checks
+// that happens to run on it.
+const VIEW = readFileSync(`${ROOT}/resources/views/dashboard/servers/[id].stx`, 'utf8')
 const ACTION = readFileSync(`${ROOT}/app/Actions/Agents/ReceiveMetricsAction.ts`, 'utf8')
 const INSTALLER = readFileSync(`${ROOT}/public/install-agent.sh`, 'utf8')
 
@@ -107,6 +110,6 @@ describe('dashboard agent setup card', () => {
     // metrics_token is a credential: it may be rendered into the owner's HTML
     // but must never reach stx's server->client data bridge. A `__` prefix is
     // what excludes it — see tests/unit/bridge-hygiene.test.ts.
-    expect(VIEW).not.toMatch(/^(?!.*__agentInstall).*\{\{\s*monitor\.metrics_token\s*\}\}/m)
+    expect(VIEW).not.toMatch(/^(?!.*__agentInstall).*\{\{\s*__serverRow\.metrics_token\s*\}\}/m)
   })
 })

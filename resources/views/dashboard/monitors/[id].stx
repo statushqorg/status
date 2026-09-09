@@ -20,9 +20,9 @@ import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
 import { authRequest } from '../../../../app/lib/authRequest'
 import { channelTypeLabel } from '../../../../app/lib/channelConfig'
 import { maintenanceIntervalsByMonitor } from '../../../../app/lib/maintenance'
-import { incidentSeverity } from '../../../../app/lib/notificationSeverity'
 import { computeUptime, roundMsForInterval } from '../../../../app/lib/uptime'
 import { db } from '@stacksjs/database'
+import { suggestServerForMonitor } from '../../../../app/lib/serverSuggestion'
 import { scaleLinear, scaleBand, line, area, curveMonotoneX } from 'ts-charts'
 // require() destructured these under other names; `import { x as y }`
 // binds undefined in a server block, so the rename happens here.
@@ -35,10 +35,8 @@ const chartArea = area
 // from a server block (see STX-MIGRATION-PLAN.md Phase 5).
 // NB: `import { x as y }` does NOT work in a server block in this stx build --
 // the alias binds undefined. Import the real names, then bind locally below.
-import { parseMetricsThresholds } from '../../../../app/Actions/Agents/metricsThresholds'
-import { aggregateHostStatus, DEFAULT_HOST, readingsFromRows } from '../../../../app/lib/agentHosts'
 import { checkPillClass } from '../../../../app/lib/appHealth'
-import { formatDateTime, relativeTime, siteHost, siteSlug, statusLabel, statusPillClass } from '../../../../app/lib/display'
+import { formatDateTime, incidentPillClass, relativeTime, serverStatusPill, siteHost, siteSlug, statusLabel, statusPillClass } from '../../../../app/lib/display'
 import { describeCadence, formatDurationSeconds, pingUrls, summarizeHeartbeat } from '../../../../app/lib/heartbeat'
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
@@ -94,21 +92,6 @@ const formatDate = formatDateTime
 const agoLabel = iso => relativeTime(iso, '--')
 
 // Incident status -> pill class: resolved reads muted, monitoring reads
-// amber, investigating/identified read danger.
-//
-// Unless the incident is a soft issue rather than an outage, in which case it
-// reads amber whatever its workflow state. An open incident is an open
-// incident, but painting "a host crossed 51% against a 50% CPU threshold" in
-// the same red as "this site is unreachable" is the over-alarming this whole
-// severity split exists to stop — and it is the same red the check row beside
-// it no longer uses.
-function incidentPillClass(incident) {
-  if (incident.resolved_at || incident.status === 'resolved') return 'pill pill-unknown'
-  if (incident.status === 'monitoring') return 'pill pill-degraded'
-  if (incidentSeverity(monitor ? monitor.type : '', incident.impacted_checks) === 'issue') return 'pill pill-degraded'
-  return 'pill pill-down'
-}
-
 const recentChecks = monitor
   ? await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).orderBy('checked_at', 'desc').limit(20).execute()
   : []
@@ -143,6 +126,43 @@ if (monitor) {
 // the answer to "who hears about this?" rather than a form to fill in.
 const routedChannels = routableChannels.filter(c => c.routed)
 const routedChannelCount = routedChannels.length
+
+// --- the box this check runs on ---------------------------------------------
+//
+// The telemetry, the thresholds and the agent credential all live on the
+// server now. What is left here is the answer to "which box is this?" and a
+// way to change it, because a monitor page is where an operator notices the
+// box is wrong.
+//
+// The join carries team_id on BOTH sides. monitors.server_id is fillable and
+// the generated PATCH does not check that the server belongs to the caller,
+// so a mismatched id must render as detached rather than leak another team's
+// box name. See §6.2's auto-CRUD note.
+let serverCard = null
+let teamServerChoices = []
+if (monitor) {
+  const rows = await db.selectFrom('servers').where('team_id', '=', monitor.team_id).select(['id', 'name', 'status']).execute().catch(() => [])
+  teamServerChoices = rows
+    .map(r => ({ id: Number(r.id), name: String(r.name ?? '') }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const attached = monitor.server_id === null || monitor.server_id === undefined
+    ? null
+    : rows.find(r => Number(r.id) === Number(monitor.server_id))
+  if (attached) {
+    const p = serverStatusPill(attached.status)
+    serverCard = { id: Number(attached.id), name: String(attached.name ?? ''), pill: p.cls, label: p.label }
+  }
+}
+
+// A guess, never a membership. Rendered as the pre-selected option in the
+// dialog so attaching is one click when we are right and one dropdown when we
+// are wrong.
+const serverSuggestion = (monitor && !serverCard && teamServerChoices.length)
+  ? await suggestServerForMonitor({ url: monitor.url }, teamServerChoices).catch(() => null)
+  : null
+
+const flashServer = query.get('server') === '1'
 
 const FIRES_ON_LABELS = { both: 'Down + issues', down: 'Down only', issue: 'Issues only' }
 function firesOnLabel(value) {
@@ -400,16 +420,14 @@ if (monitor) {
   for (const r of rows) {
     const key = bucketKey(r.checked_at)
     let b = byBucket.get(key)
-    if (!b) { b = { bucket: key, request_count: 0, cpuSum: 0, cpuN: 0, ramSum: 0, ramN: 0 }; byBucket.set(key, b) }
+    if (!b) { b = { bucket: key, request_count: 0 }; byBucket.set(key, b) }
     b.request_count++
     let meta = {}
     try { meta = JSON.parse(r.metadata || '{}') } catch {}
-    if (typeof meta.cpuPercent === 'number') { b.cpuSum += meta.cpuPercent; b.cpuN++ }
-    if (typeof meta.ramPercent === 'number') { b.ramSum += meta.ramPercent; b.ramN++ }
   }
   volumeBuckets = [...byBucket.values()]
     .sort((a, b) => (a.bucket < b.bucket ? -1 : a.bucket > b.bucket ? 1 : 0))
-    .map(b => ({ bucket: b.bucket, request_count: b.request_count, avg_cpu: b.cpuN ? b.cpuSum / b.cpuN : null, avg_ram: b.ramN ? b.ramSum / b.ramN : null }))
+    .map(b => ({ bucket: b.bucket, request_count: b.request_count }))
 }
 
 const totalChecksInRange = volumeBuckets.reduce((sum, b) => sum + b.request_count, 0)
@@ -426,7 +444,7 @@ const denseKeys = []
     denseKeys.push(bucketKey(new Date(t).toISOString()))
 }
 const byKey = new Map(volumeBuckets.map(b => [b.bucket, b]))
-const denseBuckets = denseKeys.map(k => byKey.get(k) || { bucket: k, request_count: 0, avg_cpu: null, avg_ram: null })
+const denseBuckets = denseKeys.map(k => byKey.get(k) || { bucket: k, request_count: 0 })
 
 let volChart = null
 if (denseBuckets.length > 0) {
@@ -463,108 +481,6 @@ if (denseBuckets.length > 0) {
 // rows gives a real line the moment two samples exist. The x-axis is time
 // (uneven sample spacing is honoured), the y-axis is a fixed 0-100%, and
 // line.defined leaves gaps where a sample carried only one of CPU/RAM.
-let hostChart = null
-// One row per machine pushing to this monitor. Before the agents sent a
-// `host`, four app servers behind a load balancer were one anonymous series
-// and the page showed whichever node reported last -- with no way to tell
-// that was happening.
-let __hostRows = []
-if (monitor && monitor.reports_metrics) {
-  const metricRows = await db.selectFrom('check_results')
-    .where('monitor_id', '=', monitor.id)
-    .where('checked_at', '>=', since)
-    .orderBy('checked_at', 'asc')
-    .execute()
-
-  // The same aggregation the ingest decides status with, so this table can
-  // never disagree with the pill at the top of the page.
-  const metricsThresholds = parseMetricsThresholds(monitor.config)
-  const fleet = aggregateHostStatus(readingsFromRows(metricRows), Date.now(), metricsThresholds.windowSeconds)
-  __hostRows = fleet.hosts.map(h => {
-    const parts = []
-    if (h.cpuPercent !== null) parts.push(Math.round(h.cpuPercent) + '% CPU')
-    if (h.ramPercent !== null) parts.push(Math.round(h.ramPercent) + '% RAM')
-    if (h.diskPercent !== null) parts.push(Math.round(h.diskPercent) + '% disk')
-    return {
-      host: h.host === DEFAULT_HOST ? 'this host' : h.host,
-      status: stLabel(h.status),
-      pillClass: stClass(h.status),
-      summary: parts.length ? parts.join(' / ') : 'no sample',
-      seen: agoLabel(new Date(h.checkedAtMs).toISOString()),
-      detail: h.breaches.join('; '),
-    }
-  })
-
-  // With more than one host reporting, plotting every sample on one line
-  // draws a sawtooth between machines that is not any machine's history.
-  // Show the most recently reporting host and say whose line it is; per-host
-  // series are the next step here.
-  const chartHost = fleet.hosts.length > 1 ? fleet.hosts[0].host : null
-
-  const samples = []
-  for (const r of metricRows) {
-    let meta = {}
-    try { meta = JSON.parse(r.metadata || '{}') } catch {}
-    if (chartHost !== null) {
-      const rowHost = typeof meta.host === 'string' && meta.host !== '' ? meta.host : DEFAULT_HOST
-      if (rowHost !== chartHost)
-        continue
-    }
-    const cpu = typeof meta.cpuPercent === 'number' ? meta.cpuPercent : null
-    const ram = typeof meta.ramPercent === 'number' ? meta.ramPercent : null
-    // diskPercent has been ingested and threshold-alerted since server
-    // metrics shipped, but was never plotted - an operator could be paged
-    // for a disk breach and find no chart of it anywhere.
-    const disk = typeof meta.diskPercent === 'number' ? meta.diskPercent : null
-    if (cpu !== null || ram !== null || disk !== null)
-      samples.push({ t: Date.parse(r.checked_at), iso: r.checked_at, cpu, ram, disk })
-  }
-
-  if (samples.length > 1) {
-    const t0 = samples[0].t
-    const t1 = samples[samples.length - 1].t
-    const x = scaleLinear().domain([t0, t1 === t0 ? t0 + 1 : t1]).range([CHART.left, CHART.w - CHART.right])
-    const y = scaleLinear().domain([0, 100]).range([CHART.h - CHART.bottom, CHART.top])
-    const gen = key => chartLine()
-      .defined(d => typeof d[key] === 'number')
-      .x(d => x(d.t))
-      .y(d => y(d[key]))
-      .curve(curveMonotoneX)(samples)
-    const latest = [...samples].reverse().find(s => s.cpu !== null || s.ram !== null || s.disk !== null)
-    const nowParts = []
-    if (latest && latest.cpu !== null) nowParts.push(Math.round(latest.cpu) + '% CPU')
-    if (latest && latest.ram !== null) nowParts.push(Math.round(latest.ram) + '% RAM')
-    if (latest && latest.disk !== null) nowParts.push(Math.round(latest.disk) + '% disk')
-    // Cap hover targets so a full day of per-minute samples (~1440) doesn't
-    // emit 1440 <rect> hit columns; thin to at most ~60 evenly-spaced hits.
-    const stepH = Math.max(1, Math.ceil(samples.length / 60))
-    const hostHitW = (PLOT.right - PLOT.left) / Math.ceil(samples.length / stepH)
-    const clock = iso => String(iso).slice(11, 16)
-    const sampleTip = (s) => {
-      const parts = []
-      if (s.cpu !== null) parts.push(Math.round(s.cpu) + '% CPU')
-      if (s.ram !== null) parts.push(Math.round(s.ram) + '% RAM')
-      if (s.disk !== null) parts.push(Math.round(s.disk) + '% disk')
-      return clock(s.iso) + ' \u00b7 ' + (parts.length ? parts.join(' / ') : 'no sample')
-    }
-    hostChart = {
-      cpuPath: gen('cpu') || '',
-      ramPath: gen('ram') || '',
-      diskPath: gen('disk') || '',
-      hasDisk: samples.some(s => s.disk !== null),
-      ticks: [0, 50, 100].map(t => ({ y: y(t).toFixed(1), label: t + '%' })),
-      nowLabel: nowParts.length ? nowParts.join(' / ') : '--',
-      // Whose line this is, when more than one machine reports here.
-      host: chartHost === null || chartHost === DEFAULT_HOST ? '' : chartHost,
-      hits: samples.filter((_s, i) => i % stepH === 0).map(s => ({
-        x: (x(s.t) - hostHitW / 2).toFixed(1),
-        w: hostHitW.toFixed(1),
-        tip: sampleTip(s),
-      })),
-    }
-  }
-}
-
 // 90-day uptime, via app/lib/uptime so this page, the public status page and
 // the report emails all answer the question the same way.
 //
@@ -672,15 +588,6 @@ if (monitor && monitor.type === 'dns_blocklist') {
 // `metrics_token` is a credential, so it must stay on a `__`-prefixed binding
 // that stx's server->client bridge skips (see tests/unit/bridge-hygiene.test.ts),
 // and this file has been bitten before by string concatenation inside {{ }}.
-let __agentInstall = null
-if (monitor && monitor.reports_metrics && monitor.metrics_token) {
-  __agentInstall = {
-    install: `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --token=${monitor.metrics_token}`,
-    uninstall: `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --uninstall`,
-    endpoint: `${appUrl}/api/agent/${monitor.metrics_token}/metrics`,
-  }
-}
-
 // Latest application-health report, for endpoints that speak the
 // spatie/laravel-health schema. RunHealthCheck stores the per-check detail on
 // the check result; without this card the monitor would only ever show the
@@ -858,7 +765,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
   @if (monitor)
     <header class="page-head">
       <div>
-        <nav class="crumb" aria-label="Breadcrumb"><StxLink to="/dashboard/sites/{{ monitorSiteSlug }}">&larr; {{ monitorSiteHost }}</StxLink> &middot; <StxLink to="/dashboard/monitors">All monitors</StxLink></nav>
+        <nav class="crumb" aria-label="Breadcrumb"><StxLink to="/dashboard/sites/{{ monitorSiteSlug }}">&larr; {{ monitorSiteHost }}</StxLink> &middot; <StxLink to="/dashboard/monitors">All monitors</StxLink>@if (serverCard) &middot; <StxLink to="/dashboard/servers/{{ serverCard.id }}">{{ serverCard.name }}</StxLink>@endif</nav>
         <h1 style="overflow-wrap: anywhere;">{{ monitor.name }}</h1>
         <p class="meta"><span class="mono">{{ monitor.url }}</span> &middot; {{ monitor.type.replace('_', ' ') }} &middot; {{ intervalLabel(monitor.check_interval_seconds) }} &middot; {{ monitor.enabled ? 'enabled' : 'disabled' }}</p>
       </div>
@@ -872,6 +779,9 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
     @endif
     @if (flashSaved)
       <div class="flash">Changes saved.</div>
+    @endif
+    @if (flashServer)
+      <div class="flash">Server updated.</div>
     @endif
     @if (formError && formErrorLabel(formError))
       <div class="flash error">{{ formErrorLabel(formError) }}</div>
@@ -954,90 +864,6 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               <rect class="chart-hit" x="{{ hit.x }}" y="{{ PLOT.top }}" width="{{ hit.w }}" height="{{ PLOT.bottom - PLOT.top }}" fill="transparent" data-tip="{{ hit.tip }}"></rect>
             @endforeach
           </svg>
-        </div>
-      </section>
-    @endif
-
-    @if (hostChart)
-      <section class="card" aria-label="CPU and RAM usage">
-        <div class="card-head">
-          <h3>Host telemetry, CPU and RAM</h3>
-          <span class="sub">now {{ hostChart.nowLabel }}</span>
-        </div>
-        <div class="card-body">
-          <svg viewBox="0 0 1280 200" class="mon-chart" role="img" aria-label="CPU and RAM traces">
-            @foreach (hostChart.ticks as t)
-              <line x1="{{ PLOT.left }}" x2="{{ PLOT.right }}" y1="{{ t.y }}" y2="{{ t.y }}" stroke="var(--border)" stroke-width="1"></line>
-              <text x="{{ PLOT.left - 8 }}" y="{{ t.y }}" text-anchor="end" dominant-baseline="middle" fill="var(--muted)" font-size="12" font-family="var(--font-mono)">{{ t.label }}</text>
-            @endforeach
-            <path d="{{ hostChart.cpuPath }}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"></path>
-            <path d="{{ hostChart.ramPath }}" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round"></path>
-            @if (hostChart.hasDisk)
-              <path d="{{ hostChart.diskPath }}" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round"></path>
-            @endif
-            @foreach (hostChart.hits as hit)
-              <rect class="chart-hit" x="{{ hit.x }}" y="{{ PLOT.top }}" width="{{ hit.w }}" height="{{ PLOT.bottom - PLOT.top }}" fill="transparent" data-tip="{{ hit.tip }}"></rect>
-            @endforeach
-          </svg>
-          <div class="mon-legend">
-            <span style="color: var(--accent);">&#9632; CPU</span>
-            <span style="color: var(--muted);">&#9632; RAM</span>
-            @if (hostChart.hasDisk)
-              <span style="color: var(--amber);">&#9632; Disk</span>
-            @endif
-            @if (hostChart.host)
-              <span class="sub">showing {{ hostChart.host }}</span>
-            @endif
-          </div>
-        </div>
-      </section>
-    @endif
-
-    @if (__hostRows.length)
-      <section class="card" aria-label="Reporting hosts">
-        <div class="card-head">
-          <h3>Hosts</h3>
-          <span class="sub">{{ __hostRows.length }} reporting</span>
-        </div>
-        <div class="card-body">
-          <dl class="kv">
-            @foreach (__hostRows as row)
-              <div>
-                <dt>{{ row.host }}</dt>
-                <dd>
-                  <span class="{{ row.pillClass }}"><span class="dot"></span>{{ row.status }}</span>
-                  {{ row.summary }} &middot; {{ row.seen }}
-                  @if (row.detail)
-                    &middot; {{ row.detail }}
-                  @endif
-                </dd>
-              </div>
-            @endforeach
-          </dl>
-        </div>
-      </section>
-    @endif
-
-    @if (__agentInstall)
-      <section class="card" aria-label="Agent setup">
-        <div class="card-head">
-          <h3>Agent setup</h3>
-          <span class="sub">One command</span>
-        </div>
-        <div class="card-body">
-          <p class="subhead">Run this on the server you want to watch. It installs a small collector and a systemd timer (or a cron entry where systemd is absent), then sends a first sample so you know it works before you walk away:</p>
-          <pre class="code-block">{{ __agentInstall.install }}</pre>
-          <p class="subhead">Safe to re-run &mdash; that is also how you upgrade the collector or rotate the token. It reports CPU, memory and disk once a minute; pass <code>--interval=</code> to change the cadence (keep it under the missed-push window), <code>--mount=</code> to watch a volume other than <code>/</code>, or <code>--url=</code> for a self-hosted install.</p>
-          <details>
-            <summary>Other options</summary>
-            <p class="subhead">Remove it again:</p>
-            <pre class="code-block">{{ __agentInstall.uninstall }}</pre>
-            <p class="subhead">Or skip the installer entirely &mdash; anything that can POST this JSON on a schedule works:</p>
-            <pre class="code-block">curl -fsS -X POST {{ __agentInstall.endpoint }} \
-  -H 'Content-Type: application/json' \
-  -d '{"host":"web-01","cpuPercent":37,"ramPercent":38,"ramUsedMb":6112,"ramTotalMb":16384,"diskPercent":68}'</pre>
-            <p class="subhead"><code>cpuPercent</code>, <code>ramPercent</code>, <code>ramUsedMb</code> and <code>ramTotalMb</code> are required (percentages 0&ndash;100); <code>diskPercent</code> is optional. <code>host</code> is optional but send it if more than one machine shares this token &mdash; without it every box collapses into a single <code>default</code> series.</p>
-          </details>
         </div>
       </section>
     @endif
@@ -1316,7 +1142,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
           </div>
           @foreach (incidents as incident)
             <div class="trow" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
-              <span class="tcell"><data class="{{ incidentPillClass(incident) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incident.status.replace('_', ' ') }}</data></span>
+              <span class="tcell"><data class="{{ incidentPillClass(incident, monitor ? monitor.type : '') }}" value="{{ incident.status }}"><span class="dot"></span>{{ incident.status.replace('_', ' ') }}</data></span>
               <span class="tcell ellipsis" style="font-size: 0.88rem;">{{ incident.cause }}</span>
               <span class="tcell num"><time>{{ formatDate(incident.started_at) }}</time></span>
               <span class="tcell num"><time>{{ incident.resolved_at ? formatDate(incident.resolved_at) : '--' }}</time></span>
@@ -1325,6 +1151,75 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         </div>
       @endif
     </section>
+
+    {{-- The box this check runs on. What used to be three cards of telemetry
+         here is now a link: the server page owns the history, the thresholds
+         and the credential, so an operator reading this page gets the answer
+         to "which box?" and a way to change it, not a second copy of the
+         charts. --}}
+    <section class="card" aria-label="Server">
+      <div class="card-head">
+        <h3>Server</h3>
+        <span class="sub">The box this check runs on</span>
+      </div>
+      <div class="card-body">
+        @if (serverCard)
+          <p class="subhead">
+            <span class="{{ serverCard.pill }}"><span class="dot"></span>{{ serverCard.label }}</span>
+            <StxLink to="/dashboard/servers/{{ serverCard.id }}">{{ serverCard.name }}</StxLink>
+          </p>
+          <p class="sub">CPU, memory, disk and this box's own incidents are on its page.</p>
+        @endif
+        @if (!serverCard && serverSuggestion)
+          <p class="subhead">Not attached to a server. This check's host looks like <strong>{{ serverSuggestion.name }}</strong>, which reports as <code>{{ serverSuggestion.host }}</code>.</p>
+        @endif
+        @if (!serverCard && !serverSuggestion)
+          <p class="subhead">Not attached to a server. Attach one to see the box's CPU, memory and disk beside this check.</p>
+        @endif
+      </div>
+      <footer class="card-foot">
+        <button type="button" class="button" id="server-open">{{ serverCard ? 'Change server' : 'Attach a server' }}</button>
+      </footer>
+    </section>
+
+    <dialog id="server-dialog" aria-labelledby="server-dialog-title">
+      <form method="POST" action="/api/server-forms/monitors/{{ monitor.id }}/server">
+        <header class="dlg-head">
+          <div>
+            <h3 id="server-dialog-title">Which server?</h3>
+            <p class="sub">Attaching is a label, not a check. It changes nothing about how this monitor runs.</p>
+          </div>
+          <button type="button" class="dlg-x" id="server-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+
+        <div class="dlg-body">
+          @if (teamServerChoices.length === 0)
+            <p class="subhead">This team has no servers yet. Add one from the Servers page, then come back.</p>
+          @endif
+          @if (teamServerChoices.length > 0)
+            <div class="field">
+              <label for="attach-server">Server</label>
+              <select id="attach-server" name="server_id" class="select">
+                <option value="">Not on a tracked server</option>
+                @foreach (teamServerChoices as choice)
+                  <option value="{{ choice.id }}" {{ (serverCard && serverCard.id === choice.id) || (serverSuggestion && serverSuggestion.id === choice.id) ? 'selected' : '' }}>{{ choice.name }}</option>
+                @endforeach
+              </select>
+              @if (!serverCard && serverSuggestion)
+                <p class="help">Pre-selected because this check's host matches what {{ serverSuggestion.name }} reports. Change it if that is wrong.</p>
+              @endif
+            </div>
+          @endif
+        </div>
+
+        <footer class="dlg-foot">
+          <button type="button" class="button" id="server-cancel">Cancel</button>
+          <button type="submit" class="button primary">Save</button>
+        </footer>
+      </form>
+    </dialog>
 
     <section class="card" aria-label="Alert routing">
       <div class="card-head">
@@ -1783,6 +1678,29 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
 
         var canceller = document.getElementById('alerts-cancel')
         if (canceller) canceller.addEventListener('click', hide)
+
+        // The server dialog, same shape. Kept in this IIFE rather than a
+        // second one so both dialogs share the backdrop-dismiss behaviour.
+        var sdlg = document.getElementById('server-dialog')
+        if (sdlg) {
+          var sShow = function () {
+            if (sdlg.showModal) sdlg.showModal()
+            else sdlg.setAttribute('open', '')
+          }
+          var sHide = function () {
+            if (sdlg.close) sdlg.close()
+            else sdlg.removeAttribute('open')
+          }
+          var sOpen = document.getElementById('server-open')
+          if (sOpen) sOpen.addEventListener('click', sShow)
+          var sClose = document.getElementById('server-close')
+          if (sClose) sClose.addEventListener('click', sHide)
+          var sCancel = document.getElementById('server-cancel')
+          if (sCancel) sCancel.addEventListener('click', sHide)
+          sdlg.addEventListener('click', function (event) {
+            if (event.target === sdlg) sHide()
+          })
+        }
 
         // Clicking the backdrop dismisses. The event target is the dialog
         // itself only when the click landed outside its content box, so a
