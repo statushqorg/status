@@ -1,0 +1,707 @@
+<!--
+  Server detail — the page that owns metric history, thresholds, the agent
+  credential and the box's own incidents.
+
+  All of this used to live on a monitor's page, which meant a box shared by
+  four checks had its telemetry rendered four times and its threshold edited
+  in whichever of the four the operator happened to open. The monitor page now
+  carries a Server card that links here; this is the one place a breach or a
+  silence is explained.
+
+  Colour discipline: a server incident is amber, never red. `--danger` means a
+  site is unreachable. A box at 94% CPU, or one whose agent stopped pushing,
+  is an issue and not an outage, and the monitors listed in the band keep
+  their OWN pills, which may legitimately be red.
+
+  SECURITY: the servers row carries metrics_token. It is bound only as
+  `__serverRow`, projected into `serverView` before anything un-prefixed sees
+  it, and reaches the page exclusively through `__agentInstall`. The plain
+  script at the bottom avoids the page's binding names in its prose, because
+  the server-to-client bridge serialises any binding whose name word-matches a
+  script's text. Enforced by tests/unit/bridge-hygiene.test.ts.
+-->
+<script server>
+import { scaleLinear, line, curveMonotoneX } from 'ts-charts'
+import { incidentPillClass, relativeTime, serverStatusPill, statusLabel, statusPillClass } from '../../../../app/lib/display'
+import { aggregateHostStatus, DEFAULT_HOST, readingsFromSamples } from '../../../../app/lib/agentHosts'
+import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
+import { authRequest } from '../../../../app/lib/authRequest'
+import { serverFormErrorLabel } from '../../../../app/lib/serverForm'
+import { db } from '@stacksjs/database'
+import { config } from '@stacksjs/config'
+
+const chartLine = line
+const stClass = statusPillClass
+const stLabel = statusLabel
+const agoLabel = relativeTime
+const pillFor = serverStatusPill
+const incidentPill = incidentPillClass
+const errorLabel = serverFormErrorLabel
+
+const CHART = { w: 1280, h: 200, top: 14, right: 14, bottom: 30, left: 64 }
+const PLOT = { left: CHART.left, right: CHART.w - CHART.right, labelY: CHART.h - 8, top: CHART.top, bottom: CHART.h - CHART.bottom }
+
+const TEAM_CTX = await resolveHealedTeamContext(
+  authRequest(typeof cookies !== 'undefined' ? cookies : null),
+  { allowAnyTeam: u => !!(u && u.is_super_admin) },
+)
+const AUTH_USER = TEAM_CTX.user
+const TEAM_ID = TEAM_CTX.teamId ?? -1
+const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
+const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
+const NAV_ACTIVE = 'servers'
+
+const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
+const serverId = Number(typeof id !== 'undefined' ? id : (query.get('id') || 0))
+
+const flashCreated = query.get('created') === '1'
+const flashSaved = query.get('saved') === '1'
+const flashRotated = query.get('rotated') === '1'
+const flashMonitors = query.get('monitors') === '1'
+const flashError = query.get('error') || ''
+
+// Team-scoped fetch. TEAM_ID is -1 when auth failed, so this fails closed to
+// "no such server" rather than to somebody else's box.
+const __serverRow = (AUTH_USER && serverId)
+  ? (await (SEE_ALL
+      ? db.selectFrom('servers').where('id', '=', serverId)
+      : db.selectFrom('servers').where('id', '=', serverId).where('team_id', '=', TEAM_ID)
+    ).selectAll().limit(1).execute().catch(() => []))[0] || null
+  : null
+
+const range = query.get('range') || '24h'
+const RANGE_MS = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 }
+const since = new Date(Date.now() - (RANGE_MS[range] || RANGE_MS['24h'])).toISOString()
+
+function rangeUrl(r) {
+  const p = new URLSearchParams(query)
+  p.set('range', r)
+  return `/dashboard/servers/${serverId}?${p.toString()}`
+}
+
+// Everything the template reads. No token, by construction.
+const serverView = __serverRow
+  ? {
+      id: Number(__serverRow.id),
+      name: String(__serverRow.name ?? ''),
+      status: String(__serverRow.status ?? 'unknown'),
+      cpuThreshold: Number(__serverRow.cpu_threshold ?? 90),
+      ramThreshold: Number(__serverRow.ram_threshold ?? 90),
+      diskThreshold: Number(__serverRow.disk_threshold ?? 85),
+      windowSeconds: Number(__serverRow.metrics_window_seconds ?? 300),
+      lastSample: agoLabel(__serverRow.last_sample_at, 'never'),
+    }
+  : null
+
+const pill = serverView ? pillFor(serverView.status) : { cls: 'pill pill-unknown', label: 'No samples yet' }
+
+/** A threshold of 0 is off, which is different from a threshold of nothing. */
+function thresholdLabel(value) {
+  return Number(value) === 0 ? 'off' : `${Number(value)}%`
+}
+
+// --- monitors on this box ---------------------------------------------------
+
+const attachedRows = serverView
+  ? await db.selectFrom('monitors').where('server_id', '=', serverView.id).select(['id', 'name', 'type', 'status']).execute().catch(() => [])
+  : []
+const attachedMonitors = attachedRows
+  .map(m => ({
+    id: Number(m.id),
+    name: String(m.name ?? ''),
+    type: String(m.type ?? ''),
+    pill: stClass(m.status),
+    statusLabel: stLabel(m.status),
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name))
+
+// Every monitor in the team, for the manage dialog. Rows already on another
+// box say so rather than being hidden: moving one here is allowed, and a
+// checkbox that silently steals a monitor from another server would be worse
+// than one that admits what it is doing.
+const teamMonitorRows = (AUTH_USER && serverView)
+  ? await (SEE_ALL ? db.selectFrom('monitors') : db.selectFrom('monitors').where('team_id', '=', TEAM_ID))
+      .select(['id', 'name', 'server_id']).execute().catch(() => [])
+  : []
+const otherServerRows = serverView
+  ? await (SEE_ALL ? db.selectFrom('servers') : db.selectFrom('servers').where('team_id', '=', TEAM_ID))
+      .select(['id', 'name']).execute().catch(() => [])
+  : []
+const serverNameById = new Map(otherServerRows.map(r => [Number(r.id), String(r.name ?? '')]))
+
+const monitorChoices = teamMonitorRows
+  .map((m) => {
+    const on = m.server_id === null || m.server_id === undefined ? null : Number(m.server_id)
+    return {
+      id: Number(m.id),
+      name: String(m.name ?? ''),
+      checked: on === (serverView ? serverView.id : -1),
+      elsewhere: on !== null && on !== (serverView ? serverView.id : -1) ? (serverNameById.get(on) || 'another server') : '',
+    }
+  })
+  .sort((a, b) => a.name.localeCompare(b.name))
+
+// --- samples: telemetry, hosts, and the chart -------------------------------
+
+const sampleRows = serverView
+  ? await db.selectFrom('server_metric_samples')
+      .where('server_id', '=', serverView.id)
+      .where('sampled_at', '>=', since)
+      .orderBy('sampled_at', 'asc')
+      .selectAll()
+      .execute()
+      .catch(() => [])
+  : []
+
+// The same aggregation the ingest decides status with, so this table can never
+// disagree with the pill at the top of the page.
+const fleet = serverView
+  ? aggregateHostStatus(readingsFromSamples(sampleRows), Date.now(), serverView.windowSeconds)
+  : { hosts: [] }
+
+const hostRows = fleet.hosts.map((h) => {
+  const parts = []
+  if (h.cpuPercent !== null) parts.push(`${Math.round(h.cpuPercent)}% CPU`)
+  if (h.ramPercent !== null) parts.push(`${Math.round(h.ramPercent)}% RAM`)
+  if (h.diskPercent !== null) parts.push(`${Math.round(h.diskPercent)}% disk`)
+  return {
+    host: h.host === DEFAULT_HOST ? 'this host' : h.host,
+    status: stLabel(h.status),
+    pillClass: stClass(h.status),
+    summary: parts.length ? parts.join(' / ') : 'no sample',
+    seen: agoLabel(new Date(h.checkedAtMs).toISOString()),
+    detail: h.breaches.join('; '),
+  }
+})
+
+// Which machine's line is plotted. `?host=` picks one; otherwise the most
+// recently reporting, because plotting every sample from several machines on
+// one line draws a sawtooth that is nobody's history.
+const hostNames = [...new Set(sampleRows.map(r => String(r.host ?? DEFAULT_HOST)))]
+const requestedHost = query.get('host') || ''
+const chartHost = hostNames.includes(requestedHost)
+  ? requestedHost
+  : (fleet.hosts.length ? String(fleet.hosts[0].host) : (hostNames[0] || ''))
+
+function hostUrl(h) {
+  const p = new URLSearchParams(query)
+  p.set('host', h)
+  return `/dashboard/servers/${serverId}?${p.toString()}`
+}
+
+let hostChart = null
+{
+  // Typed columns straight off the row: these are real columns now, not JSON
+  // in a metadata blob, so there is nothing to parse and nothing to fail on.
+  const samples = []
+  for (const r of sampleRows) {
+    if (chartHost && String(r.host ?? DEFAULT_HOST) !== chartHost)
+      continue
+    const cpu = typeof r.cpu_percent === 'number' ? r.cpu_percent : (r.cpu_percent === null ? null : Number(r.cpu_percent))
+    const ram = typeof r.ram_percent === 'number' ? r.ram_percent : (r.ram_percent === null ? null : Number(r.ram_percent))
+    const disk = r.disk_percent === null || r.disk_percent === undefined ? null : Number(r.disk_percent)
+    if (Number.isFinite(cpu) || Number.isFinite(ram) || Number.isFinite(disk))
+      samples.push({ t: Date.parse(r.sampled_at), iso: r.sampled_at, cpu, ram, disk })
+  }
+
+  if (samples.length > 1) {
+    const t0 = samples[0].t
+    const t1 = samples[samples.length - 1].t
+    const x = scaleLinear().domain([t0, t1 === t0 ? t0 + 1 : t1]).range([CHART.left, CHART.w - CHART.right])
+    const y = scaleLinear().domain([0, 100]).range([CHART.h - CHART.bottom, CHART.top])
+    const gen = key => chartLine()
+      .defined(d => typeof d[key] === 'number' && Number.isFinite(d[key]))
+      .x(d => x(d.t))
+      .y(d => y(d[key]))
+      .curve(curveMonotoneX)(samples)
+    const latest = [...samples].reverse().find(s => s.cpu !== null || s.ram !== null || s.disk !== null)
+    const nowParts = []
+    if (latest && Number.isFinite(latest.cpu)) nowParts.push(`${Math.round(latest.cpu)}% CPU`)
+    if (latest && Number.isFinite(latest.ram)) nowParts.push(`${Math.round(latest.ram)}% RAM`)
+    if (latest && Number.isFinite(latest.disk)) nowParts.push(`${Math.round(latest.disk)}% disk`)
+    // Cap hover targets so a full day of per-minute samples does not emit
+    // 1440 hit columns; thin to at most ~60 evenly spaced.
+    const stepH = Math.max(1, Math.ceil(samples.length / 60))
+    const hostHitW = (PLOT.right - PLOT.left) / Math.ceil(samples.length / stepH)
+    const clock = iso => String(iso).slice(11, 16)
+    const sampleTip = (s) => {
+      const parts = []
+      if (Number.isFinite(s.cpu)) parts.push(`${Math.round(s.cpu)}% CPU`)
+      if (Number.isFinite(s.ram)) parts.push(`${Math.round(s.ram)}% RAM`)
+      if (Number.isFinite(s.disk)) parts.push(`${Math.round(s.disk)}% disk`)
+      return `${clock(s.iso)} · ${parts.length ? parts.join(' / ') : 'no sample'}`
+    }
+    hostChart = {
+      cpuPath: gen('cpu') || '',
+      ramPath: gen('ram') || '',
+      diskPath: gen('disk') || '',
+      hasDisk: samples.some(s => Number.isFinite(s.disk)),
+      ticks: [0, 50, 100].map(t => ({ y: y(t).toFixed(1), label: `${t}%` })),
+      nowLabel: nowParts.length ? nowParts.join(' / ') : '--',
+      host: chartHost === DEFAULT_HOST ? '' : chartHost,
+      hits: samples.filter((_s, i) => i % stepH === 0).map(s => ({
+        x: (x(s.t) - hostHitW / 2).toFixed(1),
+        w: hostHitW.toFixed(1),
+        tip: sampleTip(s),
+      })),
+    }
+  }
+}
+
+// --- incidents --------------------------------------------------------------
+//
+// `__`-prefixed because the confirm() text in the plain script below contains
+// the word "incidents", and the bridge word-matches a binding name against a
+// script's TEXT. The alternative was to reword a sentence the operator reads
+// before deleting a box, which is the wrong thing to bend.
+
+const incidentRows = serverView
+  ? await db.selectFrom('incidents').where('server_id', '=', serverView.id).orderBy('started_at', 'desc').limit(20).selectAll().execute().catch(() => [])
+  : []
+
+const updateRows = incidentRows.length
+  ? await db.selectFrom('incident_updates').where('incident_id', 'in', incidentRows.map(i => Number(i.id))).orderBy('posted_at', 'asc').selectAll().execute().catch(() => [])
+  : []
+
+const __incidents = incidentRows.map(i => ({
+  id: Number(i.id),
+  title: String(i.title ?? i.cause ?? 'Incident'),
+  cause: String(i.cause ?? ''),
+  pill: incidentPill(i, ''),
+  state: i.resolved_at ? 'Resolved' : String(i.status ?? 'open'),
+  started: agoLabel(i.started_at),
+  updates: updateRows
+    .filter(u => Number(u.incident_id) === Number(i.id))
+    .map(u => ({ message: String(u.message ?? ''), at: agoLabel(u.posted_at) })),
+}))
+
+// The band: only open server incidents, quiet first so a box that went hot and
+// then silent reads in the order it happened.
+const openIncidents = incidentRows.filter(i => !i.resolved_at)
+function bandKind(row) {
+  const marker = String(row.impacted_checks ?? '')
+  if (marker.includes('server_silent')) return 'server_silent'
+  if (marker.includes('server_hot')) return 'server_hot'
+  return ''
+}
+const bands = openIncidents
+  .map(i => ({
+    kind: bandKind(i),
+    title: bandKind(i) === 'server_silent' ? 'Agent went quiet' : 'Box is hot',
+    cause: String(i.cause ?? ''),
+    since: agoLabel(i.started_at),
+  }))
+  .sort((a, b) => (a.kind === 'server_silent' ? -1 : 1) - (b.kind === 'server_silent' ? -1 : 1))
+
+// --- agent setup ------------------------------------------------------------
+
+const appUrl = (config && config.app && config.app.url) ? String(config.app.url).replace(/\/+$/, '') : ''
+
+// The one token-bearing binding on the page, `__`-prefixed so the bridge skips
+// it. This file's monitor-page ancestor was bitten by string concatenation
+// inside a mustache; the strings are built here for the same reason.
+let __agentInstall = null
+if (__serverRow && __serverRow.metrics_token) {
+  __agentInstall = {
+    install: `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --token=${__serverRow.metrics_token}`,
+    uninstall: `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --uninstall`,
+    endpoint: `${appUrl}/api/agent/${__serverRow.metrics_token}/metrics`,
+  }
+}
+
+useHead({
+  title: `${serverView ? serverView.name : 'Server'} · StatusHQ`,
+  meta: [{ name: 'robots', content: 'noindex' }],
+})
+</script>
+
+@include('../../partials/app-head.stx')
+@include('../../partials/app-nav.stx')
+
+<main class="app-shell">
+  @if (!AUTH_USER)
+    <div class="empty" style="margin: 3rem 0;">
+      <h3>Sign in required</h3>
+      <p>You need an authenticated session to view this server.</p>
+      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
+    </div>
+  @endif
+
+  @if (AUTH_USER && !serverView)
+    <div class="empty" style="margin: 3rem 0;">
+      <h3>Server not found</h3>
+      <p>It may have been deleted, or it belongs to another team.</p>
+      <div class="actions"><StxLink class="button primary" to="/dashboard/servers">All servers</StxLink></div>
+    </div>
+  @endif
+
+  @if (serverView)
+    <p class="crumb"><StxLink to="/dashboard/servers">&larr; All servers</StxLink></p>
+
+    <header class="page-head">
+      <div>
+        <h1>{{ serverView.name }}</h1>
+        <p class="meta">{{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }} &middot; last sample {{ serverView.lastSample }} &middot; window {{ serverView.windowSeconds }}s</p>
+      </div>
+      <div class="actions">
+        <span class="{{ pill.cls }}"><span class="dot"></span>{{ pill.label }}</span>
+      </div>
+    </header>
+
+    @if (flashCreated)
+      <div class="flash">Server created. Install the agent below, then attach the monitors that run on it.</div>
+    @endif
+    @if (flashSaved)
+      <div class="flash">Saved. Status re-evaluates within a minute.</div>
+    @endif
+    @if (flashRotated)
+      <div class="flash">Token rotated. Re-run the install command below on the box, or it stops reporting.</div>
+    @endif
+    @if (flashMonitors)
+      <div class="flash">Monitors updated.</div>
+    @endif
+    @if (flashError)
+      <div class="flash error">{{ errorLabel(flashError) }}</div>
+    @endif
+
+    {{-- The band is the ONE place a breach or a silence is explained. Amber,
+         never red: the monitors listed inside keep their own pills, and those
+         may be red, because a site being down is a different claim. --}}
+    @foreach (bands as band)
+      <div class="server-band" style="border: 1px solid var(--amber); background: var(--amber-soft); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem;">
+        <strong>{{ band.title }}</strong>
+        <span>{{ band.cause }}</span>
+        <span class="sub">since {{ band.since }}</span>
+        @if (attachedMonitors.length)
+          <div class="blast" style="margin-top: 0.75rem;">
+            <p class="sub">{{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }} on this server</p>
+            @foreach (attachedMonitors as m)
+              <StxLink to="/dashboard/monitors/{{ m.id }}" style="display: inline-flex; gap: 0.4rem; align-items: center; margin-right: 0.9rem;">
+                <span class="{{ m.pill }}"><span class="dot"></span>{{ m.statusLabel }}</span> {{ m.name }}
+              </StxLink>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    @endforeach
+
+    <section class="card" aria-label="Monitors on this server">
+      <div class="card-head">
+        <h3>Monitors on this server</h3>
+        <span class="sub">{{ attachedMonitors.length }} attached</span>
+      </div>
+      <div class="card-body">
+        @if (attachedMonitors.length === 0)
+          <p class="subhead">No monitors attached yet. Attach the checks that run on this box and their pages will link back here.</p>
+        @endif
+        @if (attachedMonitors.length > 0)
+          <dl class="kv">
+            @foreach (attachedMonitors as m)
+              <div>
+                <dt><StxLink to="/dashboard/monitors/{{ m.id }}">{{ m.name }}</StxLink></dt>
+                <dd><span class="{{ m.pill }}"><span class="dot"></span>{{ m.statusLabel }}</span> {{ m.type }}</dd>
+              </div>
+            @endforeach
+          </dl>
+        @endif
+      </div>
+      <footer class="card-foot">
+        <button type="button" class="button" id="monitors-open">Manage monitors</button>
+      </footer>
+    </section>
+
+    @if (hostChart)
+      <section class="card" aria-label="Host telemetry">
+        <div class="card-head">
+          <h3>Host telemetry, CPU and memory</h3>
+          <span class="sub">now {{ hostChart.nowLabel }}</span>
+        </div>
+        <div class="card-body">
+          <div class="chips" style="margin-bottom: 0.75rem;">
+            <StxLink to="{{ rangeUrl('24h') }}" class="chip {{ range === '24h' ? 'active' : '' }}">24h</StxLink>
+            <StxLink to="{{ rangeUrl('7d') }}" class="chip {{ range === '7d' ? 'active' : '' }}">7d</StxLink>
+            <StxLink to="{{ rangeUrl('30d') }}" class="chip {{ range === '30d' ? 'active' : '' }}">30d</StxLink>
+          </div>
+          <svg viewBox="0 0 1280 200" class="mon-chart" role="img" aria-label="CPU, memory and disk traces">
+            @foreach (hostChart.ticks as t)
+              <line x1="{{ PLOT.left }}" x2="{{ PLOT.right }}" y1="{{ t.y }}" y2="{{ t.y }}" stroke="var(--border)" stroke-width="1"></line>
+              <text x="{{ PLOT.left - 8 }}" y="{{ t.y }}" text-anchor="end" dominant-baseline="middle" fill="var(--muted)" font-size="12" font-family="var(--font-mono)">{{ t.label }}</text>
+            @endforeach
+            <path d="{{ hostChart.cpuPath }}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"></path>
+            <path d="{{ hostChart.ramPath }}" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round"></path>
+            @if (hostChart.hasDisk)
+              <path d="{{ hostChart.diskPath }}" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round"></path>
+            @endif
+            @foreach (hostChart.hits as hit)
+              <rect class="chart-hit" x="{{ hit.x }}" y="{{ PLOT.top }}" width="{{ hit.w }}" height="{{ PLOT.bottom - PLOT.top }}" fill="transparent" data-tip="{{ hit.tip }}"></rect>
+            @endforeach
+          </svg>
+          <div class="mon-legend">
+            <span style="color: var(--accent);">&#9632; CPU</span>
+            <span style="color: var(--muted);">&#9632; Memory</span>
+            @if (hostChart.hasDisk)
+              <span style="color: var(--amber);">&#9632; Disk</span>
+            @endif
+            @if (hostChart.host)
+              <span class="sub">showing {{ hostChart.host }}</span>
+            @endif
+          </div>
+          @if (hostNames.length > 1)
+            <div class="chips" style="margin-top: 0.75rem;">
+              @foreach (hostNames as h)
+                <StxLink to="{{ hostUrl(h) }}" class="chip {{ chartHost === h ? 'active' : '' }}">{{ h }}</StxLink>
+              @endforeach
+            </div>
+          @endif
+        </div>
+      </section>
+    @endif
+
+    @if (hostRows.length)
+      <section class="card" aria-label="Reporting hosts">
+        <div class="card-head">
+          <h3>Hosts</h3>
+          <span class="sub">{{ hostRows.length }} reporting</span>
+        </div>
+        <div class="card-body">
+          <dl class="kv">
+            @foreach (hostRows as row)
+              <div>
+                <dt>{{ row.host }}</dt>
+                <dd>
+                  <span class="{{ row.pillClass }}"><span class="dot"></span>{{ row.status }}</span>
+                  {{ row.summary }} &middot; {{ row.seen }}
+                  @if (row.detail)
+                    &middot; {{ row.detail }}
+                  @endif
+                </dd>
+              </div>
+            @endforeach
+          </dl>
+        </div>
+      </section>
+    @endif
+
+    <section class="card" aria-label="Thresholds">
+      <div class="card-head">
+        <h3>Thresholds</h3>
+        <span class="sub">What makes this box hot</span>
+      </div>
+      <div class="card-body">
+        <p class="subhead">CPU alerts at {{ thresholdLabel(serverView.cpuThreshold) }} &middot; Memory at {{ thresholdLabel(serverView.ramThreshold) }} &middot; Disk at {{ thresholdLabel(serverView.diskThreshold) }} &middot; Missed-push window {{ serverView.windowSeconds }}s</p>
+      </div>
+      <footer class="card-foot">
+        <button type="button" class="button" id="thresholds-open">Edit thresholds</button>
+      </footer>
+    </section>
+
+    @if (__agentInstall)
+      <section class="card" aria-label="Agent setup">
+        <div class="card-head">
+          <h3>Agent setup</h3>
+          <span class="sub">One command</span>
+        </div>
+        <div class="card-body">
+          @if (serverView.status === 'unknown')
+            <p class="subhead"><strong>Waiting for the first sample.</strong> Nothing is being watched on this box yet. Run the command below and the page fills in within a minute.</p>
+          @endif
+          <p class="subhead">Run this on the server you want to watch. It installs a small collector and a systemd timer (or a cron entry where systemd is absent), then sends a first sample so you know it works before you walk away:</p>
+          <pre class="code-block">{{ __agentInstall.install }}</pre>
+          <p class="subhead">Safe to re-run &mdash; that is also how you upgrade the collector. It reports CPU, memory and disk once a minute; pass <code>--interval=</code> to change the cadence (keep it under the missed-push window), <code>--mount=</code> to watch a volume other than <code>/</code>, or <code>--url=</code> for a self-hosted install.</p>
+          <details>
+            <summary>Other options</summary>
+            <p class="subhead">Remove it again:</p>
+            <pre class="code-block">{{ __agentInstall.uninstall }}</pre>
+            <p class="subhead">Or skip the installer entirely &mdash; anything that can POST this JSON on a schedule works:</p>
+            <pre class="code-block">curl -fsS -X POST {{ __agentInstall.endpoint }} \
+  -H 'Content-Type: application/json' \
+  -d '{"host":"web-01","cpuPercent":37,"ramPercent":38,"ramUsedMb":6112,"ramTotalMb":16384,"diskPercent":68}'</pre>
+            <p class="subhead"><code>cpuPercent</code>, <code>ramPercent</code>, <code>ramUsedMb</code> and <code>ramTotalMb</code> are required (percentages 0&ndash;100); <code>diskPercent</code> is optional. <code>host</code> is optional but send it if more than one machine shares this token &mdash; without it every box collapses into a single <code>default</code> series.</p>
+          </details>
+        </div>
+        <footer class="card-foot">
+          <form method="POST" action="/api/server-forms/{{ serverView.id }}/rotate-token" id="rotate-form">
+            <button type="submit" class="button" id="rotate-submit">Rotate token</button>
+          </form>
+          <p class="sub">Rotating breaks the installed agent immediately. Re-run the command above on the box afterwards.</p>
+        </footer>
+      </section>
+    @endif
+
+    @if (__incidents.length)
+      <section class="card" aria-label="Server incidents">
+        <div class="card-head">
+          <h3>Incidents</h3>
+          <span class="sub">{{ __incidents.length }} on this box</span>
+        </div>
+        <div class="card-body">
+          @foreach (__incidents as incident)
+            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+              <span class="{{ incident.pill }}"><span class="dot"></span>{{ incident.state }}</span>
+              <strong>{{ incident.title }}</strong>
+              <span class="sub">{{ incident.started }}</span>
+              @if (incident.cause)
+                <p class="subhead">{{ incident.cause }}</p>
+              @endif
+              @foreach (incident.updates as update)
+                <p class="sub" style="margin-left: 1rem;">{{ update.at }} &middot; {{ update.message }}</p>
+              @endforeach
+            </div>
+          @endforeach
+        </div>
+      </section>
+    @endif
+
+    <section class="card" aria-label="Danger zone">
+      <div class="card-head">
+        <h3>Danger zone</h3>
+      </div>
+      <div class="card-body">
+        <p class="subhead">Deleting this server detaches {{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }}, deletes its stored samples and closes its open incidents. The monitors and the incident history are kept.</p>
+      </div>
+      <footer class="card-foot">
+        <form method="POST" action="/api/server-forms/{{ serverView.id }}/delete" id="delete-form">
+          <button type="submit" class="button danger" id="delete-submit">Delete this server</button>
+        </form>
+      </footer>
+    </section>
+
+    <dialog id="monitors-dialog" aria-labelledby="monitors-dialog-title">
+      <form method="POST" action="/api/server-forms/{{ serverView.id }}/monitors">
+        <header class="dlg-head">
+          <div>
+            <h3 id="monitors-dialog-title">Manage monitors</h3>
+            <p class="sub">Tick the checks that run on this box. Unticking one detaches it; it keeps running.</p>
+          </div>
+          <button type="button" class="dlg-x" id="monitors-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+
+        <div class="dlg-body">
+          @if (monitorChoices.length === 0)
+            <p class="subhead">This team has no monitors yet.</p>
+          @endif
+          @foreach (monitorChoices as choice)
+            <div class="field">
+              <label for="mon-{{ choice.id }}">
+                <input id="mon-{{ choice.id }}" type="checkbox" name="mon_{{ choice.id }}" value="1" {{ choice.checked ? 'checked' : '' }} />
+                {{ choice.name }}
+                @if (choice.elsewhere)
+                  <span class="sub">(on {{ choice.elsewhere }})</span>
+                @endif
+              </label>
+            </div>
+          @endforeach
+        </div>
+
+        <footer class="dlg-foot">
+          <button type="button" class="button" id="monitors-cancel">Cancel</button>
+          <button type="submit" class="button primary">Save monitors</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="thresholds-dialog" aria-labelledby="thresholds-dialog-title">
+      <form method="POST" action="/api/server-forms/{{ serverView.id }}/update">
+        <header class="dlg-head">
+          <div>
+            <h3 id="thresholds-dialog-title">Edit thresholds</h3>
+            <p class="sub">What makes this box hot, and how long it may go quiet.</p>
+          </div>
+          <button type="button" class="dlg-x" id="thresholds-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+
+        <div class="dlg-body">
+          <div class="field">
+            <label for="edit-server-name">Name</label>
+            <input id="edit-server-name" type="text" name="name" class="input" maxlength="150" value="{{ serverView.name }}" required />
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="edit-server-cpu">CPU alert above (%)</label>
+              <input id="edit-server-cpu" type="number" name="cpu_threshold" class="input" min="0" max="100" value="{{ serverView.cpuThreshold }}" />
+            </div>
+            <div class="field">
+              <label for="edit-server-ram">Memory alert above (%)</label>
+              <input id="edit-server-ram" type="number" name="ram_threshold" class="input" min="0" max="100" value="{{ serverView.ramThreshold }}" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="edit-server-disk">Disk alert above (%)</label>
+              <input id="edit-server-disk" type="number" name="disk_threshold" class="input" min="0" max="100" value="{{ serverView.diskThreshold }}" />
+            </div>
+            <div class="field">
+              <label for="edit-server-window">Missed-push window (seconds)</label>
+              <input id="edit-server-window" type="number" name="metrics_window_seconds" class="input" min="30" max="86400" value="{{ serverView.windowSeconds }}" />
+              <p class="help">Keep the agent's interval under this or the box alerts between pushes.</p>
+            </div>
+          </div>
+          <p class="help">A threshold of 0 turns that one off.</p>
+        </div>
+
+        <footer class="dlg-foot">
+          <button type="button" class="button" id="thresholds-cancel">Cancel</button>
+          <button type="submit" class="button primary">Save</button>
+        </footer>
+      </form>
+    </dialog>
+  @endif
+</main>
+
+<script>
+  (function () {
+    // Elements are reached by id, and this prose deliberately avoids the
+    // page's binding names: the server-to-client bridge serialises any
+    // binding whose name word-matches a plain script's TEXT, comments
+    // included, and this page's scope holds a row carrying an agent token.
+    function wire(dialogId, openerId, closerId, cancelId) {
+      var dlg = document.getElementById(dialogId)
+      if (!dlg) return
+
+      function show() {
+        if (dlg.showModal) dlg.showModal()
+        else dlg.setAttribute('open', '')
+      }
+      function hide() {
+        if (dlg.close) dlg.close()
+        else dlg.removeAttribute('open')
+      }
+
+      var opener = document.getElementById(openerId)
+      if (opener) opener.addEventListener('click', show)
+      var closer = document.getElementById(closerId)
+      if (closer) closer.addEventListener('click', hide)
+      var canceller = document.getElementById(cancelId)
+      if (canceller) canceller.addEventListener('click', hide)
+
+      dlg.addEventListener('click', function (event) {
+        if (event.target === dlg) hide()
+      })
+    }
+
+    wire('monitors-dialog', 'monitors-open', 'monitors-close', 'monitors-cancel')
+    wire('thresholds-dialog', 'thresholds-open', 'thresholds-close', 'thresholds-cancel')
+
+    // Both of these are one-way. Rotating stops the installed agent reporting
+    // until it is re-run, and deleting cannot be undone.
+    var rotate = document.getElementById('rotate-form')
+    if (rotate) {
+      rotate.addEventListener('submit', function (event) {
+        if (!window.confirm('Rotate the token? The agent already installed on this box stops reporting until you re-run the install command.'))
+          event.preventDefault()
+      })
+    }
+
+    var remove = document.getElementById('delete-form')
+    if (remove) {
+      remove.addEventListener('submit', function (event) {
+        if (!window.confirm('Delete this server? Its monitors are detached and kept, its samples are deleted, and its open incidents are closed.'))
+          event.preventDefault()
+      })
+    }
+  })()
+</script>

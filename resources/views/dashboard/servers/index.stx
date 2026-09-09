@@ -1,0 +1,281 @@
+<!--
+  Server list — the fleet of boxes pushing CPU, memory and disk.
+
+  A server is not a monitor. A monitor asks a question from outside ("does
+  this URL answer"); a server is a machine that reports about itself from the
+  inside, and the two used to be the same row. That conflation is what this
+  page exists to undo: the agent credential, the thresholds and the metric
+  history now belong to the box, and monitors attach to it.
+
+  Server-rendered like monitors/index.stx, and for the same reason recorded
+  there: the client-reactive state()/:for pattern hit an unresolved hydration
+  warning on these pages.
+
+  SECURITY: a servers row carries metrics_token, the agent-ingest credential.
+  Raw rows are bound only under `__` names and projected before anything
+  un-prefixed sees them, because stx's server-to-client bridge serialises any
+  binding whose name word-matches a plain script's text. Enforced by
+  tests/unit/bridge-hygiene.test.ts.
+-->
+<script server>
+import { relativeTime, serverStatusPill } from '../../../../app/lib/display'
+import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
+import { authRequest } from '../../../../app/lib/authRequest'
+import { serverFormErrorLabel } from '../../../../app/lib/serverForm'
+import { db } from '@stacksjs/database'
+
+const agoLabel = relativeTime
+const pillFor = serverStatusPill
+const errorLabel = serverFormErrorLabel
+
+const TEAM_CTX = await resolveHealedTeamContext(
+  authRequest(typeof cookies !== 'undefined' ? cookies : null),
+  { allowAnyTeam: u => !!(u && u.is_super_admin) },
+)
+const AUTH_USER = TEAM_CTX.user
+const TEAM_ID = TEAM_CTX.teamId ?? -1
+const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
+const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
+const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const NAV_ACTIVE = 'servers'
+
+const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
+const flashDeleted = query.get('deleted') === '1'
+const flashError = query.get('error') || ''
+
+// Raw rows, `__`-prefixed so the bridge never collects them, projected on the
+// next line. Nothing below this point can reach a token.
+const __serverRows = AUTH_USER
+  ? await teamScope(db.selectFrom('servers')).execute().catch(() => [])
+  : []
+
+const serverIds = __serverRows.map(r => Number(r.id))
+
+// One windowed pass over the samples for the whole list, grouped in JS rather
+// than in SQL: the dialect differs between a self-hosted SQLite and the
+// hosted Postgres, and this list is small enough that the grouping is free.
+const WORST_WINDOW_MS = 10 * 60 * 1000
+const worstSince = new Date(Date.now() - WORST_WINDOW_MS).toISOString()
+const sampleRows = serverIds.length
+  ? await db.selectFrom('server_metric_samples')
+      .where('server_id', 'in', serverIds)
+      .where('sampled_at', '>=', worstSince)
+      .select(['server_id', 'cpu_percent', 'ram_percent', 'disk_percent'])
+      .execute()
+      .catch(() => [])
+  : []
+
+/** The highest reading in the window, which is what a threshold is judged on. */
+function worst(rows, key) {
+  let top = null
+  for (const row of rows) {
+    const value = Number(row[key])
+    if (Number.isFinite(value) && (top === null || value > top))
+      top = value
+  }
+  return top
+}
+
+const worstByServer = new Map()
+for (const id of serverIds) {
+  const rows = sampleRows.filter(r => Number(r.server_id) === id)
+  worstByServer.set(id, {
+    cpu: worst(rows, 'cpu_percent'),
+    ram: worst(rows, 'ram_percent'),
+    disk: worst(rows, 'disk_percent'),
+  })
+}
+
+const monitorRows = serverIds.length
+  ? await db.selectFrom('monitors').where('server_id', 'in', serverIds).select(['server_id']).execute().catch(() => [])
+  : []
+const monitorCountByServer = new Map()
+for (const row of monitorRows) {
+  const id = Number(row.server_id)
+  monitorCountByServer.set(id, (monitorCountByServer.get(id) || 0) + 1)
+}
+
+function pct(value) {
+  return value === null || value === undefined ? '--' : `${Math.round(value)}%`
+}
+
+const servers = __serverRows
+  .map((row) => {
+    const id = Number(row.id)
+    const w = worstByServer.get(id) || { cpu: null, ram: null, disk: null }
+    const pill = pillFor(row.status)
+    return {
+      id,
+      name: String(row.name ?? ''),
+      status: String(row.status ?? 'unknown'),
+      pillClass: pill.cls,
+      pillLabel: pill.label,
+      cpu: pct(w.cpu),
+      ram: pct(w.ram),
+      disk: pct(w.disk),
+      lastSample: agoLabel(row.last_sample_at, 'never'),
+      monitorCount: monitorCountByServer.get(id) || 0,
+    }
+  })
+  .sort((a, b) => a.name.localeCompare(b.name))
+
+const serverCount = servers.length
+
+useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noindex' }] })
+</script>
+
+@include('../partials/app-head.stx')
+@include('../partials/app-nav.stx')
+
+<main class="app-shell">
+  @if (!AUTH_USER)
+    <div class="empty" style="margin: 3rem 0;">
+      <h3>Sign in required</h3>
+      <p>You need an authenticated session to view your servers.</p>
+      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
+    </div>
+  @endif
+
+  @if (AUTH_USER)
+    <header class="page-head">
+      <div>
+        <h1>Servers</h1>
+        <p class="meta">{{ serverCount }} server{{ serverCount === 1 ? '' : 's' }} pushing metrics</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="button primary" id="server-create-open">Add a server</button>
+      </div>
+    </header>
+
+    @if (flashDeleted)
+      <div class="flash">Server deleted. Its monitors were detached and kept.</div>
+    @endif
+
+    @if (flashError)
+      <div class="flash error">{{ errorLabel(flashError) }}</div>
+    @endif
+
+    @if (serverCount === 0)
+      <div class="empty">
+        <h3>No servers yet</h3>
+        <p>A server is a box that pushes CPU, memory and disk to StatusHQ. Add one, install its agent, then attach the monitors that run on it.</p>
+        <div class="actions"><button type="button" class="button primary" id="server-create-open-empty">Add a server</button></div>
+      </div>
+    @endif
+
+    @if (serverCount > 0)
+      <section class="card scroll-x" aria-label="Server list">
+        <div class="rows">
+          <div class="trow thead" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
+            <span>Name</span>
+            <span>Status</span>
+            <span>CPU</span>
+            <span>Memory</span>
+            <span>Disk</span>
+            <span>Last sample</span>
+            <span>Monitors</span>
+          </div>
+          @foreach (servers as server)
+            <StxLink class="trow" to="/dashboard/servers/{{ server.id }}" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
+              <span class="name">{{ server.name }}</span>
+              <span><span class="{{ server.pillClass }}"><span class="dot"></span>{{ server.pillLabel }}</span></span>
+              <span class="mono">{{ server.cpu }}</span>
+              <span class="mono">{{ server.ram }}</span>
+              <span class="mono">{{ server.disk }}</span>
+              <span class="sub">{{ server.lastSample }}</span>
+              <span class="sub">{{ server.monitorCount }}</span>
+            </StxLink>
+          @endforeach
+        </div>
+      </section>
+      <p class="sub" style="margin-top: 0.75rem;">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
+    @endif
+
+    <dialog id="server-create-dialog" aria-labelledby="server-create-title">
+      <form method="POST" action="/api/server-forms/create">
+        <header class="dlg-head">
+          <div>
+            <h3 id="server-create-title">Add a server</h3>
+            <p class="sub">Name the box. The agent install snippet appears on its page once it exists.</p>
+          </div>
+          <button type="button" class="dlg-x" id="server-create-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </header>
+
+        <div class="dlg-body">
+          <div class="field">
+            <label for="server-name">Name</label>
+            <input id="server-name" type="text" name="name" class="input" maxlength="150" placeholder="web-01" required />
+            <p class="help">Use the box's hostname if you can. It is what the monitor attach suggestion matches on.</p>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="server-cpu">CPU alert above (%)</label>
+              <input id="server-cpu" type="number" name="cpu_threshold" class="input" min="0" max="100" placeholder="90" />
+            </div>
+            <div class="field">
+              <label for="server-ram">Memory alert above (%)</label>
+              <input id="server-ram" type="number" name="ram_threshold" class="input" min="0" max="100" placeholder="90" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="server-disk">Disk alert above (%)</label>
+              <input id="server-disk" type="number" name="disk_threshold" class="input" min="0" max="100" placeholder="85" />
+            </div>
+            <div class="field">
+              <label for="server-window">Missed-push window (seconds)</label>
+              <input id="server-window" type="number" name="metrics_window_seconds" class="input" min="30" max="86400" placeholder="300" />
+            </div>
+          </div>
+          <p class="help">Blank uses the defaults: 90/90/85 and a 300 second window. A threshold of 0 turns that one off. Keep the agent's push interval comfortably under the window or the box alerts between pushes.</p>
+        </div>
+
+        <footer class="dlg-foot">
+          <button type="button" class="button" id="server-create-cancel">Cancel</button>
+          <button type="submit" class="button primary">Add server</button>
+        </footer>
+      </form>
+    </dialog>
+  @endif
+</main>
+
+<script>
+  (function () {
+    // Every element is reached by id, and this prose deliberately avoids the
+    // page's binding names: the server-to-client bridge serialises any
+    // binding whose name word-matches a plain script's TEXT, comments
+    // included, and this page's scope holds rows carrying an agent token.
+    var dlg = document.getElementById('server-create-dialog')
+    if (!dlg) return
+
+    function show() {
+      if (dlg.showModal) dlg.showModal()
+      else dlg.setAttribute('open', '')
+    }
+
+    function hide() {
+      if (dlg.close) dlg.close()
+      else dlg.removeAttribute('open')
+    }
+
+    var ids = ['server-create-open', 'server-create-open-empty']
+    for (var i = 0; i < ids.length; i++) {
+      var opener = document.getElementById(ids[i])
+      if (opener) opener.addEventListener('click', show)
+    }
+
+    var closer = document.getElementById('server-create-close')
+    if (closer) closer.addEventListener('click', hide)
+
+    var canceller = document.getElementById('server-create-cancel')
+    if (canceller) canceller.addEventListener('click', hide)
+
+    dlg.addEventListener('click', function (event) {
+      if (event.target === dlg) hide()
+    })
+  })()
+</script>
