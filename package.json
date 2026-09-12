@@ -32,6 +32,8 @@
     "docs:validate": "bun scripts/validate-docs.ts",
     "ui:validate": "bun scripts/validate-ui.ts",
     "visual:validate": "bun scripts/validate-visual.ts",
+    "release:validate": "bun scripts/validate-release.ts",
+    "deployment:smoke": "bun scripts/smoke-deployment.ts",
     "prod": "./buddy build",
     "deploy": "./buddy deploy",
     "lint": "./buddy lint",

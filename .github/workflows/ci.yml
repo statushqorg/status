@@ -218,7 +218,7 @@ jobs:
   #                                   (from the local .env.keys file)
   deploy-prod:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-check.outputs.contains_release == '0'
-    needs: [lint, typecheck, test, release-check]
+    needs: [lint, typecheck, test, release-check, build]
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -253,6 +253,12 @@ jobs:
       # so example values here are fine and never reach the server.
       - name: Ensure .env Set
         run: cp .env.example .env
+
+      - name: Build application
+        run: bun run build
+
+      - name: Validate production artifact
+        run: bun run release:validate
 
       - name: Check Deploy Secrets
         id: deploy-secrets
@@ -429,8 +435,11 @@ jobs:
         # decrypt anything.
         run: bun buddy deploy production --yes
 
+      - name: Smoke test production
+        if: steps.deploy-secrets.outputs.available == 'true'
+        run: bun run deployment:smoke
+
   build:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -464,6 +473,9 @@ jobs:
 
       - name: Validate responsive visual contracts
         run: bun run visual:validate
+
+      - name: Validate production release artifact
+        run: bun run release:validate
 
       - name: Verify generated files are current
         run: git diff --exit-code
