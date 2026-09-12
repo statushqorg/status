@@ -429,7 +429,7 @@ jobs:
         # decrypt anything.
         run: bun buddy deploy production --yes
 
-  publish-commit:
+  build:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
@@ -450,8 +450,14 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Build
+      - name: Build application
         run: bun run build
 
-      - name: Publish Commit
-        run: ./storage/framework/scripts/publish-commit
+      - name: Build documentation
+        run: bun buddy build docs
+
+      - name: Validate documentation
+        run: bun run docs:validate
+
+      - name: Verify generated files are current
+        run: git diff --exit-code
