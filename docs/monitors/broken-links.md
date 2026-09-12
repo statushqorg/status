@@ -11,9 +11,9 @@ Broken links and mixed-content warnings erode trust and hurt SEO, and they creep
 
 On each run the crawler starts from a URL you choose, follows internal links up to a configurable depth, and checks every link and resource it encounters. It records:
 
-- **Broken links** — any link returning `4xx`/`5xx` or failing to connect, with the source page and anchor text.
-- **Mixed content** — `http://` resources (scripts, images, styles) loaded on an `https://` page.
-- **Redirect chains** — links that resolve only after multiple hops.
+- **Broken links** - any link returning `4xx`/`5xx` or failing to connect, with the source page and anchor text.
+- **Mixed content** - `http://` resources (scripts, images, styles) loaded on an `https://` page.
+- **Redirect chains** - links that resolve only after multiple hops.
 
 You control **crawl depth**, whether **external** links are checked, and paths to **exclude**. Because a crawl is heavier than a single check, it runs on a longer cadence (typically daily, configurable).
 
@@ -33,7 +33,7 @@ Each report lists the offending URL, the page it was found on, and the status re
 4. Add **exclude** patterns for paths you don't want crawled.
 5. Set the cadence and attach **notifications**.
 
-> Keep external-link checking off if third-party sites rate-limit your crawl — it can produce noisy, transient failures outside your control.
+> Keep external-link checking off if third-party sites rate-limit your crawl - it can produce noisy, transient failures outside your control.
 
 ## Related
 

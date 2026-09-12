@@ -30,6 +30,7 @@ const config: BunPressOptions = {
   nav: [
     { text: 'Guide', link: '/introduction' },
     { text: 'Monitors', link: '/monitors/' },
+    { text: 'Servers', link: '/servers/' },
     { text: 'Self-hosting', link: '/self-hosting/deploy' },
     { text: 'Dashboard', link: 'https://statushq.org/dashboard' },
     { text: 'GitHub', link: 'https://github.com/stacksjs/status' },
@@ -215,13 +216,22 @@ a.dx-card:hover { border-color: var(--bp-c-brand-1); transform: translateY(-2px)
             { text: 'Lighthouse', link: '/monitors/lighthouse' },
             { text: 'Broken links', link: '/monitors/broken-links' },
             { text: 'Port scan', link: '/monitors/port-scan' },
-            { text: 'Server metrics', link: '/monitors/server-metrics' },
             { text: 'AI checks', link: '/monitors/ai-checks' },
+          ],
+        },
+        {
+          text: 'Servers',
+          items: [
+            { text: 'Overview', link: '/servers/' },
+            { text: 'Server metrics', link: '/monitors/server-metrics' },
+            { text: 'Agent installation', link: '/servers/agent-installation' },
+            { text: 'Thresholds and incidents', link: '/servers/thresholds-incidents' },
           ],
         },
         {
           text: 'Operate',
           items: [
+            { text: 'Live status updates', link: '/features/live-status' },
             { text: 'Incidents', link: '/operate/incidents' },
             { text: 'Notifications', link: '/operate/notifications' },
             { text: 'Status pages', link: '/operate/status-pages' },

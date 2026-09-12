@@ -25,7 +25,7 @@ Applies pending database migrations, creating or updating the schema. Run it aft
 
 ## `buddy queue:work`
 
-Runs a queue worker — the process that actually executes monitor checks and sends [notifications](/operate/notifications). Scope a worker to a queue so checks and alerts scale independently:
+Runs a queue worker - the process that actually executes monitor checks and sends [notifications](/operate/notifications). Scope a worker to a queue so checks and alerts scale independently:
 
 ```bash
 ./buddy queue:work --queue=checks
@@ -36,7 +36,7 @@ Use `buddy queue:status` to watch queue depth. See [Scaling & multi-region](/sel
 
 ## `buddy schedule:run`
 
-Runs the scheduler tick, which dispatches due checks every minute and, on the primary, evaluates cross-region consensus. Run **one** scheduler per deployment — additional regions only need workers, not a scheduler.
+Runs the scheduler tick, which dispatches due checks every minute and, on the primary, evaluates cross-region consensus. Run **one** scheduler per deployment - additional regions only need workers, not a scheduler.
 
 ```bash
 ./buddy schedule:run
@@ -54,7 +54,7 @@ See the [deploy guide](/self-hosting/deploy) for first-time setup.
 
 ## `buddy dev`
 
-Starts the local development server with hot reload — use this while working on the app locally, not in production.
+Starts the local development server with hot reload - use this while working on the app locally, not in production.
 
 ```bash
 ./buddy dev
@@ -62,5 +62,5 @@ Starts the local development server with hot reload — use this while working o
 
 ## Related
 
-- `buddy realtime` — the WebSocket broadcaster that powers [live status](/features/live-status).
-- `buddy env:set … --file .env.production` — store an encrypted env value (provider secrets, ingest tokens). See [Configuration](/self-hosting/configuration).
+- `buddy realtime` - the WebSocket broadcaster that powers [live status](/features/live-status).
+- `buddy env:set … --file .env.production` - store an encrypted env value (provider secrets, ingest tokens). See [Configuration](/self-hosting/configuration).

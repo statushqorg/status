@@ -20,14 +20,14 @@ Usage:
 
 Options:
   --url <url>        StatusHQ base URL      (env STATUSHQ_URL, default https://statushq.org)
-  --token <token>    Metrics monitor token  (env STATUSHQ_TOKEN)
+  --token <token>    Server metrics token   (env STATUSHQ_TOKEN)
   --mount <path>     Filesystem to measure  (default /)
   --host <name>      Overrides the hostname reported with each sample
   --interval <secs>  watch only             (default 60)
   --dry              Print the sample instead of sending it
   --help
 
-The token is on the monitor's Agent setup card. It identifies the monitor, so
+The token is on the Server's Agent setup card. It identifies the Server, so
 treat it the way you would an API key.
 
 Cron:
@@ -85,7 +85,7 @@ export async function run(argv: string[], env: Record<string, string | undefined
   }
 
   if (!flags.dry && token === '') {
-    console.error('No token. Pass --token or set STATUSHQ_TOKEN — find it on the monitor\'s Agent setup card.')
+    console.error('No token. Pass --token or set STATUSHQ_TOKEN. Find it on the Server\'s Agent setup card.')
     return 2
   }
 

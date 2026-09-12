@@ -1,6 +1,6 @@
 ---
 title: Live status
-description: The dashboard monitor list updates a monitor's status, response time, and last-checked time in place over a WebSocket — no page reload.
+description: The dashboard monitor list updates a monitor's status, response time, and last-checked time in place over a WebSocket - no page reload.
 ---
 
 # Live status
@@ -9,11 +9,11 @@ The dashboard's monitor list updates in place as checks run: a monitor's status 
 
 ## How it works
 
-- `buddy realtime` starts a **broadcaster**: a WebSocket server (the `bun` driver — native Bun WebSockets, no Redis or Pusher required) plus a short poll loop over the `monitors` table.
-- When a monitor's status changes **or** a fresh check lands (its `last_checked_at` advances), the broadcaster emits a `monitor:updated` event — carrying the new status, the latest response time, and the check timestamp — on a per-team channel.
-- The dashboard's monitor list subscribes over the WebSocket and updates the affected row's status dot, response-time cell, and last-checked label in place. The relative "last checked" label also ticks on its own so it stays fresh between checks. If the broadcaster is down or realtime is disabled, the page silently keeps its on-load snapshot — the whole thing is progressive enhancement.
+- `buddy realtime` starts a **broadcaster**: a WebSocket server (the `bun` driver - native Bun WebSockets, no Redis or Pusher required) plus a short poll loop over the `monitors` table.
+- When a monitor's status changes **or** a fresh check lands (its `last_checked_at` advances), the broadcaster emits a `monitor:updated` event - carrying the new status, the latest response time, and the check timestamp - on a per-team channel.
+- The dashboard's monitor list subscribes over the WebSocket and updates the affected row's status dot, response-time cell, and last-checked label in place. The relative "last checked" label also ticks on its own so it stays fresh between checks. If the broadcaster is down or realtime is disabled, the page silently keeps its on-load snapshot - the whole thing is progressive enhancement.
 
-The channel is keyed by the team's **uuid**, not its numeric id (`team.<uuid>.monitors`). That keeps the WebSocket server unauthenticated (no per-connection auth handshake) without letting a stranger watch a team's status feed by guessing a small integer — knowing the uuid is the capability. The dashboard hands the browser only its own team's uuid.
+The channel is keyed by the team's **uuid**, not its numeric id (`team.<uuid>.monitors`). That keeps the WebSocket server unauthenticated (no per-connection auth handshake) without letting a stranger watch a team's status feed by guessing a small integer - knowing the uuid is the capability. The dashboard hands the browser only its own team's uuid.
 
 ## Running it
 
@@ -27,8 +27,8 @@ buddy realtime       # the live-status broadcaster (this process)
 
 Options:
 
-- `--port <port>` — WebSocket port (defaults to `BROADCAST_PORT`, then `config.realtime.server.port`, then `6001`).
-- `--interval <ms>` — poll interval (default `3000`). A monitor's change surfaces within roughly one interval.
+- `--port <port>` - WebSocket port (defaults to `BROADCAST_PORT`, then `config.realtime.server.port`, then `6001`).
+- `--interval <ms>` - poll interval (default `3000`). A monitor's change surfaces within roughly one interval.
 
 The browser connects to `ws(s)://<app-host>:<BROADCAST_PORT>/ws`. Over TLS, put the broadcaster behind your reverse proxy as `wss` on the app host (the client uses `wss` automatically when the page is served over `https`).
 
@@ -53,16 +53,16 @@ BROADCAST_REDIS_PREFIX=stacks:realtime:   # must match across every process
 
 1. **The check pipeline pushes instead of waiting for a poll.** When a monitor's status changes, the worker/scheduler publishes the update straight into the Redis fan-out and a Redis-enabled broadcaster relays it to browsers **sub-second**, rather than on the next poll tick. (The `bun` driver's in-process `emit()` can't reach browsers from a worker, which is exactly why this goes through Redis.)
 
-2. **You can run more than one broadcaster.** The `bun` driver only reaches clients of the same process, so for connection headroom or HA, run one broadcaster normally (it keeps polling as the reconciliation backstop) and any extra instances with `--no-poll` — pure relays that just forward what Redis feeds them:
+2. **You can run more than one broadcaster.** The `bun` driver only reaches clients of the same process, so for connection headroom or HA, run one broadcaster normally (it keeps polling as the reconciliation backstop) and any extra instances with `--no-poll` - pure relays that just forward what Redis feeds them:
 
 ```bash
 buddy realtime                 # relays + polls (the reconciler)
 buddy realtime --no-poll       # extra instance: relay only, no DB polling
 ```
 
-Every process (workers, all broadcasters) must share the **same** `BROADCAST_REDIS_PREFIX` — the fan-out key is `<prefix>channel`, and a mismatch silently drops the relay.
+Every process (workers, all broadcasters) must share the **same** `BROADCAST_REDIS_PREFIX` - the fan-out key is `<prefix>channel`, and a mismatch silently drops the relay.
 
 ## Notes
 
 - **Every check pushes; the poll is the safety net.** Each check job publishes its outcome the moment it writes the monitor row - consensus status transitions (uptime / ping / TCP / health, via `EvaluateMonitorConsensus`), the inline types' own status writes (SSL / DNS / domain / Lighthouse / port scan / blocklist / crawl / heartbeat), response time, and last-checked all push instantly. The reconciling broadcaster keeps polling anyway, so nothing is lost if a push is ever dropped.
-- Without Redis, the poller detects changes every few seconds, so an update surfaces within roughly one poll interval — a deliberate simplicity/robustness trade for the single-instance default.
+- Without Redis, the poller detects changes every few seconds, so an update surfaces within roughly one poll interval - a deliberate simplicity/robustness trade for the single-instance default.
