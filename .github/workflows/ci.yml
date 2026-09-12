@@ -459,5 +459,8 @@ jobs:
       - name: Validate documentation
         run: bun run docs:validate
 
+      - name: Validate UI accessibility
+        run: bun run ui:validate
+
       - name: Verify generated files are current
         run: git diff --exit-code

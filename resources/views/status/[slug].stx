@@ -381,7 +381,7 @@ function bannerDotClass(tone) {
         @endif
         <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto max-w-xs space-y-3">
           <input type="hidden" name="redirect" value="/status/{{ pageSlug }}" />
-          <input type="password" name="password" placeholder="{{ t('pw_placeholder') }}" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          <input type="password" name="password" placeholder="{{ t('pw_placeholder') }}" aria-label="{{ t('pw_placeholder') }}" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
           <button type="submit" class="w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white">{{ t('unlock') }}</button>
         </form>
       </div>
@@ -399,7 +399,7 @@ function bannerDotClass(tone) {
         @endif
         <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto max-w-xs space-y-3">
           <input type="hidden" name="redirect" value="/status/{{ pageSlug }}" />
-          <input type="email" name="email" placeholder="you@company.com" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          <input type="email" name="email" placeholder="you@company.com" aria-label="Work email" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
           <button type="submit" class="w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white">{{ t('cont') }}</button>
         </form>
       </div>
