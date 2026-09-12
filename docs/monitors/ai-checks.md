@@ -5,7 +5,7 @@ description: Describe an assertion in plain language and let an AI check verify 
 
 # AI Checks
 
-AI checks let you assert things that are hard to express as a status code or a keyword. You write what "correct" looks like in plain language, and on each run an AI model evaluates your page or API response against that description — passing or failing with a short explanation.
+AI checks let you assert things that are hard to express as a status code or a keyword. You write what "correct" looks like in plain language, and on each run an AI model evaluates your page or API response against that description - passing or failing with a short explanation.
 
 ## How it works
 
@@ -32,11 +32,11 @@ The rationale is attached to the incident so you can confirm the call quickly.
 
 1. **Add monitor** and choose **AI Check**.
 2. Enter the target URL (page or API endpoint).
-3. Write your **assertion** in plain language — be specific about what must be true.
+3. Write your **assertion** in plain language - be specific about what must be true.
 4. Set the **check interval**.
 5. Attach **notifications**.
 
-> Phrase assertions around things that are visibly true or false on the page. Vague or subjective prompts ("does it look good?") produce inconsistent verdicts — prefer concrete, checkable statements.
+> Phrase assertions around things that are visibly true or false on the page. Vague or subjective prompts ("does it look good?") produce inconsistent verdicts - prefer concrete, checkable statements.
 
 ## Related
 

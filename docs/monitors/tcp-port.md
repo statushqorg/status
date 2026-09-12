@@ -5,14 +5,14 @@ description: Confirm that a TCP port accepts connections for databases, SMTP, an
 
 # TCP Port Monitoring
 
-TCP port monitoring verifies that a specific service is *listening and accepting connections* on a given port. It's the right check for anything that speaks a raw TCP protocol rather than HTTP — Postgres, MySQL, Redis, SMTP, IMAP, SSH, message brokers, and custom services.
+TCP port monitoring verifies that a specific service is *listening and accepting connections* on a given port. It's the right check for anything that speaks a raw TCP protocol rather than HTTP - Postgres, MySQL, Redis, SMTP, IMAP, SSH, message brokers, and custom services.
 
 ## How it works
 
 On each run the checker opens a TCP connection (a full three-way handshake) to `host:port`. It measures:
 
-- **Connectivity** — did the port accept the connection?
-- **Connect latency** — how long the handshake took.
+- **Connectivity** - did the port accept the connection?
+- **Connect latency** - how long the handshake took.
 
 A successful handshake means something is bound to that port and ready to talk. Checks run from **US-East** and additional regions with **regional consensus** before an outage is declared. Intervals go from every **30 seconds** up to hourly.
 

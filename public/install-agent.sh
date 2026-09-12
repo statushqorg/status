@@ -37,11 +37,11 @@ Usage:
   install-agent.sh --uninstall
 
 Options:
-  --token=<TOKEN>     Ingest token from the monitor's page (required to install)
+  --token=<TOKEN>     Ingest token from the Server page (required to install)
   --url=<URL>         StatusHQ base URL (default https://statushq.org).
                       Self-hosted installs pass their own origin.
   --interval=<SEC>    Seconds between samples (default 60). Keep this below the
-                      monitor's missed-push window (metricsWindowSeconds,
+                      Server's missed-push window (metricsWindowSeconds,
                       default 300) or the monitor alerts between pushes.
   --mount=<PATH>      Filesystem to report disk usage for (default /)
   --uninstall         Remove the collector, credentials, timer and cron entry
@@ -84,7 +84,7 @@ if [ "$ACTION" = "uninstall" ]; then
   exit 0
 fi
 
-[ -n "$TOKEN" ] || fail "--token is required (copy it from the monitor's page)"
+[ -n "$TOKEN" ] || fail "--token is required (copy it from the Server page)"
 [ -z "$URL" ] && URL="$DEFAULT_URL"
 URL="${URL%/}"
 

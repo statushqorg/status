@@ -245,7 +245,7 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
         <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface-2);">
           <div class="field" style="margin-bottom: 0.5rem;"><span class="label">Attach a monitor</span></div>
           <form method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/add" style="display: flex; align-items: stretch; gap: 0.6rem;">
-            <select id="sr-add-monitor" name="monitor_id" class="select" style="flex: 1 1 auto; width: auto;">
+            <select id="sr-add-monitor" name="monitor_id" class="select" style="flex: 1 1 auto; width: auto;" aria-label="Monitor to attach">
               @foreach (availableMonitors as monitor)
                 <option value="{{ monitor.id }}">{{ monitor.name }} ({{ monitor.type.replace('_', ' ') }})</option>
               @endforeach

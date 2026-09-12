@@ -5,7 +5,7 @@ description: Watch scheduled jobs by expecting a ping on a cadence and alert the
 
 # Cron & Heartbeat Monitoring
 
-Cron and heartbeat monitoring is inside-out: instead of StatusHQ reaching out to your service, *your job reaches out to StatusHQ*. Each successful run pings a unique URL. If the expected ping doesn't arrive on schedule, we alert you — so a backup that silently stopped running gets caught, not just one that errored loudly.
+Cron and heartbeat monitoring is inside-out: instead of StatusHQ reaching out to your service, *your job reaches out to StatusHQ*. Each successful run pings a unique URL. If the expected ping doesn't arrive on schedule, we alert you - so a backup that silently stopped running gets caught, not just one that errored loudly.
 
 ## How it works
 
@@ -16,7 +16,7 @@ Every heartbeat monitor has a unique ping URL and an expected **cadence** plus a
 
 Cadence can be as tight as every **30 seconds** or as loose as monthly. The grace period absorbs normal jitter (a nightly job that usually finishes at 02:03 but sometimes 02:09).
 
-Have the job ping on success — a plain GET or POST is enough:
+Have the job ping on success - a plain GET or POST is enough:
 
 ```bash
 # Run at the end of your cron job, only on success
@@ -31,7 +31,7 @@ curl -fsS https://statushq.org/api/ping/<token>/start   # job began
 curl -fsS https://statushq.org/api/ping/<token>/fail    # job errored
 ```
 
-Copy the exact URL from the monitor's **Heartbeat** card rather than assembling it by hand — the `/api` prefix is easy to miss, and a ping to the wrong path returns 404 without recording anything, so the monitor still alerts as if the job never ran.
+Copy the exact URL from the monitor's **Heartbeat** card rather than assembling it by hand - the `/api` prefix is easy to miss, and a ping to the wrong path returns 404 without recording anything, so the monitor still alerts as if the job never ran.
 
 ## What triggers an alert
 

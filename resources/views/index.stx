@@ -1,7 +1,7 @@
 <script server>
 import { db } from '@stacksjs/database'
 import { cache } from '@stacksjs/cache'
-import { authRequest } from '../../app/lib/authRequest'
+import { authRequest } from '../../../app/lib/authRequest'
 // require() destructured these under other names; `import { x as y }`
 // binds undefined in a server block, so the rename happens here.
 const statusDb = db

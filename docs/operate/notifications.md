@@ -26,12 +26,12 @@ Each channel stores its own credentials (a Slack webhook URL, a PagerDuty routin
 
 ## Adding a channel
 
-Channels live at the team level, under **Settings → Notifications**. Give the channel a name you'll recognise, pick its type, and fill in the fields that appear — the form asks for exactly what that type needs and tells you where to find it:
+Channels live at the team level, under **Settings → Notifications**. Give the channel a name you'll recognise, pick its type, and fill in the fields that appear - the form asks for exactly what that type needs and tells you where to find it:
 
 | Channel | What to paste | Where to get it |
 | --- | --- | --- |
-| Email | Email address | — |
-| SMS | Phone number, with country code | — |
+| Email | Email address | - |
+| SMS | Phone number, with country code | - |
 | Slack | Incoming webhook URL | Slack → Apps → Incoming Webhooks → Add to Slack |
 | Discord | Webhook URL | Server Settings → Integrations → Webhooks → New Webhook |
 | Microsoft Teams | Incoming webhook URL | The channel's ⋯ menu → Connectors → Incoming Webhook |
@@ -45,13 +45,13 @@ Use **Send test** on the channel afterwards. It dispatches through the same job 
 
 ## Routing alerts to a monitor
 
-Open the monitor and find the **Alert routing** card. It shows what this monitor currently alerts — each routed channel and the severities it fires on — so you can read who gets paged without opening anything.
+Open the monitor and find the **Alert routing** card. It shows what this monitor currently alerts - each routed channel and the severities it fires on - so you can read who gets paged without opening anything.
 
 To change it, click **Manage alerts**. The dialog lists every channel your team has:
 
 1. Tick the channels this monitor should alert.
 2. For each, choose which severities it fires on: `down` only, `issue` only, or `both` (the default).
-3. **Save routing** — one submit applies the whole grid.
+3. **Save routing** - one submit applies the whole grid.
 
 Unticking a channel stops it alerting for that monitor; the channel itself stays available for others. A monitor with nothing ticked notifies no one, and the card says so in red.
 
@@ -59,7 +59,7 @@ This severity filter is the core of a sane alerting setup: page the whole team o
 
 ## Escalation
 
-Escalation is driven by incident state. When an incident opens it fires the attached channels immediately. If no one **acknowledges** it, higher-tier channels (PagerDuty, Opsgenie) keep escalating according to their own on-call policy — StatusHQ hands off the incident and lets the pager provider manage rotations. Acknowledging the incident stops repeat pages; resolving it (or an automatic recovery) sends the all-clear.
+Escalation is driven by incident state. When an incident opens it fires the attached channels immediately. If no one **acknowledges** it, higher-tier channels (PagerDuty, Opsgenie) keep escalating according to their own on-call policy - StatusHQ hands off the incident and lets the pager provider manage rotations. Acknowledging the incident stops repeat pages; resolving it (or an automatic recovery) sends the all-clear.
 
 ## Webhook payload
 

@@ -11,11 +11,11 @@ Uptime monitoring is the core availability check: StatusHQ fetches a URL on a sc
 
 On each run the checker opens an HTTP(S) request to your target URL and measures three things: whether it connected at all, the HTTP status code it received, and the total response latency. You can layer on assertions:
 
-- **Status code** — expect `200`, a range like `200–299`, or an explicit list.
-- **Response body / keyword** — assert that the body *contains* (or does *not* contain) a string, so a `200` that renders an error page still fails.
-- **Latency** — flag a run as degraded when it exceeds a warning threshold.
+- **Status code** - expect `200`, a range like `200-299`, or an explicit list.
+- **Response body / keyword** - assert that the body *contains* (or does *not* contain) a string, so a `200` that renders an error page still fails.
+- **Latency** - flag a run as degraded when it exceeds a warning threshold.
 
-Checks run from **US-East** and additional regions, and a failure is only declared after **regional consensus** — a single region blipping won't page you. Intervals range from every **30 seconds** up to hourly.
+Checks run from **US-East** and additional regions, and a failure is only declared after **regional consensus** - a single region blipping won't page you. Intervals range from every **30 seconds** up to hourly.
 
 ## What triggers an alert
 
@@ -30,7 +30,7 @@ Latency-threshold breaches raise a **warning** rather than a hard down, so you c
 
 1. **Add monitor** in the dashboard and choose **Uptime**.
 2. Enter the target URL (e.g. `https://example.com/health`).
-3. Set the **check interval** (30s–1h) and pick your **regions**.
+3. Set the **check interval** (30s-1h) and pick your **regions**.
 4. Add assertions: expected status code, keyword match, and a latency warning threshold (config `latencyThresholdMs`; a run at or over it is reported degraded).
 5. Attach **notifications** so the right people are alerted.
 

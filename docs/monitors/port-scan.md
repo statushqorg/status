@@ -5,7 +5,7 @@ description: Detect newly exposed ports on your servers so an accidental firewal
 
 # Port-Scan Monitoring
 
-Every open port is attack surface. A misconfigured firewall rule, a debug service left listening, or a container that published a port it shouldn't have — these expose your infrastructure quietly. Port-scan monitoring snapshots which ports are open on a host and alerts you when a **new** one appears.
+Every open port is attack surface. A misconfigured firewall rule, a debug service left listening, or a container that published a port it shouldn't have - these expose your infrastructure quietly. Port-scan monitoring snapshots which ports are open on a host and alerts you when a **new** one appears.
 
 ## How it works
 
@@ -24,7 +24,7 @@ Scans run on a regular cadence (a full scan is heavier than a single check, so n
 
 ## What triggers an alert
 
-- A **previously closed port is now open** — the primary signal.
+- A **previously closed port is now open** - the primary signal.
 - The **service on a known port changes** unexpectedly.
 - A port you expected to be open is now **closed/filtered** (optional, catches unintended service outages).
 
@@ -33,10 +33,10 @@ After you review a change, accept the new snapshot as the baseline.
 ## Setting it up
 
 1. **Add monitor** and choose **Port Scan**.
-2. Enter the host and the **port range** to scan (e.g. `1–1024` plus any app ports).
+2. Enter the host and the **port range** to scan (e.g. `1-1024` plus any app ports).
 3. StatusHQ captures the **baseline** of currently-open ports.
 4. Set the **scan interval**.
-5. Attach **notifications** — route these to your security/ops channel.
+5. Attach **notifications** - route these to your security/ops channel.
 
 > Only scan hosts you own or are authorized to test. Keep ranges tight so scans stay fast and don't trip your own intrusion-detection tooling.
 

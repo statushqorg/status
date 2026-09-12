@@ -5,7 +5,7 @@ description: Track response-time trends across regions and catch slow regression
 
 # Performance Monitoring
 
-Sites rarely fail all at once — they get slow first. Performance monitoring tracks your response-time trends over time and alerts on regressions, so a deploy that quietly doubled your latency gets flagged before users start leaving.
+Sites rarely fail all at once - they get slow first. Performance monitoring tracks your response-time trends over time and alerts on regressions, so a deploy that quietly doubled your latency gets flagged before users start leaving.
 
 ## How it works
 
@@ -18,12 +18,12 @@ On each run the checker fetches your target and records a full timing breakdown,
 
 These are stored per region and charted so you can see p50/p95 trends, compare regions, and correlate a jump with a deploy. Checks run from **US-East** and additional regions as often as every **30 seconds**.
 
-Performance monitoring evaluates against a **rolling baseline** as well as fixed thresholds — so it can catch a gradual creep that no single static limit would trip.
+Performance monitoring evaluates against a **rolling baseline** as well as fixed thresholds - so it can catch a gradual creep that no single static limit would trip.
 
 ## What triggers an alert
 
 - Total response time (or TTFB) exceeds a **fixed warning/critical threshold** you set.
-- A **regression versus the rolling baseline** — e.g. p95 latency is materially worse than the trailing window.
+- A **regression versus the rolling baseline** - e.g. p95 latency is materially worse than the trailing window.
 - Degradation confirmed across **multiple regions**, ruling out a single noisy path.
 
 ## Setting it up

@@ -1367,7 +1367,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               <option value="response_time">Response time (ms)</option>
               <option value="header">Header</option>
             </select>
-            <input name="property" class="input" style="flex: 1 1 12rem; width: auto;" placeholder="checks.database.status (path or header name)" />
+            <input name="property" class="input" style="flex: 1 1 12rem; width: auto;" placeholder="checks.database.status (path or header name)" aria-label="Assertion path or header name" />
             <select name="compare" class="select" style="width: auto;" aria-label="Comparison">
               <option value="eq">equals</option>
               <option value="not_eq">not equals</option>
@@ -1380,7 +1380,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               <option value="not_empty">is present</option>
               <option value="empty">is empty</option>
             </select>
-            <input name="expected" class="input" style="flex: 0 1 8rem; width: auto;" placeholder="value" />
+            <input name="expected" class="input" style="flex: 0 1 8rem; width: auto;" placeholder="value" aria-label="Expected assertion value" />
             <button type="submit" class="button primary">Add</button>
           </div>
           <p class="help" style="margin-top: 0.5rem;">Every assertion must pass for the check to be healthy. For a JSON health endpoint, target Body and enter a dot-path like <span class="mono">checks.database.latency_ms</span>. Leave the path blank to match the whole body.</p>

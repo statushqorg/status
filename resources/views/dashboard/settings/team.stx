@@ -196,12 +196,12 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
         <form method="POST" action="/api/team-forms/{{ TEAM_ID }}/invite">
           <div class="form-row">
             <div class="field">
-              <label>Email</label>
-              <input type="email" name="email" required class="input" placeholder="teammate@company.com" />
+              <label for="invite-email">Email</label>
+              <input id="invite-email" type="email" name="email" required class="input" placeholder="teammate@company.com" />
             </div>
             <div class="field">
-              <label>Role</label>
-              <select name="role" class="select">
+              <label for="invite-role">Role</label>
+              <select id="invite-role" name="role" class="select">
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
                 <option value="owner">Owner</option>
@@ -225,16 +225,16 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
         <form method="POST" action="/api/team-forms/{{ TEAM_ID }}/report-settings">
           <div class="form-row">
             <div class="field">
-              <label>Frequency</label>
-              <select name="report_frequency" class="select">
+              <label for="report-frequency">Frequency</label>
+              <select id="report-frequency" name="report_frequency" class="select">
                 <option value="none" {{ REPORT_SETTINGS.frequency === 'none' ? 'selected' : '' }}>Off</option>
                 <option value="weekly" {{ REPORT_SETTINGS.frequency === 'weekly' ? 'selected' : '' }}>Weekly</option>
                 <option value="monthly" {{ REPORT_SETTINGS.frequency === 'monthly' ? 'selected' : '' }}>Monthly</option>
               </select>
             </div>
             <div class="field">
-              <label>Recipients</label>
-              <input type="text" name="report_recipients" value="{{ REPORT_SETTINGS.recipients }}" class="input" placeholder="owner@company.com, client@company.com" />
+              <label for="report-recipients">Recipients</label>
+              <input id="report-recipients" type="text" name="report_recipients" value="{{ REPORT_SETTINGS.recipients }}" class="input" placeholder="owner@company.com, client@company.com" />
               <p class="help">Leave empty to send to the team owner.</p>
             </div>
           </div>
