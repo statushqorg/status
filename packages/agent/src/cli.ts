@@ -1,5 +1,7 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import { collect } from './metrics'
 import { metricsEndpoint, startReporter } from './reporter'
 
@@ -132,5 +134,8 @@ export async function run(argv: string[], env: Record<string, string | undefined
   return 0
 }
 
-if (import.meta.main)
+const launchedAsScript = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (import.meta.main || launchedAsScript)
   process.exit(await run(process.argv.slice(2)))

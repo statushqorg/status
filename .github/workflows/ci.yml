@@ -178,6 +178,9 @@ jobs:
         # tests drive sqlite via bun:sqlite, mysql/redis are services.
         run: bun buddy test
 
+      - name: Validate the published agent package
+        run: bun run agent:validate
+
   release-check:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

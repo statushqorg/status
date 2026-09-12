@@ -34,6 +34,7 @@
     "visual:validate": "bun scripts/validate-visual.ts",
     "release:validate": "bun scripts/validate-release.ts",
     "deployment:smoke": "bun scripts/smoke-deployment.ts",
+    "agent:validate": "bun run --cwd packages/agent build && bun scripts/validate-agent-package.ts",
     "prod": "./buddy build",
     "deploy": "./buddy deploy",
     "lint": "./buddy lint",
