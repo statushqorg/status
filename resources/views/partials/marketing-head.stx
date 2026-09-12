@@ -860,7 +860,8 @@
     border-radius: var(--radius);
     color: #ffffff;
     text-align: center;
-    background: linear-gradient(135deg, var(--accent), var(--violet));
+    background-color: #2563eb;
+    background-image: linear-gradient(135deg, var(--accent), var(--violet));
   }
   .cta-band h2 {
     margin: 0 0 0.85rem;

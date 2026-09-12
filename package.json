@@ -31,6 +31,7 @@
     "build": "./buddy build",
     "docs:validate": "bun scripts/validate-docs.ts",
     "ui:validate": "bun scripts/validate-ui.ts",
+    "visual:validate": "bun scripts/validate-visual.ts",
     "prod": "./buddy build",
     "deploy": "./buddy deploy",
     "lint": "./buddy lint",
