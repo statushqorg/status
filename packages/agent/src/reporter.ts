@@ -13,7 +13,7 @@ import { createCollector, isReportable, toIngestPayload } from './metrics'
 export interface ReporterOptions {
   /** StatusHQ base URL, e.g. https://statushq.org */
   url: string
-  /** The monitor's metrics token (Agent setup card on the monitor page). */
+  /** The Server's metrics token (Agent setup card on the Server page). */
   token: string
   intervalMs?: number
   mount?: string

@@ -43,7 +43,7 @@ import { startReporter } from '@statushq/agent'
 
 const reporter = startReporter({
   url: 'https://statushq.org',
-  token: process.env.STATUSHQ_METRICS_TOKEN!, // Agent setup card on the monitor page
+  token: process.env.STATUSHQ_METRICS_TOKEN!, // Agent setup card on the Server page
   intervalMs: 60_000,
 })
 

@@ -5,7 +5,7 @@ description: Get expiry warnings at 30, 14, 7, and 1 days before a TLS certifica
 
 # SSL Certificate Monitoring
 
-An expired TLS certificate takes a site down for every visitor at once, usually with a scary browser warning. SSL monitoring watches the certificate served on your domain and warns you well before it lapses — and flags unexpected certificate changes that can signal a misconfiguration or compromise.
+An expired TLS certificate takes a site down for every visitor at once, usually with a scary browser warning. SSL monitoring watches the certificate served on your domain and warns you well before it lapses - and flags unexpected certificate changes that can signal a misconfiguration or compromise.
 
 ## How it works
 
@@ -14,7 +14,7 @@ On each run the checker opens a TLS connection to your host, inspects the presen
 - **Expiry date** (`notAfter`) and days remaining.
 - **Issuer** and subject / SAN coverage for your hostname.
 - **SHA-256 fingerprint** of the leaf certificate.
-- **Chain validity** — is the chain complete and trusted?
+- **Chain validity** - is the chain complete and trusted?
 
 Expiry is evaluated against a tiered schedule and the fingerprint is compared to the last-seen value. Checks run daily by default (you can run them more often).
 
@@ -22,7 +22,7 @@ Expiry is evaluated against a tiered schedule and the fingerprint is compared to
 
 - **Expiry warnings** fire at **30, 14, 7, and 1 days** before `notAfter`, escalating as the deadline approaches.
 - The certificate is **already expired** or **not yet valid**.
-- The **fingerprint changes** unexpectedly — useful for spotting a rotation you didn't schedule, or a man-in-the-middle edge.
+- The **fingerprint changes** unexpectedly - useful for spotting a rotation you didn't schedule, or a man-in-the-middle edge.
 - The **chain is broken/untrusted**, or the hostname isn't covered by the certificate's SANs.
 
 Renewing the certificate clears the warnings automatically on the next run.
@@ -35,7 +35,7 @@ Renewing the certificate clears the warnings automatically on the next run.
 4. Enable **fingerprint-change detection** if you want rotation alerts (config `alertOnFingerprintChange`; off by default, since routine renewals also change the fingerprint).
 5. Attach **notifications**.
 
-> After an automated renewal (e.g. Let's Encrypt), enable fingerprint alerts only if your rotation cadence is predictable — otherwise expected renewals will notify.
+> After an automated renewal (e.g. Let's Encrypt), enable fingerprint alerts only if your rotation cadence is predictable - otherwise expected renewals will notify.
 
 ## Related
 

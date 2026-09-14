@@ -5,7 +5,7 @@ description: Fetch a JSON health endpoint and alert on degraded fields with per-
 
 # Health Checks
 
-A health check goes deeper than "did the page load." It fetches a structured JSON endpoint your app exposes and inspects individual fields — so you can alert when the database connection is degraded, a queue is backing up, or a dependency is unreachable, even while the front page still returns `200`.
+A health check goes deeper than "did the page load." It fetches a structured JSON endpoint your app exposes and inspects individual fields - so you can alert when the database connection is degraded, a queue is backing up, or a dependency is unreachable, even while the front page still returns `200`.
 
 ## How it works
 
@@ -36,7 +36,7 @@ Each assertion can require equality, a numeric comparison, presence, or a substr
 
 - The endpoint is unreachable or returns a non-2xx status.
 - The body isn't valid JSON, or an asserted path is missing.
-- **Any** field assertion fails — e.g. `checks.queue.pending` exceeds its limit, or a nested `status` is `degraded`/`down`.
+- **Any** field assertion fails - e.g. `checks.queue.pending` exceeds its limit, or a nested `status` is `degraded`/`down`.
 
 The incident resolves automatically once all assertions pass again.
 
@@ -48,10 +48,10 @@ The incident resolves automatically once all assertions pass again.
 4. Set the **check interval** and **regions**.
 5. Attach **notifications**.
 
-## Already using spatie/laravel-health or Oh Dear?
+## Existing spatie/laravel-health and Oh Dear setups
 
 StatusHQ reads that schema natively, so a Laravel app set up for Oh Dear works
-here by changing a URL — no application changes:
+here by changing a URL - no application changes:
 
 ```json
 {
@@ -70,19 +70,19 @@ A status outside those five is treated as down rather than assumed healthy.
 
 Two monitor config keys support it:
 
-- `healthSecret` — sent as the `oh-dear-health-check-secret` header, the same
+- `healthSecret` - sent as the `oh-dear-health-check-secret` header, the same
   header that package validates.
-- `healthMaxAgeSeconds` — how stale a report may be, default **600**. A report
+- `healthMaxAgeSeconds` - how stale a report may be, default **600**. A report
   whose `finishedAt` is older than this is down whatever the checks say, so a
   cached or frozen response can't report a dead application as healthy.
 
-If the monitor has field assertions, those still win — your own contract
+If the monitor has field assertions, those still win - your own contract
 outranks the generic one.
 
-## Running a Stacks app?
+## Running a Stacks app
 
 Nothing to set up. Every Stacks app serves `/health` from the moment it is
-created — the framework registers `route.health()` in its default routes — and
+created - the framework registers `route.health()` in its default routes - and
 StatusHQ reads that shape too:
 
 ```json
@@ -96,7 +96,7 @@ StatusHQ reads that shape too:
 }
 ```
 
-Point a Health Check monitor at the app and leave the secret empty — a Stacks
+Point a Health Check monitor at the app and leave the secret empty - a Stacks
 `/health` route doesn't validate one. The format is detected from the response,
 so there is no setting to pick.
 
@@ -106,7 +106,7 @@ treated as down rather than assumed healthy, so a status the framework adds
 later fails closed until StatusHQ learns it.
 
 `timestamp` is read as the report time, so `healthMaxAgeSeconds` applies here
-exactly as it does to an Oh Dear report — a frozen response can't pass.
+exactly as it does to an Oh Dear report - a frozen response can't pass.
 
 ### `/api/health`, the probe format
 
@@ -145,7 +145,7 @@ it independent of both.
 
 There's no `spatie/laravel-health` equivalent in that ecosystem, so we ship
 one: [`@statushq/agent`](https://github.com/stacksjs/status/tree/main/packages/agent)
-exposes the same schema and also covers CPU, memory and disk — which the
+exposes the same schema and also covers CPU, memory and disk - which the
 Laravel package has no checks for.
 
 ```ts
@@ -153,7 +153,7 @@ import { createHealthHandler, defaultChecks } from '@statushq/agent'
 const health = createHealthHandler({ checks: defaultChecks(), secret: process.env.STATUSHQ_HEALTH_SECRET })
 ```
 
-It can also **push** host metrics instead, for boxes with no inbound HTTP —
+It can also **push** host metrics instead, for boxes with no inbound HTTP -
 see [Server Metrics](/monitors/server-metrics).
 
 ## Related

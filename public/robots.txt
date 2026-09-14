@@ -3,4 +3,4 @@ Allow: /
 Disallow: /dashboard
 Disallow: /api
 
-Sitemap: https://uptime-status.org/sitemap.xml
+Sitemap: https://statushq.org/sitemap.xml

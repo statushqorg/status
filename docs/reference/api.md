@@ -5,7 +5,7 @@ description: Query monitors, incidents, and status over the same-origin JSON API
 
 # API reference
 
-StatusHQ exposes a JSON API (built on [bun-router](https://github.com/stacksjs/router)) for reading monitors, incidents, and status programmatically. The API is served **same-origin under `/api`** — on a self-host that's `https://<your-domain>/api`, and on managed hosting it's `https://statushq.org/api`.
+StatusHQ exposes a JSON API (built on [bun-router](https://github.com/stacksjs/router)) for reading monitors, incidents, and status programmatically. The API is served **same-origin under `/api`** - on a self-host that's `https://<your-domain>/api`, and on managed hosting it's `https://statushq.org/api`.
 
 ## Authentication
 
@@ -33,7 +33,7 @@ curl -s https://statushq.org/api/monitors \
   "data": [
     {
       "id": 42,
-      "name": "API — api.example.com",
+      "name": "API - api.example.com",
       "url": "https://api.example.com/health",
       "status": "up",
       "uptime_percentage": 99.98,

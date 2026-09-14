@@ -10,7 +10,7 @@ the four things every new account does, in order.
 
 ## 1. Create your account
 
-[Sign up free](https://statushq.org/register) — 5 monitors, no credit card.
+[Sign up free](https://statushq.org/register) - 5 monitors, no credit card.
 Prefer to run it yourself? Follow [Self-hosting → Deploy](/self-hosting/deploy)
 and you get the same product with no limits.
 
@@ -18,10 +18,10 @@ and you get the same product with no limits.
 
 From the dashboard, choose **Add monitor** and pick a type:
 
-1. Select the check type — [Uptime](/monitors/uptime) is the most common.
+1. Select the check type - [Uptime](/monitors/uptime) is the most common.
 2. Enter the target (a URL like `https://example.com`, a host, or `host:port`).
 3. Set the **check interval** (down to every 30 seconds) and, for HTTP, any
-   [assertions](/monitors/uptime) — expected status code or a keyword that must
+   [assertions](/monitors/uptime) - expected status code or a keyword that must
    appear in the response.
 4. Save. The monitor starts checking immediately and its uptime-history bars
    begin to fill in.
@@ -55,7 +55,7 @@ Give customers a page that reflects your monitors in real time:
 3. Add your logo and accent color. There's no vendor watermark on any plan.
 
 Public visitors see live status, uptime history, and any open
-[incidents](/operate/incidents) — and can subscribe for updates.
+[incidents](/operate/incidents) - and can subscribe for updates.
 
 ## Next steps
 
