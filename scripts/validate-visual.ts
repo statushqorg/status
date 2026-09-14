@@ -14,6 +14,7 @@ interface PageAudit {
   focusable: number
   imagesWithoutAlt: number
   overflow: number
+  undersizedControls: string[]
   unresolved: boolean
   unnamedControls: string[]
 }
@@ -40,10 +41,41 @@ const ROUTE_CANDIDATES = [
   '/login',
   '/register',
   '/dashboard',
+  '/dashboard/monitors',
   '/dashboard/commshq',
   '/reports',
   '/projects',
 ]
+
+const MONITOR_DASHBOARD_FIXTURE = `
+  <header class="page-head">
+    <div>
+      <h1>Monitors</h1>
+      <p class="meta">14 monitors &middot; 18,492 checks in the last 24h</p>
+    </div>
+    <div class="actions"><a href="#new" class="button primary">New monitor</a></div>
+  </header>
+  <dl class="stat-grid">
+    <div class="stat-card"><dt>Operational</dt><dd class="ok">11</dd></div>
+    <div class="stat-card"><dt>Degraded</dt><dd class="warn">2</dd></div>
+    <div class="stat-card"><dt>Down</dt><dd class="bad">1</dd></div>
+    <div class="stat-card"><dt>Awaiting first check</dt><dd>0</dd></div>
+    <div class="stat-card"><dt>Checks / 24h</dt><dd>18,492</dd></div>
+  </dl>
+  <div class="filter-bar">
+    <div class="filter-group"><span class="lbl">Type</span><a href="#all" class="active chip">All</a><a href="#uptime" class="chip">Uptime</a><a href="#heartbeat" class="chip">Heartbeat</a></div>
+    <div class="filter-group"><span class="lbl">Status</span><a href="#all-status" class="active chip">All</a><a href="#up" class="chip">Up</a><a href="#degraded" class="chip">Degraded</a><a href="#down" class="chip">Down</a></div>
+    <div class="filter-group"><span class="lbl">Range</span><a href="#24h" class="active chip">24h</a><a href="#7d" class="chip">7d</a><a href="#30d" class="chip">30d</a></div>
+  </div>
+  <section class="scroll-x card" aria-label="Monitor list">
+    <div class="rows">
+      <div class="thead trow" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;"><span class="tcell">Status</span><span class="tcell">Monitor</span><span class="tcell">Type</span><span class="tcell">Last checks</span><span class="num tcell">Resp</span><span class="num tcell">Checked</span></div>
+      <a class="trow" href="#monitor-1" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;"><span class="tcell"><data class="pill pill-up" value="up"><span class="dot"></span>Up</data></span><span class="tcell"><span class="ellipsis name" style="display:block">Storefront production</span><span class="sub" style="display:block">shop.example.com/checkout/health</span></span><span class="tcell"><span class="tag">Uptime</span></span><span class="tcell"><span class="ticks" aria-label="Recent check results"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></span><span class="num tcell">184ms</span><span class="num tcell">18s ago</span></a>
+      <a class="trow" href="#monitor-2" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;"><span class="tcell"><data class="pill pill-degraded" value="degraded"><span class="dot"></span>Degraded</data></span><span class="tcell"><span class="ellipsis name" style="display:block">Billing worker heartbeat</span><span class="sub" style="display:block">billing.example.com/jobs/daily-renewal</span></span><span class="tcell"><span class="tag">Heartbeat</span></span><span class="tcell"><span class="ticks" aria-label="Recent check results"><span></span><span></span><span class="warn"></span><span class="warn"></span><span></span><span></span><span class="warn"></span><span class="warn"></span></span></span><span class="num tcell">2m 14s</span><span class="num tcell">4m ago</span></a>
+    </div>
+  </section>
+  <footer class="app-foot"><span>Showing 14 of 14 monitors</span><span>Updated 2026-09-14 14:58:00 UTC</span></footer>
+`
 
 function chromePath(): string {
   const candidates = [
@@ -186,6 +218,13 @@ const auditExpression = `(() => {
     const identity = element.id ? '#' + element.id : element.getAttribute('name') ? '[name="' + element.getAttribute('name') + '"]' : ''
     return element.tagName.toLowerCase() + identity
   })
+  const undersizedControls = controls.filter(element => {
+    const rect = element.getBoundingClientRect()
+    return rect.width < 44 || rect.height < 44
+  }).map(element => {
+    const text = element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 30)
+    return text || element.getAttribute('aria-label') || element.tagName.toLowerCase()
+  })
   const contrast = []
   const textElements = [...document.querySelectorAll('h1, h2, h3, h4, p, label, button, a, summary, span')]
   for (const element of textElements) {
@@ -210,6 +249,7 @@ const auditExpression = `(() => {
     focusable: controls.length,
     imagesWithoutAlt: [...document.images].filter(image => !image.hasAttribute('alt')).length,
     overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    undersizedControls,
     unresolved: document.body.innerText.includes('{{') || document.body.innerText.includes('@if'),
     unnamedControls,
   }
@@ -281,6 +321,12 @@ async function main(): Promise<void> {
         await cdp.send('Page.navigate', { url: `http://127.0.0.1:${server.port}${route}` })
         await waitFor(() => cdp.evaluate("document.readyState === 'complete'"))
         await Bun.sleep(100)
+        if (route === '/dashboard/monitors') {
+          await cdp.evaluate(`(() => {
+            const main = document.querySelector('main.app-shell')
+            if (main) main.innerHTML = ${JSON.stringify(MONITOR_DASHBOARD_FIXTURE)}
+          })()`)
+        }
         for (const theme of THEMES) {
           await cdp.evaluate(`(() => {
             const theme = ${JSON.stringify(theme)}
@@ -296,6 +342,8 @@ async function main(): Promise<void> {
           if (audit.unresolved) failures.push(`${key}: unresolved template expression is visible`)
           if (audit.imagesWithoutAlt) failures.push(`${key}: ${audit.imagesWithoutAlt} image(s) have no alt attribute`)
           if (audit.unnamedControls.length) failures.push(`${key}: unnamed controls ${audit.unnamedControls.join(', ')}`)
+          if (route.startsWith('/dashboard') && viewport.width <= 860 && audit.undersizedControls.length)
+            failures.push(`${key}: controls smaller than 44px ${audit.undersizedControls.join(', ')}`)
           for (const issue of audit.contrast) failures.push(`${key}: low text contrast ${issue}`)
 
           if (audit.focusable) {

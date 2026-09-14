@@ -620,7 +620,30 @@
   @media (max-width: 860px) {
     .app-shell { width: min(100% - 32px, 720px); }
     .app-nav-inner { flex-wrap: wrap; padding: 0.5rem 0; }
-    .app-links { order: 3; width: 100%; overflow-x: auto; padding-bottom: 0.35rem; }
+    .app-links {
+      order: 3;
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      overscroll-behavior-inline: contain;
+      scroll-padding-inline: 0.25rem;
+      scroll-snap-type: inline proximity;
+      scrollbar-width: none;
+    }
+    .app-links::-webkit-scrollbar { display: none; }
+    .app-links a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      scroll-snap-align: start;
+    }
+    .brand { min-height: 44px; }
+    .theme-toggle { width: 44px; height: 44px; }
+    .button, .button.sm, .team-switch > summary, .team-switch-item, .chip {
+      min-height: 44px;
+    }
+    .chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; }
+    .input, .select, .textarea { min-height: 44px; }
     .app-user { display: none; }
     .page-head { flex-direction: column; align-items: flex-start; }
 
