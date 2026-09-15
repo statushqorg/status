@@ -62,4 +62,16 @@ describe('dashboard styles', () => {
     }
     expect(orphans).toEqual({})
   })
+
+  // iOS Safari zooms the page when a focused input is under 16px and leaves
+  // it zoomed and scrolled sideways. The dashboard takes the floor only at
+  // phone width; the sign-in form is a single column and takes it outright.
+  test('phone-width inputs are at least 16px so iOS does not zoom on focus', () => {
+    const head = readFileSync(join(VIEWS, 'partials/app-head.stx'), 'utf8')
+    const phone = head.slice(head.indexOf('@media (max-width: 860px)'))
+    expect(phone).toContain('.input, .select, .textarea { min-height: 44px; font-size: 16px; }')
+    const auth = readFileSync(join(VIEWS, 'layouts/auth.stx'), 'utf8')
+    const field = auth.match(/\.field input\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(field).toContain('font-size: 16px')
+  })
 })

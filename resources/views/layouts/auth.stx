@@ -104,7 +104,7 @@
       .field input {
         width: 100%; min-height: 46px; padding: 0.7rem 0.95rem; line-height: 1.4; box-sizing: border-box;
         border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-        color: var(--fg); font: inherit; font-size: 0.95rem; background: var(--bg);
+        color: var(--fg); font: inherit; font-size: 16px; background: var(--bg);
       }
       .field input::placeholder { color: var(--muted); opacity: 0.75; }
       .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

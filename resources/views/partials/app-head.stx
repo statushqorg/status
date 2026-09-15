@@ -731,7 +731,8 @@
       min-height: 44px;
     }
     .chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; }
-    .input, .select, .textarea { min-height: 44px; }
+    /* 16px is the floor below which iOS Safari zooms a focused field. */
+    .input, .select, .textarea { min-height: 44px; font-size: 16px; }
     .app-user { display: none; }
     .page-head { flex-direction: column; align-items: flex-start; }
 
