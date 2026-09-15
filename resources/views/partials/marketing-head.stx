@@ -315,6 +315,73 @@
     gap: 0.65rem;
   }
 
+  /* Phone menu: a pure-CSS disclosure, no JS. Hidden until the desktop links
+     go away at 900px, in the responsive block below. */
+  .nav-menu { display: none; position: relative; }
+  .nav-menu > summary {
+    list-style: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .nav-menu > summary::-webkit-details-marker { display: none; }
+  .nav-menu > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .burger, .burger::before, .burger::after {
+    display: block;
+    width: 18px;
+    height: 1.5px;
+    background: var(--fg);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .burger { position: relative; }
+  .burger::before { content: ""; position: absolute; top: -5px; }
+  .burger::after { content: ""; position: absolute; top: 5px; }
+  .nav-menu[open] .burger { background: transparent; }
+  .nav-menu[open] .burger::before { transform: translateY(5px) rotate(45deg); }
+  .nav-menu[open] .burger::after { transform: translateY(-5px) rotate(-45deg); }
+  /* Bounded by the visible viewport: the 66px bar, the 12px gap and 12px of
+     breathing room. The list is longer than a phone, so it scrolls in place;
+     the page behind it is locked in the responsive block. */
+  .nav-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 12px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 248px;
+    max-height: calc(100dvh - 90px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  }
+  .nav-menu-panel a {
+    padding: 0.6rem 0.7rem;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-size: 0.95rem;
+    text-decoration: none;
+  }
+  .nav-menu-panel a:hover, .nav-menu-panel a[aria-current="true"] { color: var(--fg); background: var(--surface-2); }
+  .nav-menu-panel .button { margin-top: 0.35rem; justify-content: center; }
+  .nav-menu-group {
+    padding: 0.7rem 0.7rem 0.25rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
   .theme-toggle {
     display: inline-grid;
     place-items: center;
@@ -1021,6 +1088,8 @@
 
     .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .nav-links { display: none; }
+    .nav-menu { display: block; }
+    body:has(.nav-menu[open]) { overflow: hidden; }
   }
 
   @media (max-width: 560px) {
