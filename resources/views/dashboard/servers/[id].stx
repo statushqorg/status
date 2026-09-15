@@ -318,6 +318,22 @@ useHead({
 @include('../../partials/app-head.stx')
 @include('../../partials/app-nav.stx')
 
+<style>
+  /* Page-specific, on app-head tokens: the metrics chart and its legend.
+     sites/[slug].stx carries its own variant of these, so they stay per page. */
+  .mon-chart { display: block; width: 100%; height: auto; }
+  .mon-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.6rem;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+</style>
+
 <main class="app-shell">
   @if (!AUTH_USER)
     <div class="empty" style="margin: 3rem 0;">
@@ -566,7 +582,7 @@ useHead({
       </footer>
     </section>
 
-    <dialog id="monitors-dialog" aria-labelledby="monitors-dialog-title">
+    <dialog id="monitors-dialog" class="dlg" aria-labelledby="monitors-dialog-title">
       <form method="POST" action="/api/server-forms/{{ serverView.id }}/monitors">
         <header class="dlg-head">
           <div>
@@ -602,7 +618,7 @@ useHead({
       </form>
     </dialog>
 
-    <dialog id="thresholds-dialog" aria-labelledby="thresholds-dialog-title">
+    <dialog id="thresholds-dialog" class="dlg" aria-labelledby="thresholds-dialog-title">
       <form method="POST" action="/api/server-forms/{{ serverView.id }}/update">
         <header class="dlg-head">
           <div>
