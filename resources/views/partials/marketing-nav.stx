@@ -116,6 +116,54 @@ const IS_SIGNED_IN = !!authRequest(typeof cookies !== 'undefined' ? cookies : nu
       <StxLink class="button" to="/login">Sign in</StxLink>
       <StxLink class="button primary" to="/register">Get started</StxLink>
       @endif
+      {{-- Phone menu: below 900px the links above are hidden, and this is the
+           only way to the rest of the site from the header. It offers every
+           destination the desktop nav does; tests/unit/mobile-layout.test.ts
+           checks the two stay in step. --}}
+      <details class="nav-menu">
+        <summary aria-label="Open menu"><span class="burger" aria-hidden="true"></span></summary>
+        <div class="nav-menu-panel">
+          <span class="nav-menu-group">Features</span>
+          <StxLink to="/features">All features</StxLink>
+          <StxLink to="/features/uptime-monitoring">Uptime</StxLink>
+          <StxLink to="/features/ping-monitoring">Ping</StxLink>
+          <StxLink to="/features/tcp-port-monitoring">TCP port</StxLink>
+          <StxLink to="/features/cron-monitoring">Cron &amp; heartbeats</StxLink>
+          <StxLink to="/features/health-checks">Health checks</StxLink>
+          <StxLink to="/features/ssl-monitoring">SSL certificates</StxLink>
+          <StxLink to="/features/domain-monitoring">Domains</StxLink>
+          <StxLink to="/features/dns-monitoring">DNS records</StxLink>
+          <StxLink to="/features/dns-blocklist-monitoring">DNS blocklists</StxLink>
+          <StxLink to="/features/performance-monitoring">Performance</StxLink>
+          <StxLink to="/features/lighthouse-monitoring">Lighthouse</StxLink>
+          <StxLink to="/features/broken-links">Broken links</StxLink>
+          <StxLink to="/features/server-monitoring">Server metrics</StxLink>
+          <StxLink to="/features/ai-checks">AI checks</StxLink>
+          <StxLink to="/features/status-pages">Status pages</StxLink>
+          <StxLink to="/features/incident-management">Incidents</StxLink>
+          <StxLink to="/features/notifications">Notifications</StxLink>
+
+          <span class="nav-menu-group">Use cases</span>
+          <StxLink to="/for">All use cases</StxLink>
+          <StxLink to="/for/agencies">Agencies</StxLink>
+          <StxLink to="/for/saas">SaaS teams</StxLink>
+          <StxLink to="/for/ecommerce">E-commerce</StxLink>
+          <StxLink to="/for/devops">DevOps &amp; SRE</StxLink>
+          <StxLink to="/for/stacks-developers">Stacks developers</StxLink>
+
+          <span class="nav-menu-group">More</span>
+          <StxLink to="/compare">Compare</StxLink>
+          <a href="/#pricing">Pricing</a>
+          <StxLink to="/docs">Docs</StxLink>
+          @if (IS_SIGNED_IN)
+          <StxLink class="button primary" to="/dashboard">Dashboard</StxLink>
+          @endif
+          @if (!IS_SIGNED_IN)
+          <StxLink to="/login">Sign in</StxLink>
+          <StxLink class="button primary" to="/register">Get started</StxLink>
+          @endif
+        </div>
+      </details>
     </div>
   </div>
 </nav>
