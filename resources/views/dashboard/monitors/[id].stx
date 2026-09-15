@@ -627,30 +627,10 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
 @include('../partials/app-nav.stx')
 
 <style>
-  /* Page-specific, on app-head tokens: key/value readout grid, chart
-     sizing, chart legends, and the agent-setup code block (the marketing
-     site's oss-code surface -- intentionally dark in both themes). */
-  .kv {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem 1.25rem;
-    margin: 0;
-  }
-  .kv dt {
-    margin: 0 0 0.35rem;
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .kv dd {
-    margin: 0;
-    font-size: 0.92rem;
-    font-weight: 600;
-    overflow-wrap: anywhere;
-  }
-  .kv dd.big { font-family: var(--font-display); font-size: 1.65rem; }
+  /* Page-specific, on app-head tokens: chart sizing, chart legends, the
+     channel icons and the alert-routing states. The readout grid, .subhead,
+     .code-block and the dialog shell and chrome moved to app-head once the
+     server pages started using them too. */
   .mon-chart { display: block; width: 100%; height: auto; }
   .mon-legend {
     display: flex;
@@ -661,25 +641,6 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-  }
-  .subhead {
-    margin: 0 0 0.6rem;
-    color: var(--muted);
-    font-size: 0.76rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .code-block {
-    margin: 0;
-    padding: 1rem;
-    border-radius: var(--radius-sm);
-    background: #0d1210;
-    color: #8ce8bb;
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    line-height: 1.6;
-    overflow-x: auto;
   }
   /* Inline brand mark next to each channel type label. Monochrome,
      inherits currentColor so it reads in light + dark. */
@@ -704,45 +665,6 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
     border-top: 1px solid var(--border);
   }
   .alert-foot .help { margin: 0; flex: 1 1 20rem; }
-
-  /* Manage-alerts dialog. Styled through the same tokens as the cards, so
-     it inherits both themes rather than needing a second palette. */
-  #alerts-dialog {
-    width: min(46rem, calc(100vw - 2rem));
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius, 14px);
-    background: var(--surface);
-    color: var(--fg);
-    box-shadow: 0 24px 60px -20px rgba(11, 15, 13, 0.4);
-  }
-  /* The UA default is a centred box with `display: block` when closed, so
-     the dialog must be hidden explicitly or it renders inline in the page. */
-  #alerts-dialog:not([open]) { display: none; }
-  #alerts-dialog::backdrop { background: rgba(11, 15, 13, 0.55); }
-  #alerts-dialog form { margin: 0; }
-  .dlg-head {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
-    padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border);
-  }
-  .dlg-head h3 { margin: 0; font-size: 1.05rem; }
-  .dlg-head .sub { display: block; margin-top: 0.2rem; font-size: 0.85rem; color: var(--muted); }
-  .dlg-x {
-    display: inline-flex; align-items: center; justify-content: center; flex: none;
-    width: 32px; height: 32px; padding: 0; cursor: pointer;
-    border: 1px solid transparent; border-radius: 8px;
-    background: transparent; color: var(--muted);
-  }
-  .dlg-x:hover { border-color: var(--border); color: var(--fg); background: var(--surface-2); }
-  .dlg-x svg { width: 17px; height: 17px; }
-  /* Long channel lists scroll inside the dialog rather than pushing its
-     footer past the bottom of the viewport. */
-  .dlg-body { padding: 1.25rem; max-height: min(60vh, 32rem); overflow-y: auto; }
-  .dlg-foot {
-    display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem;
-    padding: 0.9rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface-2);
-    border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;
-  }
 </style>
 
 <main class="app-shell">
@@ -1182,7 +1104,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </footer>
     </section>
 
-    <dialog id="server-dialog" aria-labelledby="server-dialog-title">
+    <dialog id="server-dialog" class="dlg" aria-labelledby="server-dialog-title">
       <form method="POST" action="/api/server-forms/monitors/{{ monitor.id }}/server">
         <header class="dlg-head">
           <div>
@@ -1290,7 +1212,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
          nothing at all, so DashboardSaveRoutingAction reconciles against
          the team's channel list rather than against what arrived. --}}
     @if (routableChannels.length > 0)
-      <dialog id="alerts-dialog" aria-labelledby="alerts-dialog-title">
+      <dialog id="alerts-dialog" class="dlg" aria-labelledby="alerts-dialog-title">
         <form method="POST" action="/api/notification-channel-forms/monitors/{{ monitor.id }}/routing">
           <header class="dlg-head">
             <div>
