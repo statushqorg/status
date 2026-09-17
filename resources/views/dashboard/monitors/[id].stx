@@ -281,6 +281,19 @@ if (chartChecks.length > 1) {
 // 24h so the chart isn't just 1 bar, daily buckets for the wider windows).
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const range = query.get('range') || '24h'
+// Custom range: ?from=YYYY-MM-DD&to=YYYY-MM-DD, both required and valid, wins
+// over the preset. The chart is day-bucketed for a custom span, like 7d/30d.
+const qFrom = query.get('from')
+const qTo = query.get('to')
+const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isCustom = isDay(qFrom) && isDay(qTo)
+const customFrom = isCustom ? String(qFrom).slice(0, 10) : ''
+const customTo = isCustom ? String(qTo).slice(0, 10) : ''
+const fmtDayLabel = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+const RANGE_LABEL = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' }
+const rangeLabel = isCustom
+  ? (customFrom.slice(0, 4) === customTo.slice(0, 4) ? `${fmtDayLabel(customFrom)} \u2013 ${fmtDayLabel(customTo)}, ${customTo.slice(0, 4)}` : `${fmtDayLabel(customFrom)}, ${customFrom.slice(0, 4)} \u2013 ${fmtDayLabel(customTo)}, ${customTo.slice(0, 4)}`)
+  : (RANGE_LABEL[range] || RANGE_LABEL['24h'])
 
 // Settings-card state: flash markers from the create/edit form actions, the
 // monitor's parsed config for prefilling, and the heartbeat row a cron
@@ -395,8 +408,22 @@ const RANGE_CONFIG = {
   '7d': { sinceMs: 7 * 24 * 60 * 60 * 1000, granularity: 'day' },
   '30d': { sinceMs: 30 * 24 * 60 * 60 * 1000, granularity: 'day' },
 }
-const { sinceMs, granularity } = RANGE_CONFIG[range] || RANGE_CONFIG['24h']
-const since = new Date(Date.now() - sinceMs).toISOString()
+let granularity
+let fromMs
+let toMs
+if (isCustom) {
+  fromMs = Date.parse(`${customFrom}T00:00:00.000Z`)
+  toMs = Date.parse(`${customTo}T23:59:59.999Z`)
+  granularity = 'day'
+}
+else {
+  const cfg = RANGE_CONFIG[range] || RANGE_CONFIG['24h']
+  granularity = cfg.granularity
+  fromMs = Date.now() - cfg.sinceMs
+  toMs = Date.now()
+}
+const since = new Date(fromMs).toISOString()
+const until = new Date(toMs).toISOString()
 
 function rangeUrl(r) {
   const p = new URLSearchParams(query)
@@ -415,7 +442,7 @@ function bucketKey(iso) {
 }
 let volumeBuckets = []
 if (monitor) {
-  const rows = await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).where('checked_at', '>=', since).execute()
+  const rows = await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).where('checked_at', '>=', since).where('checked_at', '<=', until).execute()
   const byBucket = new Map()
   for (const r of rows) {
     const key = bucketKey(r.checked_at)
@@ -439,8 +466,7 @@ const totalChecksInRange = volumeBuckets.reduce((sum, b) => sum + b.request_coun
 const denseKeys = []
 {
   const stepMs = granularity === 'hour' ? 3600000 : 86400000
-  const start = Date.now() - sinceMs
-  for (let t = start; t <= Date.now(); t += stepMs)
+  for (let t = fromMs; t <= toMs; t += stepMs)
     denseKeys.push(bucketKey(new Date(t).toISOString()))
 }
 const byKey = new Map(volumeBuckets.map(b => [b.bucket, b]))
@@ -665,6 +691,133 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
     border-top: 1px solid var(--border);
   }
   .alert-foot .help { margin: 0; flex: 1 1 20rem; }
+
+
+  /* ---- Reporting-period picker (Fathom-style presets + calendar) ---- */
+.range-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font: 600 0.8125rem/1 var(--font-display, ui-sans-serif);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+.range-tool:hover { color: var(--fg); border-color: var(--accent); }
+.range-tool:active { transform: scale(0.98); }
+.range-tool:focus-visible,
+.range-link:focus-visible,
+.chrome-btn:focus-visible,
+.icon-btn:focus-visible,
+select.panel:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.range-tool.is-active { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+.range-tool i { width: 1rem; height: 1rem; }
+.date-menu { position: relative; }
+.date-menu > summary { list-style: none; }
+.date-menu > summary::-webkit-details-marker { display: none; }
+.date-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 40;
+  width: min(44rem, calc(100vw - 2.5rem));
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--fg) 10%, transparent);
+}
+/* Period picker: presets down the left, two months on the right. The range is
+   drawn flat with rounded ends, the way Fathom's is, on the --bar wash the KPI
+   bars already use so it reads as the same accent at the same strength. */
+.drp-backdrop { position: fixed; inset: 0; z-index: 39; background: transparent; cursor: default; }
+.drp { display: grid; grid-template-columns: 10.5rem minmax(0, 1fr); gap: 0.75rem; }
+.drp-presets { display: flex; flex-direction: column; gap: 0.15rem; padding-right: 0.75rem; border-right: 1px solid var(--border); }
+.drp-preset {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 0.8125rem/1.2 var(--font-display, ui-sans-serif);
+  text-align: left;
+  cursor: pointer;
+}
+.drp-preset:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.drp-preset.is-active { color: var(--accent-fg); background: var(--accent); }
+.drp-cals { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.drp-head { display: grid; grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr) 2rem; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
+.drp-nav {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.drp-nav:hover { color: var(--fg); border-color: var(--border); }
+.drp-nav svg { width: 1rem; height: 1rem; }
+.drp-nav.is-hidden { visibility: hidden; }
+.drp-sel {
+  min-width: 0;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 600 0.8125rem/1 var(--font-display, ui-sans-serif);
+}
+.drp-dow, .drp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.drp-dow span { padding: 0.25rem 0; color: var(--muted); font: 600 0.7rem/1.2 var(--font-display, ui-sans-serif); text-align: center; }
+.drp-day {
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  font: 500 0.8125rem/1 var(--font-mono, ui-monospace);
+  cursor: pointer;
+}
+.drp-day:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.drp-day.is-out { color: var(--muted); }
+.drp-day.is-today { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.drp-day.is-range { background: var(--accent-soft); }
+.drp-day.is-edge { background: var(--accent); color: var(--accent-fg); border-radius: 8px; }
+.drp-day.is-disabled { color: var(--muted); opacity: 0.45; cursor: default; }
+.drp-day.is-disabled:hover { background: transparent; }
+.drp-day:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
+@media (max-width: 640px) {
+  .date-menu { position: static; }
+  .date-popover { left: 0; right: auto; width: calc(100vw - 2rem); max-height: calc(100dvh - 6rem); overflow-y: auto; overscroll-behavior: contain; }
+  .drp { grid-template-columns: minmax(0, 1fr); }
+  .drp-presets { flex-direction: row; flex-wrap: wrap; gap: 0.35rem; padding: 0 0 0.6rem; border-right: 0; border-bottom: 1px solid var(--border); }
+  .drp-preset { width: auto; padding: 0.45rem 0.65rem; border: 1px solid var(--border); border-radius: 999px; }
+  .drp-cals { grid-template-columns: minmax(0, 1fr); }
+  .drp-cal.is-right { display: none; }
+  .drp-cal.is-left .drp-nav.is-hidden { visibility: visible; }
+  .drp-day { height: 2.5rem; }
+}
 </style>
 
 <main class="app-shell">
@@ -737,9 +890,10 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
     <div class="filter-bar">
       <div class="filter-group">
         <span class="lbl">Range</span>
-        <StxLink to="{{ rangeUrl('24h') }}" class="chip {{ range === '24h' ? 'active' : '' }}">24h</StxLink>
-        <StxLink to="{{ rangeUrl('7d') }}" class="chip {{ range === '7d' ? 'active' : '' }}">7d</StxLink>
-        <StxLink to="{{ rangeUrl('30d') }}" class="chip {{ range === '30d' ? 'active' : '' }}">30d</StxLink>
+        <StxLink to="{{ rangeUrl('24h') }}" class="chip {{ !isCustom && range === '24h' ? 'active' : '' }}">24h</StxLink>
+        <StxLink to="{{ rangeUrl('7d') }}" class="chip {{ !isCustom && range === '7d' ? 'active' : '' }}">7d</StxLink>
+        <StxLink to="{{ rangeUrl('30d') }}" class="chip {{ !isCustom && range === '30d' ? 'active' : '' }}">30d</StxLink>
+        <DateRangePicker :summary="rangeLabel" :active="isCustom" />
       </div>
     </div>
 
