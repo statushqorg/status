@@ -4,7 +4,7 @@ import { Auth, createTwoFactorChallenge, getTwoFactorState } from '@stacksjs/aut
 import { User } from '@stacksjs/orm'
 import { response } from '@stacksjs/router'
 import { schema } from '@stacksjs/validation'
-import { buildAuthCookie } from './authCookie'
+import { buildAuthCookie, sessionExpiryMinutes } from './authCookie'
 
 /**
  * Project override of the framework's default LoginAction (registered
@@ -60,7 +60,10 @@ export default new Action({
       })
     }
 
-    const result = await Auth.loginUsingId(authedUser.id as number)
+    // Session length is set once, here, from the "remember me" checkbox: a
+    // week by default, 30 days when checked. See sessionExpiryMinutes.
+    const expiresInMinutes = sessionExpiryMinutes(request.get('remember'))
+    const result = await Auth.loginUsingId(authedUser.id as number, { expiresInMinutes })
     if (!result)
       return response.unauthorized('Incorrect email or password')
 

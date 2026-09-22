@@ -32,3 +32,26 @@ export function clearAuthCookie(): string {
   const name = config.auth?.defaultTokenName || 'auth-token'
   return `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
 }
+
+/** Baseline session: a week. */
+const WEEK_MINUTES = 7 * 24 * 60
+/** "Keep me signed in": a month. */
+const MONTH_MINUTES = 30 * 24 * 60
+
+/**
+ * Session length for a fresh login, in minutes, from the login form's
+ * "remember me" checkbox. Passed to `Auth.loginUsingId(id, { expiresInMinutes })`,
+ * which stamps BOTH the `oauth_access_tokens.expires_at` row and (via the
+ * returned `expiresIn`) the cookie's Max-Age from the same number — so the
+ * whole session, not just the cookie, honours the tier. Nothing extends either
+ * value afterwards (getUserFromToken leaves expires_at alone), so this is the
+ * real session cap.
+ *
+ * Unchecked is the baseline week; checked is 30 days. Accepts whatever the JSON
+ * body carries for `remember` — boolean true, or '1'/'true'/'on'/'yes'.
+ */
+export function sessionExpiryMinutes(remember: unknown): number {
+  const on = remember === true
+    || ['1', 'true', 'on', 'yes'].includes(String(remember ?? '').toLowerCase())
+  return on ? MONTH_MINUTES : WEEK_MINUTES
+}

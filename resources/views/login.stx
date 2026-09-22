@@ -56,6 +56,10 @@ useHead({
           </div>
           <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
         </div>
+        <label for="remember" style="display:flex;align-items:center;gap:.5rem;margin:-.25rem 0 .85rem;font-size:.85rem;color:var(--muted,#6b7280);cursor:pointer;user-select:none">
+          <input id="remember" name="remember" type="checkbox" style="width:16px;height:16px;margin:0;accent-color:var(--accent,#4f46e5);cursor:pointer">
+          <span>Keep me signed in for 30 days</span>
+        </label>
         <button id="login-btn" class="button" type="submit">Sign in</button>
 
         <div class="sso-divider passkey-divider hide" id="passkey-divider">or</div>
@@ -99,6 +103,9 @@ useHead({
         var loginBtn = document.getElementById('login-btn')
         var twofaBtn = document.getElementById('twofa-btn')
         var challengeToken = null
+        // The "remember me" choice, captured at step 1 so the 2FA step (a
+        // separate request) issues the same session tier the user picked.
+        var rememberChoice = '0'
 
         function readCookie(name) {
           var m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()\[\]\\\/+^]/g, '\\$&') + '=([^;]*)'))
@@ -164,9 +171,12 @@ useHead({
           loginBtn.disabled = true
           loginBtn.textContent = 'Signing in…'
           try {
+            var rememberEl = document.getElementById('remember')
+            rememberChoice = (rememberEl && rememberEl.checked) ? '1' : '0'
             var r = await post('/login', {
               email: document.getElementById('email').value.trim(),
               password: document.getElementById('password').value,
+              remember: rememberChoice,
             })
             if (r.data && r.data.requires_two_factor) {
               challengeToken = r.data.challenge_token
@@ -197,6 +207,7 @@ useHead({
             var r = await post('/verify-two-factor-login', {
               challenge_token: challengeToken,
               code: document.getElementById('code').value.trim(),
+              remember: rememberChoice,
             })
             if (r.ok && (r.data.token || r.data.access_token)) {
               window.location.href = REDIRECT

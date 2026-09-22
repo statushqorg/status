@@ -3,7 +3,7 @@ import { Action } from '@stacksjs/actions'
 import { Auth, consumeTwoFactorChallenge, verifyTwoFactorLoginCode } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
 import { schema } from '@stacksjs/validation'
-import { buildAuthCookie } from './authCookie'
+import { buildAuthCookie, sessionExpiryMinutes } from './authCookie'
 
 /**
  * Project override of the framework's default VerifyTwoFactorLoginAction
@@ -46,7 +46,11 @@ export default new Action({
     if (!valid)
       return response.unauthorized('Invalid code — please sign in again.')
 
-    const result = await Auth.loginUsingId(userId)
+    // Carry the "remember me" tier the user chose on step 1 through to the
+    // session issued here, so a 2FA account is not silently downgraded to the
+    // baseline week. The login page re-sends the checkbox with the TOTP code.
+    const expiresInMinutes = sessionExpiryMinutes(request.get('remember'))
+    const result = await Auth.loginUsingId(userId, { expiresInMinutes })
     if (!result)
       return response.unauthorized('Invalid code — please sign in again.')
 

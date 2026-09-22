@@ -47,7 +47,7 @@ export default {
   password: env.AUTH_PASSWORD_FIELD || 'password',
 
   /**
-   * Access-token expiry in milliseconds (default: 24 hours).
+   * Access-token expiry in milliseconds (default: 7 days).
    *
    * This value IS the browser session length, not just an API-bearer TTL.
    * LoginAction mirrors the issued access token into the HttpOnly
@@ -58,15 +58,21 @@ export default {
    * nothing extends either one — `getUserFromToken` bumps `updated_at` on
    * every request but leaves `expires_at` alone, then deletes the row
    * once it passes. So a signed-in operator is logged out exactly this
-   * long after login regardless of activity, mid-click.
+   * long after login regardless of activity.
    *
-   * It was 1 hour, which is a sane API-bearer TTL and a hostile session.
-   * The comment here used to justify that by pointing at the refresh
-   * token below — but that flow does not exist (see `refreshTokenExpiry`),
-   * so the short TTL bought a shorter leaked-bearer window at the cost of
-   * hourly re-logins and nothing else.
+   * This is the BASELINE only. LoginAction and VerifyTwoFactorLoginAction
+   * pass a per-login `expiresInMinutes` from the sign-in form's "remember
+   * me" checkbox (see sessionExpiryMinutes in Actions/Auth/authCookie.ts):
+   * a week unchecked, 30 days checked. This default covers the entry points
+   * that have no such checkbox — register, SSO, passkey, invite acceptance
+   * — so they all land on the baseline week rather than the old 24h.
+   *
+   * It was 24h (and 1h before that, a sane API-bearer TTL but a hostile
+   * session). A day still meant a forced re-login mid-task every morning;
+   * a week baseline with an opt-in month is the "don't log me out" bar the
+   * other HQ apps already clear.
    */
-  tokenExpiry: env.AUTH_TOKEN_EXPIRY || 24 * 60 * 60 * 1000,
+  tokenExpiry: env.AUTH_TOKEN_EXPIRY || 7 * 24 * 60 * 60 * 1000,
 
   /**
    * Refresh-token expiry in milliseconds (default: 30 days).
