@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "clients": [
+    {
+      "name": "@statushq/agent",
+      "path": "/api/agent/token/metrics",
+      "body": {
+        "cpuPercent": 42.5,
+        "ramPercent": 31.3,
+        "ramUsedMb": 160,
+        "ramTotalMb": 512,
+        "diskPercent": 75,
+        "host": "web-01"
+      }
+    },
+    {
+      "name": "statushq/laravel-sdk",
+      "path": "/api/agent/token/metrics",
+      "body": {
+        "cpuPercent": 42.5,
+        "ramPercent": 31.3,
+        "ramUsedMb": 160,
+        "ramTotalMb": 512,
+        "diskPercent": 75,
+        "host": "web-01"
+      }
+    },
+    {
+      "name": "install-agent.sh",
+      "path": "/api/agent/token/metrics",
+      "body": {
+        "cpuPercent": 12,
+        "ramPercent": 45,
+        "ramUsedMb": 460,
+        "ramTotalMb": 1024,
+        "host": "worker-01"
+      }
+    }
+  ]
+}

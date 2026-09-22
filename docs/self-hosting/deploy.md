@@ -1,11 +1,11 @@
 ---
 title: Self-hosting & deploy
-description: Deploy your own StatusHQ instance — MIT-licensed, self-hostable, and running on a single box behind a reverse proxy.
+description: Deploy your own StatusHQ instance - MIT-licensed, self-hostable, and running on a single box behind a reverse proxy.
 ---
 
 # Self-hosting & deploy
 
-StatusHQ is **MIT-licensed and fully self-hostable**. The entire application — web dashboard, JSON API, check workers, and scheduler — is open source at [github.com/stacksjs/status](https://github.com/stacksjs/status). You can run it on hardware you control, or let the StatusHQ team run it for you (see below).
+StatusHQ is **MIT-licensed and fully self-hostable**. The entire application - web dashboard, JSON API, check workers, and scheduler - is open source at [github.com/stacksjs/status](https://github.com/stacksjs/status). You can run it on hardware you control, or let the StatusHQ team run it for you (see below).
 
 ## Requirements
 
@@ -25,7 +25,7 @@ bun install
 
 # 3. Configure your environment
 cp .env.example .env
-# edit .env — see Configuration for the vars that matter
+# edit .env - see Configuration for the vars that matter
 
 # 4. Create the schema
 ./buddy migrate
@@ -40,13 +40,13 @@ See the [Configuration](/self-hosting/configuration) page for the environment va
 
 For most self-hosters, a **single box** runs everything, behind a reverse proxy that terminates TLS and forwards to the app:
 
-- **web + API** — `buddy serve`, the dashboard and the [JSON API](/reference/api).
-- **worker** — `buddy queue:work`, which executes the checks that flip monitor status.
-- **scheduler** — `buddy schedule:run`, which dispatches due checks every minute.
-- **realtime** (optional) — `buddy realtime`, the WebSocket broadcaster for live status dots.
+- **web + API** - `buddy serve`, the dashboard and the [JSON API](/reference/api).
+- **worker** - `buddy queue:work`, which executes the checks that flip monitor status.
+- **scheduler** - `buddy schedule:run`, which dispatches due checks every minute.
+- **realtime** (optional) - `buddy realtime`, the WebSocket broadcaster for live status dots.
 
-This single-box layout comfortably handles a real monitoring workload. When you outgrow it — more monitors, or a second geographic check region — see [Scaling & multi-region](/self-hosting/scaling), which explains how to split the worker onto its own hosts and add regions without touching the primary.
+This single-box layout comfortably handles a real monitoring workload. When you outgrow it - more monitors, or a second geographic check region - see [Scaling & multi-region](/self-hosting/scaling), which explains how to split the worker onto its own hosts and add regions without touching the primary.
 
 ## Fully-managed alternative
 
-If you'd rather not operate the box yourself, the StatusHQ team offers **fully-managed hosting** at [statushq.org](https://statushq.org) — the same open-source application, run and updated for you, with multi-region checks already provisioned. Self-hosting and managed hosting run identical code, so you can move between them without changing how you use the product.
+If you'd rather not operate the box yourself, the StatusHQ team offers **fully-managed hosting** at [statushq.org](https://statushq.org) - the same open-source application, run and updated for you, with multi-region checks already provisioned. Self-hosting and managed hosting run identical code, so you can move between them without changing how you use the product.

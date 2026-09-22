@@ -175,8 +175,8 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           <form method="POST" action="/api/security-forms/two-factor/disable" onsubmit="return confirm('Turn off two-factor authentication? Your account falls back to password-only sign-in.')">
             <div class="form-row">
               <div class="field">
-                <label>Password</label>
-                <input type="password" name="password" required class="input" autocomplete="current-password" placeholder="Confirm your password" />
+                <label for="two-factor-password">Password</label>
+                <input id="two-factor-password" type="password" name="password" required class="input" autocomplete="current-password" placeholder="Confirm your password" />
               </div>
             </div>
             <button type="submit" class="button danger">Turn off two-factor auth</button>
@@ -198,8 +198,8 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           <form method="POST" action="/api/security-forms/two-factor/enable">
             <div class="form-row">
               <div class="field">
-                <label>6-digit code</label>
-                <input type="text" name="code" required class="input mono" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" />
+                <label for="two-factor-code">6-digit code</label>
+                <input id="two-factor-code" type="text" name="code" required class="input mono" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" />
               </div>
             </div>
             <button type="submit" class="button primary">Confirm and enable</button>

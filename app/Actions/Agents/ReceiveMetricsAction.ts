@@ -7,15 +7,8 @@ import Monitor from '../../Models/Monitor'
 import { aggregateHostStatus, normalizeHost, readingsFromSamples, serverStatusFromFleet } from '../../lib/agentHosts'
 import { reconcileServerIncidents } from '../../lib/serverIncidents'
 import { legacyReceiveMetrics } from './legacyReceiveMetrics'
+import { parseAgentMetricsPayload } from './metricsPayload'
 import { evaluateBreaches, thresholdsForServer } from './metricsThresholds'
-
-function isValidPercent(n: number): boolean {
-  return Number.isFinite(n) && n >= 0 && n <= 100
-}
-
-function isValidMb(n: number): boolean {
-  return Number.isFinite(n) && n >= 0
-}
 
 /**
  * Public, unauthenticated: POST /api/agent/{token}/metrics. The token is
@@ -54,25 +47,25 @@ export default new Action({
       return response.json({ success: false, message: 'Unknown metrics token' }, { status: 404 })
     }
 
-    const cpuPercent = Number(request.get('cpuPercent'))
-    const ramPercent = Number(request.get('ramPercent'))
-    const ramUsedMb = Number(request.get('ramUsedMb'))
-    const ramTotalMb = Number(request.get('ramTotalMb'))
-    // Disk is optional — only agents that report it get disk alerting.
-    const rawDisk = request.get('diskPercent')
-    const hasDisk = rawDisk !== undefined && rawDisk !== null && rawDisk !== ''
-    const diskPercent = hasDisk ? Number(rawDisk) : null
-
-    if (!isValidPercent(cpuPercent) || !isValidPercent(ramPercent) || !isValidMb(ramUsedMb) || !isValidMb(ramTotalMb) || (hasDisk && !isValidPercent(diskPercent as number))) {
+    const parsed = parseAgentMetricsPayload({
+      cpuPercent: request.get('cpuPercent'),
+      ramPercent: request.get('ramPercent'),
+      ramUsedMb: request.get('ramUsedMb'),
+      ramTotalMb: request.get('ramTotalMb'),
+      diskPercent: request.get('diskPercent'),
+      host: request.get('host'),
+    })
+    if (!parsed.ok) {
       return response.json(
-        { success: false, message: 'cpuPercent/ramPercent/diskPercent must be 0-100, ramUsedMb/ramTotalMb must be >= 0' },
+        { success: false, message: parsed.error },
         { status: 422 },
       )
     }
+    const { cpuPercent, ramPercent, ramUsedMb, ramTotalMb, diskPercent } = parsed.value
 
     // Which machine this sample describes. Absent for agents predating the
     // field, which normalize to a single 'default' host.
-    const host = normalizeHost(request.get('host'))
+    const host = normalizeHost(parsed.value.host)
 
     const thresholds = thresholdsForServer(server)
     const breaches = evaluateBreaches({ cpuPercent, ramPercent, diskPercent }, thresholds)

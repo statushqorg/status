@@ -11,15 +11,15 @@ Ping monitoring answers a simpler question than uptime: *is this host reachable 
 
 On each run the checker sends ICMP echo request packets ("pings") to the target host and waits for echo replies. It measures:
 
-- **Reachability** — did the host reply at all?
-- **Round-trip time (RTT)** — how long each reply took, in milliseconds.
-- **Packet loss** — the fraction of packets that went unanswered.
+- **Reachability** - did the host reply at all?
+- **Round-trip time (RTT)** - how long each reply took, in milliseconds.
+- **Packet loss** - the fraction of packets that went unanswered.
 
 Pings are sent from **US-East** and additional regions, and an outage is confirmed by **regional consensus** so a single flaky network path doesn't false-alarm. Intervals range from every **30 seconds** up to hourly.
 
 ## What triggers an alert
 
-- The host is **unreachable** — no replies received within the timeout.
+- The host is **unreachable** - no replies received within the timeout.
 - **Packet loss** exceeds your configured threshold (partial loss often signals a saturated link or failing hardware).
 - **RTT** crosses a latency warning threshold, raising a warning rather than a hard down.
 
@@ -33,7 +33,7 @@ An incident resolves automatically once replies return cleanly across regions.
 4. Configure thresholds: acceptable **packet loss %** (config `packetLossThresholdPercent`) and an optional **RTT** warning (`latencyThresholdMs`). The check sends `pingCount` packets (default 3) so partial loss is measurable; either threshold being crossed reports degraded.
 5. Attach **notifications**.
 
-> Ping only proves the host is up on the network — it does not verify that a service on it is accepting connections. To confirm a specific service, pair it with a [TCP Port](/monitors/tcp-port) or [Uptime](/monitors/uptime) check.
+> Ping only proves the host is up on the network - it does not verify that a service on it is accepting connections. To confirm a specific service, pair it with a [TCP Port](/monitors/tcp-port) or [Uptime](/monitors/uptime) check.
 
 ## Related
 

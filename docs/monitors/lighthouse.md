@@ -5,13 +5,13 @@ description: Run scheduled Google Lighthouse audits and get alerted when your pe
 
 # Lighthouse Monitoring
 
-Lighthouse monitoring runs Google's Lighthouse audit against your page on a schedule and tracks the scores over time. It's how you catch a front-end regression — a heavy new hero image, a render-blocking script, a broken meta tag — before it quietly erodes your Core Web Vitals and your search ranking.
+Lighthouse monitoring runs Google's Lighthouse audit against your page on a schedule and tracks the scores over time. It's how you catch a front-end regression - a heavy new hero image, a render-blocking script, a broken meta tag - before it quietly erodes your Core Web Vitals and your search ranking.
 
 ## How it works
 
-On each run StatusHQ loads your page in a headless browser and runs a full **Lighthouse** audit, capturing the four category scores (0–100):
+On each run StatusHQ loads your page in a headless browser and runs a full **Lighthouse** audit, capturing the four category scores (0-100):
 
-- **Performance** — including Core Web Vitals: LCP, CLS, TBT.
+- **Performance** - including Core Web Vitals: LCP, CLS, TBT.
 - **Accessibility**
 - **Best Practices**
 - **SEO**

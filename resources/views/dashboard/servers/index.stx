@@ -191,7 +191,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
       <p class="sub" style="margin-top: 0.75rem;">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
     @endif
 
-    <dialog id="server-create-dialog" aria-labelledby="server-create-title">
+    <dialog id="server-create-dialog" class="dlg" aria-labelledby="server-create-title">
       <form method="POST" action="/api/server-forms/create">
         <header class="dlg-head">
           <div>

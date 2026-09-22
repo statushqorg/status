@@ -532,6 +532,93 @@
     gap: 1rem;
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Readouts, code blocks, dialogs                                      */
+  /* ------------------------------------------------------------------ */
+  /* These began as monitors/[id].stx page styles and were copied onto the
+     server pages and settings/cloud by markup alone. A view's <style> is
+     not shared, so they rendered bare there. Anything two pages use lives
+     here; tests/unit/dashboard-styles.test.ts holds that line. */
+  .subhead {
+    margin: 0 0 0.6rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .kv {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem 1.25rem;
+    margin: 0;
+  }
+  .kv dt {
+    margin: 0 0 0.35rem;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .kv dd {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .kv dd.big { font-family: var(--font-display); font-size: 1.65rem; }
+  /* The marketing site's oss-code surface: intentionally dark in both themes. */
+  .code-block {
+    margin: 0;
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    background: #0d1210;
+    color: #8ce8bb;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  /* Dialog shell and chrome, shared by every dashboard dialog. Styled through
+     the same tokens as the cards, so it inherits both themes rather than
+     needing a second palette. */
+  .dlg {
+    width: min(46rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 14px);
+    background: var(--surface);
+    color: var(--fg);
+    box-shadow: 0 24px 60px -20px rgba(11, 15, 13, 0.4);
+  }
+  /* Closed dialogs stay out of the flow whatever the UA stylesheet says. */
+  .dlg:not([open]) { display: none; }
+  .dlg::backdrop { background: rgba(11, 15, 13, 0.55); }
+  .dlg form { margin: 0; }
+  .dlg-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border);
+  }
+  .dlg-head h3 { margin: 0; font-size: 1.05rem; }
+  .dlg-head .sub { display: block; margin-top: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+  .dlg-x {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 32px; height: 32px; padding: 0; cursor: pointer;
+    border: 1px solid transparent; border-radius: 8px;
+    background: transparent; color: var(--muted);
+  }
+  .dlg-x:hover { border-color: var(--border); color: var(--fg); background: var(--surface-2); }
+  .dlg-x svg { width: 17px; height: 17px; }
+  /* Long lists scroll inside the dialog rather than pushing its footer past
+     the bottom of the viewport. */
+  .dlg-body { padding: 1.25rem; max-height: min(60vh, 32rem); overflow-y: auto; }
+  .dlg-foot {
+    display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem;
+    padding: 0.9rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface-2);
+    border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;
+  }
+
   /* Flash banners (post-redirect feedback) */
   .flash {
     display: flex;
@@ -620,7 +707,32 @@
   @media (max-width: 860px) {
     .app-shell { width: min(100% - 32px, 720px); }
     .app-nav-inner { flex-wrap: wrap; padding: 0.5rem 0; }
-    .app-links { order: 3; width: 100%; overflow-x: auto; padding-bottom: 0.35rem; }
+    .app-links {
+      order: 3;
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      overscroll-behavior-inline: contain;
+      scroll-padding-inline: 0.25rem;
+      scroll-snap-type: inline proximity;
+      scrollbar-width: none;
+    }
+    .app-links::-webkit-scrollbar { display: none; }
+    .app-links a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      scroll-snap-align: start;
+    }
+    .brand { min-height: 44px; }
+    .theme-toggle { width: 44px; height: 44px; }
+    .dlg-x { width: 44px; height: 44px; }
+    .button, .button.sm, .team-switch > summary, .team-switch-item, .chip {
+      min-height: 44px;
+    }
+    .chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; }
+    /* 16px is the floor below which iOS Safari zooms a focused field. */
+    .input, .select, .textarea { min-height: 44px; font-size: 16px; }
     .app-user { display: none; }
     .page-head { flex-direction: column; align-items: flex-start; }
 

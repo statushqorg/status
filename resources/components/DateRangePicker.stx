@@ -1,0 +1,262 @@
+{{-- Reporting-period picker: presets beside two month grids, in the style of
+    Fathom's. The monitor chart had 24h/7d/30d chips but no custom range; this
+    adds a calendar for any window while keeping the chips.
+
+    The URL is the only state. On load the client reads ?range / ?from / ?to
+    through useRoute().query and writes them back with navigate(). The three
+    native windows go out as ?range=; Today, Yesterday, This/Last month and any
+    hand-picked span go out as ?from=&to=, which the page reads as UTC day
+    bounds (day-bucketed, like 7d/30d). Presets use the browser's local day.
+
+    Single-root so it renders server-side; its CSS lives in the monitor view's
+    <style>, on statushq's tokens. `summary` and `active` are the only props
+    and appear only in markup, so nothing crosses the server->client bridge.
+    The pure date functions sit between the #region markers so
+    tests/unit/date-range-picker.test.ts evaluates the code that ships. --}}
+<script client>
+// #region pure
+/** 'YYYY-MM-DD' for a local calendar day; m is 0-based like Date. */
+function pickYmd(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+function pickParse(s) {
+  const [y, m, d] = s.split('-').map(Number)
+  return { y, m: m - 1, d }
+}
+/** Day arithmetic through the Date constructor, so DST never shifts a date. */
+function pickShift(s, days) {
+  const { y, m, d } = pickParse(s)
+  const t = new Date(y, m, d + days)
+  return pickYmd(t.getFullYear(), t.getMonth(), t.getDate())
+}
+function pickMonthOf(s) {
+  return s.slice(0, 7)
+}
+function pickShiftMonth(ym, n) {
+  const [y, m] = ym.split('-').map(Number)
+  const t = new Date(y, m - 1 + n, 1)
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`
+}
+/** Six weeks of cells starting on the Sunday on or before the 1st. */
+function pickGrid(ym, todayYmd) {
+  const [y, m] = ym.split('-').map(Number)
+  const first = new Date(y, m - 1, 1)
+  const cells = []
+  for (let i = 0; i < 42; i++) {
+    const t = new Date(y, m - 1, 1 - first.getDay() + i)
+    const s = pickYmd(t.getFullYear(), t.getMonth(), t.getDate())
+    cells.push({ ymd: s, day: t.getDate(), inMonth: t.getMonth() === m - 1, future: s > todayYmd })
+  }
+  return cells
+}
+function pickOrder(a, b) {
+  return a <= b ? { from: a, to: b } : { from: b, to: a }
+}
+/** What a preset means on a given local day. Server-native spans go out as ?range=. */
+function pickPreset(key, todayYmd) {
+  const { y, m } = pickParse(todayYmd)
+  switch (key) {
+    case 'today': return { from: todayYmd, to: todayYmd }
+    case 'yesterday': { const d = pickShift(todayYmd, -1); return { from: d, to: d } }
+    case '24h': case '7d': case '30d': return { range: key }
+    case 'this-month': return { from: pickYmd(y, m, 1), to: todayYmd }
+    case 'last-month': {
+      const end = new Date(y, m, 0)
+      return { from: pickYmd(end.getFullYear(), end.getMonth(), 1), to: pickYmd(end.getFullYear(), end.getMonth(), end.getDate()) }
+    }
+    case 'this-year': return { from: pickYmd(y, 0, 1), to: todayYmd }
+    case 'last-year': return { from: pickYmd(y - 1, 0, 1), to: pickYmd(y - 1, 11, 31) }
+  }
+  return null
+}
+/** The next URL: every other key stays (site, filters, compare); the period is replaced. */
+function pickQuery(search, sel) {
+  const q = new URLSearchParams(search)
+  q.delete('from')
+  q.delete('to')
+  q.delete('range')
+  if (sel.range) {
+    q.set('range', sel.range)
+  }
+  else {
+    q.set('from', sel.from)
+    q.set('to', sel.to)
+  }
+  return `?${q.toString()}`
+}
+// #endregion pure
+
+const pickToday = (() => {
+  const t = new Date()
+  return pickYmd(t.getFullYear(), t.getMonth(), t.getDate())
+})()
+// useRoute().query is the router's parsed param object (runtime.ts); reading it
+// here keeps the component off window.location, which stx's DOM guard flags.
+const pickUrl = new URLSearchParams(useRoute().query)
+const pickUrlFrom = pickUrl.get('from') || ''
+const pickUrlTo = pickUrl.get('to') || ''
+const pickUrlRange = pickUrl.get('range') || ''
+
+// Open on the month the period starts in; when that is this month, step back one
+// so the current month sits on the right and the end of the period is in view.
+const calYm = state((() => {
+  const base = pickUrlFrom ? pickMonthOf(pickUrlFrom) : pickMonthOf(pickToday)
+  return base === pickMonthOf(pickToday) ? pickShiftMonth(base, -1) : base
+})())
+const selStart = state('')
+const selHover = state('')
+
+const pickYears = (() => {
+  const thisYear = Number(pickToday.slice(0, 4))
+  const out = []
+  for (let y = 2015; y <= thisYear; y++) out.push(y)
+  return out
+})()
+
+const calLeftCells = derived(() => pickGrid(calYm(), pickToday))
+const calRightCells = derived(() => pickGrid(pickShiftMonth(calYm(), 1), pickToday))
+
+function pickIsActive(key) {
+  const p = pickPreset(key, pickToday)
+  if (!p) return false
+  if (p.range) return !pickUrlFrom && (pickUrlRange || '24h') === p.range
+  return pickUrlFrom === p.from && pickUrlTo === p.to
+}
+function pickPresetClass(key) {
+  return pickIsActive(key) ? 'drp-preset is-active' : 'drp-preset'
+}
+function pickBounds() {
+  const a = selStart()
+  if (a) return pickOrder(a, selHover() || a)
+  if (pickUrlFrom && pickUrlTo) return { from: pickUrlFrom, to: pickUrlTo }
+  return null
+}
+function pickCellClass(c) {
+  const b = pickBounds()
+  const inRange = !!b && c.ymd >= b.from && c.ymd <= b.to
+  const edge = !!b && (c.ymd === b.from || c.ymd === b.to)
+  return ['drp-day', c.inMonth ? '' : 'is-out', c.future ? 'is-disabled' : '', c.ymd === pickToday ? 'is-today' : '', inRange ? 'is-range' : '', edge ? 'is-edge' : '']
+    .filter(Boolean)
+    .join(' ')
+}
+function pickCellLabel(c) {
+  const { y, m, d } = pickParse(c.ymd)
+  return new Date(y, m, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+function pickDay(c) {
+  if (c.future) return
+  const a = selStart()
+  if (!a) {
+    selStart.set(c.ymd)
+    selHover.set(c.ymd)
+    return
+  }
+  navigate(pickQuery(useRoute().query, pickOrder(a, c.ymd)))
+}
+function pickHover(c) {
+  if (selStart()) selHover.set(c.ymd)
+}
+function pickApply(key) {
+  const p = pickPreset(key, pickToday)
+  if (p) navigate(pickQuery(useRoute().query, p))
+}
+function pickMove(n) {
+  calYm.set(pickShiftMonth(calYm(), n))
+}
+function pickRightYm() {
+  return pickShiftMonth(calYm(), 1)
+}
+function pickMonthIdx(ym) {
+  return Number(ym.slice(5, 7)) - 1
+}
+function pickYearOf(ym) {
+  return Number(ym.slice(0, 4))
+}
+function pickSetYm(y, monthIdx, fromRight) {
+  const ym = `${y}-${String(monthIdx + 1).padStart(2, '0')}`
+  calYm.set(fromRight ? pickShiftMonth(ym, -1) : ym)
+}
+function pickLeftMonth(e) { pickSetYm(pickYearOf(calYm()), Number(e.target.value), false) }
+function pickLeftYear(e) { pickSetYm(Number(e.target.value), pickMonthIdx(calYm()), false) }
+function pickRightMonth(e) { pickSetYm(pickYearOf(pickRightYm()), Number(e.target.value), true) }
+function pickRightYear(e) { pickSetYm(Number(e.target.value), pickMonthIdx(pickRightYm()), true) }
+// A native <details> only closes from its own summary, so an open panel would
+// otherwise sit there after the pointer moves on. The transparent .drp-backdrop
+// below covers the rest of the page while the panel is open; a click on it lands
+// here and closes the panel, the same way clicking away from a menu should.
+function pickClose(e) {
+  const d = e.currentTarget.closest('details')
+  if (d) d.removeAttribute('open')
+  selStart.set('')
+  selHover.set('')
+}
+function pickEscape(e) {
+  if (e.key !== 'Escape') return
+  selStart.set('')
+  selHover.set('')
+  e.currentTarget.removeAttribute('open')
+}
+</script>
+
+<details class="date-menu" @keydown="pickEscape">
+  <summary class="range-tool {{ active ? 'is-active' : '' }}" aria-haspopup="dialog">
+    <i class="i-hugeicons-calendar-03" aria-hidden="true"></i>
+    <span>{{ summary }}</span>
+  </summary>
+  <div class="drp-backdrop" @click="pickClose" aria-hidden="true"></div>
+  <div class="date-popover drp" role="dialog" aria-label="Reporting period">
+    <div class="drp-presets" role="list">
+      <button type="button" role="listitem" :class="pickPresetClass('24h')" @click="pickApply('24h')">Last 24 hours</button>
+      <button type="button" role="listitem" :class="pickPresetClass('7d')" @click="pickApply('7d')">Last 7 days</button>
+      <button type="button" role="listitem" :class="pickPresetClass('30d')" @click="pickApply('30d')">Last 30 days</button>
+      <button type="button" role="listitem" :class="pickPresetClass('today')" @click="pickApply('today')">Today</button>
+      <button type="button" role="listitem" :class="pickPresetClass('yesterday')" @click="pickApply('yesterday')">Yesterday</button>
+      <button type="button" role="listitem" :class="pickPresetClass('this-month')" @click="pickApply('this-month')">This month</button>
+      <button type="button" role="listitem" :class="pickPresetClass('last-month')" @click="pickApply('last-month')">Last month</button>
+    </div>
+
+    <div class="drp-cals">
+      <div class="drp-cal is-left">
+        <div class="drp-head">
+          <button type="button" class="drp-nav" @click="pickMove(-1)" aria-label="Previous month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <select class="drp-sel" aria-label="Month" :value="pickMonthIdx(calYm())" @change="pickLeftMonth">
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+          </select>
+          <select class="drp-sel" aria-label="Year" :value="pickYearOf(calYm())" @change="pickLeftYear">
+            <option x-for="yr in pickYears" :value="yr" x-text="yr"></option>
+          </select>
+          {{-- Hidden beside the second calendar; the phone layout, which shows one
+              calendar, makes it visible again. --}}
+          <button type="button" class="drp-nav is-hidden" @click="pickMove(1)" aria-label="Next month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <div class="drp-dow" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+        <div class="drp-grid">
+          <button x-for="c in calLeftCells()" type="button" :class="pickCellClass(c)" :disabled="c.future" :aria-label="pickCellLabel(c)" @click="pickDay(c)" @mouseenter="pickHover(c)" x-text="c.day"></button>
+        </div>
+      </div>
+
+      <div class="drp-cal is-right">
+        <div class="drp-head">
+          <span class="drp-nav is-hidden" aria-hidden="true"></span>
+          <select class="drp-sel" aria-label="Month" :value="pickMonthIdx(pickRightYm())" @change="pickRightMonth">
+            <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+          </select>
+          <select class="drp-sel" aria-label="Year" :value="pickYearOf(pickRightYm())" @change="pickRightYear">
+            <option x-for="yr in pickYears" :value="yr" x-text="yr"></option>
+          </select>
+          <button type="button" class="drp-nav" @click="pickMove(1)" aria-label="Next month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <div class="drp-dow" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+        <div class="drp-grid">
+          <button x-for="c in calRightCells()" type="button" :class="pickCellClass(c)" :disabled="c.future" :aria-label="pickCellLabel(c)" @click="pickDay(c)" @mouseenter="pickHover(c)" x-text="c.day"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
