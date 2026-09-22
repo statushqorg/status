@@ -213,7 +213,7 @@ useHead({
               window.location.href = REDIRECT
               return
             }
-            showError((r.data && (r.data.message || r.data.error)) || 'Invalid code — please sign in again.')
+            showError((r.data && (r.data.message || r.data.error)) || 'Invalid code - please sign in again.')
             // Challenge tokens are single-use; send them back to step 1.
             twofaForm.classList.add('hide')
             loginForm.classList.remove('hide')
