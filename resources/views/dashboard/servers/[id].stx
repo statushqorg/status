@@ -315,8 +315,8 @@ useHead({
 })
 </script>
 
-@include('../../partials/app-head.stx')
-@include('../../partials/app-nav.stx')
+@include('../partials/app-head.stx')
+@include('../partials/app-nav.stx')
 
 <style>
   /* Page-specific, on app-head tokens: the metrics chart and its legend.
