@@ -419,6 +419,29 @@
   }
   .card-head .sub { color: var(--muted); font-size: 0.82rem; }
   .card-body { padding: 1.25rem; }
+  .card-foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    padding: 0 1.25rem 1.25rem;
+  }
+  .card-foot form { margin: 0; }
+  .card-foot .sub {
+    flex: 1 1 18rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .card-copy {
+    margin: 0 0 0.75rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .card-copy:last-child { margin-bottom: 0; }
+  .code-block + .card-copy, details > .card-copy { margin-top: 0.75rem; }
 
   /* Row-list table: a header row + link rows, marketing preview-card DNA */
   .rows { display: block; }
