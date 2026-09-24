@@ -408,7 +408,7 @@ useHead({
       </div>
       <div class="card-body">
         @if (attachedMonitors.length === 0)
-          <p class="subhead">No monitors attached yet. Attach the checks that run on this box and their pages will link back here.</p>
+          <p class="card-copy">No monitors attached yet. Attach the checks that run on this box and their pages will link back here.</p>
         @endif
         @if (attachedMonitors.length > 0)
           <dl class="kv">
@@ -504,7 +504,7 @@ useHead({
         <span class="sub">What makes this box hot</span>
       </div>
       <div class="card-body">
-        <p class="subhead">CPU alerts at {{ thresholdLabel(serverView.cpuThreshold) }} &middot; Memory at {{ thresholdLabel(serverView.ramThreshold) }} &middot; Disk at {{ thresholdLabel(serverView.diskThreshold) }} &middot; Missed-push window {{ serverView.windowSeconds }}s</p>
+        <p class="card-copy">CPU alerts at {{ thresholdLabel(serverView.cpuThreshold) }} &middot; Memory at {{ thresholdLabel(serverView.ramThreshold) }} &middot; Disk at {{ thresholdLabel(serverView.diskThreshold) }} &middot; Missed-push window {{ serverView.windowSeconds }}s</p>
       </div>
       <footer class="card-foot">
         <button type="button" class="button" id="thresholds-open">Edit thresholds</button>
@@ -519,20 +519,20 @@ useHead({
         </div>
         <div class="card-body">
           @if (serverView.status === 'unknown')
-            <p class="subhead"><strong>Waiting for the first sample.</strong> Nothing is being watched on this box yet. Run the command below and the page fills in within a minute.</p>
+            <p class="card-copy"><strong>Waiting for the first sample.</strong> Nothing is being watched on this box yet. Run the command below and the page fills in within a minute.</p>
           @endif
-          <p class="subhead">Run this on the server you want to watch. It installs a small collector and a systemd timer (or a cron entry where systemd is absent), then sends a first sample so you know it works before you walk away:</p>
+          <p class="card-copy">Run this on the server you want to watch. It installs a small collector and a systemd timer (or a cron entry where systemd is absent), then sends a first sample so you know it works before you walk away:</p>
           <pre class="code-block">{{ __agentInstall.install }}</pre>
-          <p class="subhead">Safe to re-run &mdash; that is also how you upgrade the collector. It reports CPU, memory and disk once a minute; pass <code>--interval=</code> to change the cadence (keep it under the missed-push window), <code>--mount=</code> to watch a volume other than <code>/</code>, or <code>--url=</code> for a self-hosted install.</p>
+          <p class="card-copy">Safe to re-run. That is also how you upgrade the collector. It reports CPU, memory and disk once a minute; pass <code>--interval=</code> to change the cadence (keep it under the missed-push window), <code>--mount=</code> to watch a volume other than <code>/</code>, or <code>--url=</code> for a self-hosted install.</p>
           <details>
             <summary>Other options</summary>
-            <p class="subhead">Remove it again:</p>
+            <p class="card-copy">Remove it again:</p>
             <pre class="code-block">{{ __agentInstall.uninstall }}</pre>
-            <p class="subhead">Or skip the installer entirely &mdash; anything that can POST this JSON on a schedule works:</p>
+            <p class="card-copy">Or skip the installer entirely. Anything that can POST this JSON on a schedule works:</p>
             <pre class="code-block">curl -fsS -X POST {{ __agentInstall.endpoint }} \
   -H 'Content-Type: application/json' \
   -d '{"host":"web-01","cpuPercent":37,"ramPercent":38,"ramUsedMb":6112,"ramTotalMb":16384,"diskPercent":68}'</pre>
-            <p class="subhead"><code>cpuPercent</code>, <code>ramPercent</code>, <code>ramUsedMb</code> and <code>ramTotalMb</code> are required (percentages 0&ndash;100); <code>diskPercent</code> is optional. <code>host</code> is optional but send it if more than one machine shares this token &mdash; without it every box collapses into a single <code>default</code> series.</p>
+            <p class="card-copy"><code>cpuPercent</code>, <code>ramPercent</code>, <code>ramUsedMb</code> and <code>ramTotalMb</code> are required (percentages 0-100); <code>diskPercent</code> is optional. <code>host</code> is optional but send it if more than one machine shares this token. Without it every box collapses into a single <code>default</code> series.</p>
           </details>
         </div>
         <footer class="card-foot">
@@ -557,7 +557,7 @@ useHead({
               <strong>{{ incident.title }}</strong>
               <span class="sub">{{ incident.started }}</span>
               @if (incident.cause)
-                <p class="subhead">{{ incident.cause }}</p>
+                <p class="card-copy">{{ incident.cause }}</p>
               @endif
               @foreach (incident.updates as update)
                 <p class="sub" style="margin-left: 1rem;">{{ update.at }} &middot; {{ update.message }}</p>
@@ -573,7 +573,7 @@ useHead({
         <h3>Danger zone</h3>
       </div>
       <div class="card-body">
-        <p class="subhead">Deleting this server detaches {{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }}, deletes its stored samples and closes its open incidents. The monitors and the incident history are kept.</p>
+        <p class="card-copy">Deleting this server detaches {{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }}, deletes its stored samples and closes its open incidents. The monitors and the incident history are kept.</p>
       </div>
       <footer class="card-foot">
         <form method="POST" action="/api/server-forms/{{ serverView.id }}/delete" id="delete-form">
@@ -596,7 +596,7 @@ useHead({
 
         <div class="dlg-body">
           @if (monitorChoices.length === 0)
-            <p class="subhead">This team has no monitors yet.</p>
+            <p class="card-copy">This team has no monitors yet.</p>
           @endif
           @foreach (monitorChoices as choice)
             <div class="field">
