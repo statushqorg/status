@@ -19,8 +19,8 @@ import { buildAuthCookie } from '../../app/Actions/Auth/authCookie'
 describe('auth config: session length', () => {
   const HOUR = 60 * 60 * 1000
 
-  test('a session lasts 24 hours by default', () => {
-    expect(authConfig.tokenExpiry).toBe(24 * HOUR)
+  test('a session lasts seven days by default', () => {
+    expect(authConfig.tokenExpiry).toBe(7 * 24 * HOUR)
   })
 
   test('sessions outlive a working day, since nothing renews them', () => {

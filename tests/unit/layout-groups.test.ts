@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
+import { processIncludes } from '@stacksjs/stx/includes'
 
 /**
  * A page's layout group decides whether navigating to it reloads the
@@ -102,19 +103,39 @@ describe('layout groups', () => {
       expect(`${page.path}: ${page.group === home.group ? 'COLLIDES' : 'distinct'}`).toBe(`${page.path}: distinct`)
   })
 
-  test('a page that extends a layout resolves includes from the layout dir', () => {
-    // Relative includes in a section resolve against the LAYOUT's directory,
-    // not the page's — which is why every converted page under
-    // resources/views/ writes '../partials/…'. A './partials/…' here loads
-    // nothing and the page renders an include error where its head or nav
-    // should be.
+  test('explicit and default-layout pages resolve relative includes to existing files', () => {
+    // Dashboard fragments receive layouts/default even without @extends.
+    // STX resolves their includes from that layout, not the nested page.
     for (const page of pages) {
-      if (!page.layout) continue
+      const layout = page.layout ?? (page.path.startsWith('dashboard/') ? 'layouts/default' : null)
+      if (!layout) continue
       const src = readFileSync(join(VIEWS, page.path), 'utf8')
-      const bad = [...src.matchAll(/@include\('(\.\/[^']+)'\)/g)].map(m => m[1])
-      expect(`${page.path}: ${bad.length ? bad.join(', ') : 'no ./ includes'}`)
-        .toBe(`${page.path}: no ./ includes`)
+      const layoutDir = dirname(join(VIEWS, `${layout}.stx`))
+      for (const match of src.matchAll(/@include\(\s*['"](\.{1,2}\/[^'"]+)['"]/g)) {
+        const target = resolve(layoutDir, match[1])
+        expect({ page: page.path, include: match[1], exists: existsSync(target) })
+          .toEqual({ page: page.path, include: match[1], exists: true })
+      }
     }
+  })
+
+  test.each([null, { email: 'viewer@example.test' }])('server detail renders its shared shell for user %j', async (user) => {
+    const src = readFileSync(join(VIEWS, 'dashboard/servers/[id].stx'), 'utf8')
+    const includes = [...src.matchAll(/@include\(\s*['"][^'"]+['"]\s*\)/g)].map(match => match[0]).join('\n')
+    const dependencies = new Set<string>()
+    const errors: string[] = []
+    const html = await processIncludes(includes, { AUTH_USER: user, NAV_ACTIVE: 'servers', SWITCHABLE_TEAMS: [] }, join(VIEWS, 'layouts/default.stx'), {
+      partialsDir: join(VIEWS, 'partials'),
+      onIncludeError: error => errors.push(error.message),
+    }, dependencies)
+
+    expect(errors).toEqual([])
+    expect(dependencies.has(join(VIEWS, 'partials/app-head.stx'))).toBe(true)
+    expect(dependencies.has(join(VIEWS, 'partials/app-nav.stx'))).toBe(true)
+    expect(html).toContain('--accent:')
+    expect(/<nav\b[^>]*\bclass="app-nav"/.test(html)).toBe(true)
+    expect(html).toContain(user ? 'Sign out' : 'Sign in')
+    expect(html).not.toContain('Could not resolve path for include')
   })
 
   test('every document-owning source gives the router a container', () => {
