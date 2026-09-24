@@ -69,6 +69,9 @@ const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'monitors'
 
 const appUrl = process.env.APP_URL || 'http://localhost:3000'
+// Shared by attachment feedback and the date-range filters below. Initialize
+// before either reads it so a render error cannot masquerade as a lost session.
+const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 
 const monitorId = (typeof id !== 'undefined' && id) ? Number(id) : 0
 const monitor = monitorId
@@ -279,7 +282,6 @@ if (chartChecks.length > 1) {
 // Time-range filter + request-volume/CPU/RAM aggregation. `range` picks
 // both the lookback window and the bucket granularity (hourly buckets for
 // 24h so the chart isn't just 1 bar, daily buckets for the wider windows).
-const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const range = query.get('range') || '24h'
 // Custom range: ?from=YYYY-MM-DD&to=YYYY-MM-DD, both required and valid, wins
 // over the preset. The chart is day-bucketed for a custom span, like 7d/30d.
