@@ -89,7 +89,7 @@ afterAll(async () => {
 
 describe('requestOrigin behind the production reverse proxy', () => {
   test('falls back to APP_URL when a prod-like env sees a loopback Host', async () => {
-    const { requestOrigin } = await import('../../app/Actions/Auth/oidc')
+    const { requestOrigin } = await import('../../app/Support/oidc')
     const prevEnv = process.env.APP_ENV
     const prevUrl = process.env.APP_URL
     try {
@@ -110,7 +110,7 @@ describe('requestOrigin behind the production reverse proxy', () => {
   })
 
   test('dev keeps the header-derived localhost origin', async () => {
-    const { requestOrigin } = await import('../../app/Actions/Auth/oidc')
+    const { requestOrigin } = await import('../../app/Support/oidc')
     expect(requestOrigin(new Headers({ host: 'localhost:4650' }))).toBe('http://localhost:4650')
   })
 })

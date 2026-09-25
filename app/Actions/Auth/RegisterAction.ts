@@ -5,7 +5,7 @@ import { Auth, register } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
 import { schema } from '@stacksjs/validation'
 import TeamMember from '../../Models/TeamMember'
-import { buildAuthCookie } from './authCookie'
+import { buildAuthCookie } from '../../Support/authCookie'
 import { createPersonalTeam } from '../../lib/teamContext'
 
 /**

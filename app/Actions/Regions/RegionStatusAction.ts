@@ -3,7 +3,7 @@ import { response } from '@stacksjs/router'
 import { consensusStatus, CONSENSUS_TYPES, regionsConfig } from '../../../config/regions'
 import CheckResult from '../../Models/CheckResult'
 import Monitor from '../../Models/Monitor'
-import { regionTokenValid } from './regionToken'
+import { regionTokenValid } from '../../Support/regionToken'
 
 /**
  * Regional probe fleet endpoint: GET /regions/{token}/status.

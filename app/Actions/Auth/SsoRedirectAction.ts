@@ -1,6 +1,6 @@
 import { Action } from '@stacksjs/actions'
 import { createSocialProvider, ssoProvider } from '../../../config/sso'
-import { buildFlowCookie, discover, pkceChallenge, randomToken, redirectUri } from './oidc'
+import { buildFlowCookie, discover, pkceChallenge, randomToken, redirectUri } from '../../Support/oidc'
 
 /**
  * First leg of SSO login: GET /api/auth/sso/{provider}. Generates

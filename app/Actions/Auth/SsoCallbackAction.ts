@@ -6,8 +6,8 @@ import SsoIdentity from '../../Models/SsoIdentity'
 import TeamMember from '../../Models/TeamMember'
 import { createPersonalTeam } from '../../lib/teamContext'
 import { createSocialProvider, ssoProvider } from '../../../config/sso'
-import { buildAuthCookie } from './authCookie'
-import { clearFlowCookie, decodeJwtPayload, discover, randomToken, readFlowCookie, redirectUri } from './oidc'
+import { buildAuthCookie } from '../../Support/authCookie'
+import { clearFlowCookie, decodeJwtPayload, discover, randomToken, readFlowCookie, redirectUri } from '../../Support/oidc'
 
 /**
  * Second leg of SSO login: GET (or, for Apple's form_post, POST)

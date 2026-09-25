@@ -2,7 +2,7 @@ import { Action } from '@stacksjs/actions'
 import { getUserPasskeys, resolveAuthenticatedUser, storeWebAuthnChallenge } from '@stacksjs/auth'
 import { config } from '@stacksjs/config'
 import { response } from '@stacksjs/router'
-import { bytesToBase64url, relyingParty } from './webauthn'
+import { bytesToBase64url, relyingParty } from '../../Support/webauthn'
 
 /**
  * `POST /passkeys/register/options` — start a passkey enrollment for the

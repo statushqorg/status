@@ -2,7 +2,7 @@ import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
 import { CONSENSUS_TYPES } from '../../../config/regions'
 import Monitor from '../../Models/Monitor'
-import { regionTokenValid } from './regionToken'
+import { regionTokenValid } from '../../Support/regionToken'
 
 /**
  * Regional probe fleet endpoint: GET /regions/{token}/monitors.

@@ -2,7 +2,7 @@ import type { RequestInstance } from '@stacksjs/types'
 import { Action } from '@stacksjs/actions'
 import { Auth } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
-import { clearAuthCookie } from './authCookie'
+import { clearAuthCookie } from '../../Support/authCookie'
 
 /**
  * Project override of the framework's default LogoutAction — same

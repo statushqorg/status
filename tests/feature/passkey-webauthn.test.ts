@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { db } from '@stacksjs/database'
 import { featureTest } from '@stacksjs/testing'
-import { bytesToBase64url } from '../../app/Actions/Security/webauthn'
+import { bytesToBase64url } from '../../app/Support/webauthn'
 import User from '../../app/Models/User'
 
 // WebAuthn relying-party identity the actions read via relyingParty().

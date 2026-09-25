@@ -3,7 +3,7 @@ import { consumeWebAuthnChallenge, resolveAuthenticatedUser } from '@stacksjs/au
 import { db } from '@stacksjs/database'
 import { log } from '@stacksjs/logging'
 import { response } from '@stacksjs/router'
-import { base64urlToBytes, bytesToBase64url, decodeClientData, parseAuthenticatorData, relyingParty, verifyClientData, verifyRpIdHash } from './webauthn'
+import { base64urlToBytes, bytesToBase64url, decodeClientData, parseAuthenticatorData, relyingParty, verifyClientData, verifyRpIdHash } from '../../Support/webauthn'
 
 /**
  * `POST /passkeys/register/verify` — finish enrollment. The browser posts

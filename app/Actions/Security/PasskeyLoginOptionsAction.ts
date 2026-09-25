@@ -1,6 +1,6 @@
 import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
-import { bytesToBase64url, relyingParty } from './webauthn'
+import { bytesToBase64url, relyingParty } from '../../Support/webauthn'
 
 /**
  * `POST /passkeys/login/options` — start a passwordless passkey sign-in

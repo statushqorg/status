@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import authConfig from '../../config/auth'
-import { buildAuthCookie } from '../../app/Actions/Auth/authCookie'
+import { buildAuthCookie } from '../../app/Support/authCookie'
 
 /**
  * `tokenExpiry` is the browser session length, not just an API-bearer TTL.

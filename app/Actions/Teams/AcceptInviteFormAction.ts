@@ -4,7 +4,7 @@ import { dispatch } from '@stacksjs/events'
 import { Auth, register } from '@stacksjs/auth'
 import { Team, User } from '@stacksjs/orm'
 import TeamMember from '../../Models/TeamMember'
-import { buildAuthCookie } from '../Auth/authCookie'
+import { buildAuthCookie } from '../../Support/authCookie'
 
 /**
  * Browser-facing team-invite acceptance: `POST /invite-forms/{uuid}/accept`,

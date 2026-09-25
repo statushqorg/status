@@ -4,8 +4,8 @@ import { Auth } from '@stacksjs/auth'
 import { db } from '@stacksjs/database'
 import { log } from '@stacksjs/logging'
 import { response } from '@stacksjs/router'
-import { buildAuthCookie } from '../Auth/authCookie'
-import { base64urlToBytes, decodeClientData, parseAuthenticatorData, relyingParty, verifyAssertionSignature, verifyClientData, verifyRpIdHash } from './webauthn'
+import { buildAuthCookie } from '../../Support/authCookie'
+import { base64urlToBytes, decodeClientData, parseAuthenticatorData, relyingParty, verifyAssertionSignature, verifyClientData, verifyRpIdHash } from '../../Support/webauthn'
 
 /**
  * `POST /passkeys/login/verify` — finish a passwordless passkey sign-in.
