@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import contracts from '../fixtures/sdk-metrics-contracts.json'
-import { parseAgentMetricsPayload } from '../../app/Actions/Agents/metricsPayload'
+import { parseAgentMetricsPayload } from '../../app/Support/metricsPayload'
 
 describe('agent SDK compatibility', () => {
   for (const client of contracts.clients) {

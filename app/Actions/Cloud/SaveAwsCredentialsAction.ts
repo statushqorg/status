@@ -2,7 +2,7 @@ import type { RequestInstance } from '@stacksjs/types'
 import { Action } from '@stacksjs/actions'
 import { randomUUIDv7 } from 'bun'
 import { db } from '@stacksjs/database'
-import { encryptSecret } from './cloudCrypto'
+import { encryptSecret } from '../../Support/cloudCrypto'
 import { requireTeamId } from '../../lib/teamGuard'
 
 /**

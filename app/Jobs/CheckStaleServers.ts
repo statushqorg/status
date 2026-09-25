@@ -1,7 +1,7 @@
 import { db } from '@stacksjs/database'
 import { log } from '@stacksjs/logging'
 import { Job } from '@stacksjs/queue'
-import { thresholdsForServer } from '../Actions/Agents/metricsThresholds'
+import { thresholdsForServer } from '../Support/metricsThresholds'
 import { aggregateHostStatus, readingsFromSamples, serverStatusFromFleet } from '../lib/agentHosts'
 import { reconcileServerIncidents } from '../lib/serverIncidents'
 

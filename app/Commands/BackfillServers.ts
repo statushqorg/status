@@ -5,7 +5,7 @@ import process from 'node:process'
 import { db } from '@stacksjs/database'
 import { transaction as ormTransaction } from '@stacksjs/orm'
 import { ExitCode } from '@stacksjs/types'
-import { parseMetricsThresholds } from '../Actions/Agents/metricsThresholds'
+import { parseMetricsThresholds } from '../Support/metricsThresholds'
 import { aggregateHostStatus, normalizeHost, numberOrNull, readingsFromSamples, serverStatusFromFleet } from '../lib/agentHosts'
 
 /**

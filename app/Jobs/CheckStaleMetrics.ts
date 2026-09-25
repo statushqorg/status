@@ -1,7 +1,7 @@
 import { log } from '@stacksjs/logging'
 import { Job } from '@stacksjs/queue'
 import { CONSENSUS_TYPES } from '../../config/regions'
-import { parseMetricsThresholds } from '../Actions/Agents/metricsThresholds'
+import { parseMetricsThresholds } from '../Support/metricsThresholds'
 import CheckResult from '../Models/CheckResult'
 import { openIncident } from '../lib/maintenance'
 import Monitor from '../Models/Monitor'
