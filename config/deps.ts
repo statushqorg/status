@@ -26,6 +26,21 @@ const usePostgres = (process.env.DB_CONNECTION || "sqlite") === "postgres";
 const isProduction = (process.env.APP_ENV || process.env.NODE_ENV || "").toLowerCase() === "production";
 const useRedis = usePostgres || process.env.QUEUE_DRIVER === "redis";
 
+/**
+ * Pantry runs these commands on the machine invoking `buddy deploy`, not on
+ * the target server. A production deploy therefore used the runner's copy of
+ * DB_DATABASE_PATH (`/var/lib/uptime-status/...`), logged EACCES and migration
+ * failures, then continued because Pantry does not propagate hook failures.
+ *
+ * The `main` site in config/cloud.ts owns production migrations through its
+ * fail-fast `preStart` command. Keep Pantry's setup hook development-only so
+ * there is exactly one production migration owner and it runs beside the live
+ * database.
+ */
+export function postDatabaseSetupCommands(production = isProduction): string[] {
+  return production ? [] : ["bun buddy migrate", "bun buddy seed"];
+}
+
 // System-binary provisioning is OPT-IN (STACKS_SYSTEM_DEPS=1) while
 // registry.pantry.dev is down: every source:pantry download 502s
 // (bun.sh/sqlite.org/zlib/readline/ncurses DownloadFailed), which kept
@@ -95,9 +110,7 @@ export const config: PantryConfig = {
     // there until the 1200s timeout killed it, never reaching the SSH step.
     // The package.json script enters the published CLI directly; bun install
     // has already run by this point, so node_modules is present.
-    postDatabaseSetup: isProduction
-      ? ["bun buddy migrate"]
-      : ["bun buddy migrate", "bun buddy seed"],
+    postDatabaseSetup: postDatabaseSetupCommands(),
 
     /**
      * Framework-specific service detection
