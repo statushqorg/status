@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { isEmailDomainAllowed, isIpAllowed } from '../../app/Actions/StatusPages/AccessControl'
+import { isEmailDomainAllowed, isIpAllowed } from '../../app/Support/statusPageAccess'
 
 describe('isIpAllowed — IPv4', () => {
   test('empty ip or empty ranges fails closed', () => {

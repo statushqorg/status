@@ -1,8 +1,8 @@
-import type { AssertionSubject } from '../../lib/assertionEval'
-import { describeAssertion, evaluateAssertion } from '../../lib/assertionEval'
-import Assertion from '../../Models/Assertion'
+import type { AssertionSubject } from '../lib/assertionEval'
+import { describeAssertion, evaluateAssertion } from '../lib/assertionEval'
+import Assertion from '../Models/Assertion'
 
-export type { AssertionSubject } from '../../lib/assertionEval'
+export type { AssertionSubject } from '../lib/assertionEval'
 
 export interface AssertionEvaluation {
   passed: boolean

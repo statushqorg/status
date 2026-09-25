@@ -5,7 +5,7 @@ import { limitReachedMessage, planForTeam } from '../../../config/plans'
 import Monitor from '../../Models/Monitor'
 import StatusPage from '../../Models/StatusPage'
 import StatusPageMonitor from '../../Models/StatusPageMonitor'
-import { fetchNormalizedStatusPage } from './ImportProviders'
+import { fetchNormalizedStatusPage } from '../../Support/statusPageProviders'
 
 function slugify(input: string): string {
   return input.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'imported'

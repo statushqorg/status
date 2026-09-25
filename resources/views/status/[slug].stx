@@ -4,7 +4,7 @@
 import { formatDateTime } from '../../../app/lib/display'
 import { inAnyInterval, maintenanceIntervalsByMonitor } from '../../../app/lib/maintenance'
 import { computeUptime, roundMsForInterval } from '../../../app/lib/uptime'
-import { isIpAllowed } from '../../../app/Actions/StatusPages/AccessControl'
+import { isIpAllowed } from '../../../app/Support/statusPageAccess'
 import { decrypt } from '@stacksjs/security'
 import { db } from '@stacksjs/database'
 import { cache } from '@stacksjs/cache'

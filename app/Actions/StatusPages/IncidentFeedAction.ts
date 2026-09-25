@@ -3,7 +3,7 @@ import StatusPage from '../../Models/StatusPage'
 import StatusPageMonitor from '../../Models/StatusPageMonitor'
 import Incident from '../../Models/Incident'
 import Monitor from '../../Models/Monitor'
-import { isStatusPageAccessGranted } from './AccessControl'
+import { isStatusPageAccessGranted } from '../../Support/statusPageAccess'
 
 function escapeXml(value: string): string {
   return value

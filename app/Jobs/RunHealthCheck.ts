@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { log } from '@stacksjs/logging'
 import { Job } from '@stacksjs/queue'
-import { evaluateAssertions } from '../Actions/Assertions/EvaluateAssertionsAction'
+import { evaluateAssertions } from '../Support/evaluateAssertions'
 import { coerceHealthReport, DEFAULT_MAX_AGE_SECONDS, evaluateAppHealth } from '../lib/appHealth'
 import CheckResult from '../Models/CheckResult'
 import Monitor from '../Models/Monitor'

@@ -1,7 +1,7 @@
 import { Action } from '@stacksjs/actions'
 import { encrypt, verifyHash } from '@stacksjs/security'
 import StatusPage from '../../Models/StatusPage'
-import { isEmailDomainAllowed } from './AccessControl'
+import { isEmailDomainAllowed } from '../../Support/statusPageAccess'
 
 /**
  * The `redirect` field is attacker-controlled (it comes straight off the
