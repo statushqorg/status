@@ -6,6 +6,17 @@ interface SmokeContract {
   homeText: string
 }
 
+interface HealthPayload {
+  app?: unknown
+  status?: unknown
+  checks?: {
+    database?: {
+      ok?: unknown
+      message?: unknown
+    }
+  }
+}
+
 const CONTRACTS: Record<string, SmokeContract> = {
   analyticshq: { domain: 'analyticshq.org', homeText: 'analyticshq' },
   bughq: { domain: 'bughq.org', homeText: 'Error tracking for people who ship.' },
@@ -34,7 +45,13 @@ async function readWithRetry(path: string): Promise<string> {
     try {
       const separator = path.includes('?') ? '&' : '?'
       const response = await fetch(`${baseUrl}${path}${separator}smoke=${Date.now()}`, {
-        headers: { accept: path === '/robots.txt' ? 'text/plain' : 'text/html' },
+        headers: {
+          accept: path === '/robots.txt'
+            ? 'text/plain'
+            : path === '/api/health'
+              ? 'application/json'
+              : 'text/html',
+        },
         redirect: 'follow',
         signal: AbortSignal.timeout(10_000),
       })
@@ -50,14 +67,43 @@ async function readWithRetry(path: string): Promise<string> {
   throw new Error(`${baseUrl}${path} failed after ${attempts} attempts: ${lastFailure}`)
 }
 
-const home = await readWithRetry('/')
-if (!home.includes(contract.homeText)) throw new Error(`Homepage does not contain the expected release marker: ${contract.homeText}`)
+export function assertHealthyDeployment(body: string): void {
+  let health: HealthPayload
+  try {
+    health = JSON.parse(body) as HealthPayload
+  }
+  catch {
+    throw new Error('Health smoke response is not valid JSON.')
+  }
 
-const login = await readWithRetry('/login')
-if (!/<(?:form|main)\b/i.test(login)) throw new Error('Login smoke response does not contain an application form or main region.')
+  if (health.app !== 'statushq')
+    throw new Error(`Health smoke response belongs to ${String(health.app || 'an unknown app')}, not statushq.`)
 
-const robots = await readWithRetry('/robots.txt')
-if (robots.includes('http://localhost')) throw new Error('Deployed robots.txt contains a localhost URL.')
-if (!robots.includes(new URL(baseUrl).hostname)) throw new Error(`Deployed robots.txt does not name ${new URL(baseUrl).hostname}.`)
+  if (health.status !== 'healthy')
+    throw new Error(`Health smoke reported application status ${String(health.status || 'unknown')}.`)
 
-console.log(`Deployment smoke passed for ${baseUrl}: homepage, login, and robots metadata are live.`)
+  if (health.checks?.database?.ok !== true) {
+    const detail = health.checks?.database?.message
+    throw new Error(`Health smoke reported an unhealthy database${detail ? `: ${String(detail)}` : '.'}`)
+  }
+}
+
+async function run(): Promise<void> {
+  const home = await readWithRetry('/')
+  if (!home.includes(contract.homeText)) throw new Error(`Homepage does not contain the expected release marker: ${contract.homeText}`)
+
+  const login = await readWithRetry('/login')
+  if (!/<(?:form|main)\b/i.test(login)) throw new Error('Login smoke response does not contain an application form or main region.')
+
+  const health = await readWithRetry('/api/health')
+  assertHealthyDeployment(health)
+
+  const robots = await readWithRetry('/robots.txt')
+  if (robots.includes('http://localhost')) throw new Error('Deployed robots.txt contains a localhost URL.')
+  if (!robots.includes(new URL(baseUrl).hostname)) throw new Error(`Deployed robots.txt does not name ${new URL(baseUrl).hostname}.`)
+
+  console.log(`Deployment smoke passed for ${baseUrl}: homepage, login, database health, and robots metadata are live.`)
+}
+
+if (import.meta.main)
+  await run()
