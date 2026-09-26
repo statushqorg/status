@@ -47,7 +47,7 @@
   "dependencies": {
     "@stacksjs/config": "workspace:*",
     "@stacksjs/dns": "workspace:*",
-    "@stacksjs/logging": "workspace:*",
+    "@stacksjs/logging": "workspace:*0.75.5",
     "@stacksjs/path": "workspace:*",
     "@stacksjs/queue": "workspace:*",
     "@stacksjs/router": "workspace:*",
@@ -57,7 +57,7 @@
   },
   "devDependencies": {
     "@stacksjs/cli": "workspace:*",
-    "better-dx": "^0.2.7",
+    "better-dx": "^0.2.25",
     "@stacksjs/env": "workspace:*"
   }
 }
