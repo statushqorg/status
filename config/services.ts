@@ -55,14 +55,14 @@ export default {
   facebook: {
     clientId: String(env.FACEBOOK_CLIENT_ID || ''),
     clientSecret: String(env.FACEBOOK_CLIENT_SECRET || ''),
-    redirectUrl: String(env.FACEBOOK_REDIRECT_URL || 'http://localhost:3000/auth/facebook/callback'),
+    redirectUrl: String(env.FACEBOOK_REDIRECT_URL || 'http://localhost:3000/api/auth/sso/facebook/callback'),
     scopes: ['email', 'public_profile'],
   },
 
   twitter: {
     clientId: String(env.TWITTER_CLIENT_ID || ''),
     clientSecret: String(env.TWITTER_CLIENT_SECRET || ''),
-    redirectUrl: String(env.TWITTER_REDIRECT_URL || 'http://localhost:3000/auth/twitter/callback'),
+    redirectUrl: String(env.TWITTER_REDIRECT_URL || 'http://localhost:3000/api/auth/sso/twitter/callback'),
     scopes: ['tweet.read', 'users.read', 'offline.access'],
   },
 
