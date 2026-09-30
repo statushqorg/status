@@ -136,6 +136,11 @@ export interface MonitorFormInput {
   // health (type: health)
   health_secret?: unknown
   health_max_age_seconds?: unknown
+  // the request an uptime check sends (type: uptime); see app/lib/httpRequest.ts
+  request_method?: unknown
+  request_headers?: unknown
+  request_body?: unknown
+  expected_status?: unknown
   // heartbeat (type: cron)
   expected_interval_seconds?: unknown
   grace_seconds?: unknown
@@ -175,6 +180,73 @@ export function heartbeatAttributesFor(type: MonitorType, input: MonitorFormInpu
   const grace = intInRange(input.grace_seconds, 0, 86_400) ?? 300
   const cron = String(input.cron_expression ?? '').trim()
   return { expected_interval_seconds: expected, grace_seconds: grace, cron_expression: cron || null }
+}
+
+const REQUEST_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+
+/**
+ * The request settings an uptime monitor's form holds, as the config keys
+ * RunUptimeCheck reads (app/lib/httpRequest.ts). Only what differs from a
+ * plain GET that is up on 2xx/3xx is written, so an ordinary uptime monitor's
+ * config stays empty.
+ *
+ *   request_method   one of REQUEST_METHODS
+ *   request_headers  one `Name: value` per line
+ *   request_body     sent as JSON when it parses as a JSON object or array,
+ *                    otherwise as the text given; ignored for GET and HEAD
+ *   expected_status  status codes that mean up, e.g. `404` or `200, 204`
+ */
+export function uptimeRequestConfig(input: MonitorFormInput): Record<string, unknown> {
+  const config: Record<string, unknown> = {}
+
+  const method = String(input.request_method ?? '').trim().toUpperCase()
+  if (REQUEST_METHODS.includes(method) && method !== 'GET')
+    config.method = method
+
+  const headers: Record<string, string> = {}
+  for (const line of String(input.request_headers ?? '').split(/\r?\n/)) {
+    const at = line.indexOf(':')
+    if (at <= 0)
+      continue
+    const name = line.slice(0, at).trim()
+    const value = line.slice(at + 1).trim()
+    if (/^[!#$%&'*+.^\w`|~-]+$/.test(name))
+      headers[name] = value
+  }
+  if (Object.keys(headers).length > 0)
+    config.headers = headers
+
+  const body = String(input.request_body ?? '').trim()
+  if (body && config.method && config.method !== 'HEAD') {
+    let parsed: unknown = body
+    try {
+      const json = JSON.parse(body)
+      if (json && typeof json === 'object')
+        parsed = json
+    }
+    catch {}
+    config.body = parsed
+  }
+
+  const expected = String(input.expected_status ?? '')
+    .split(/[\s,]+/)
+    .map(code => intInRange(code, 100, 599))
+    .filter((code): code is number => code !== null)
+  if (expected.length > 0)
+    config.expectedStatus = [...new Set(expected)]
+
+  return config
+}
+
+/** The form's view of an uptime monitor's request config, for prefilling the edit form. */
+export function uptimeRequestFormValues(cfg: Record<string, unknown>): { method: string, headers: string, body: string, expectedStatus: string } {
+  const method = typeof cfg.method === 'string' && REQUEST_METHODS.includes(cfg.method.toUpperCase()) ? cfg.method.toUpperCase() : 'GET'
+  const headers = cfg.headers && typeof cfg.headers === 'object' && !Array.isArray(cfg.headers)
+    ? Object.entries(cfg.headers as Record<string, unknown>).map(([name, value]) => `${name}: ${String(value)}`).join('\n')
+    : ''
+  const body = cfg.body === undefined || cfg.body === null ? '' : typeof cfg.body === 'string' ? cfg.body : JSON.stringify(cfg.body, null, 2)
+  const statuses = Array.isArray(cfg.expectedStatus) ? cfg.expectedStatus : cfg.expectedStatus === undefined ? [] : [cfg.expectedStatus]
+  return { method, headers, body, expectedStatus: statuses.join(', ') }
 }
 
 /**
@@ -240,6 +312,9 @@ export function buildMonitorConfig(type: MonitorType, input: MonitorFormInput): 
     if (device === 'desktop' || device === 'mobile')
       config.device = device
   }
+
+  if (type === 'uptime')
+    Object.assign(config, uptimeRequestConfig(input))
 
   // Latency degradation applies to the request-shaped checks.
   if (type === 'uptime' || type === 'tcp_port' || type === 'health' || type === 'ping') {

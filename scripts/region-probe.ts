@@ -79,16 +79,51 @@ function hostOf(url: string): string {
   }
 }
 
-/** HTTP uptime check — mirrors RunUptimeCheck (2xx/3xx = up). */
+/**
+ * The request and the healthy statuses a monitor's config describes. Mirrors
+ * app/lib/httpRequest.ts (this file cannot import it: it ships alone), so a
+ * region sends the POST a monitor asks for and counts its expected 404 as up,
+ * rather than voting "down" against the primary.
+ */
+const PROBE_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
+
+function uptimeRequest(cfg: Record<string, unknown>): { method: string, headers: Record<string, string>, body?: string } {
+  const raw = typeof cfg.method === 'string' ? cfg.method.trim().toUpperCase() : 'GET'
+  const method = PROBE_METHODS.has(raw) ? raw : 'GET'
+  const headers: Record<string, string> = {}
+  if (cfg.headers && typeof cfg.headers === 'object' && !Array.isArray(cfg.headers)) {
+    for (const [name, value] of Object.entries(cfg.headers as Record<string, unknown>)) {
+      if (/^[!#$%&'*+.^\w`|~-]+$/.test(name) && (typeof value === 'string' || typeof value === 'number') && !/[\r\n]/.test(String(value)))
+        headers[name] = String(value)
+    }
+  }
+  if (method === 'GET' || method === 'HEAD' || cfg.body === undefined || cfg.body === null)
+    return { method, headers }
+  if (typeof cfg.body === 'string')
+    return { method, headers, body: cfg.body }
+  const namesContentType = Object.keys(headers).some(name => name.toLowerCase() === 'content-type')
+  return { method, headers: namesContentType ? headers : { ...headers, 'content-type': 'application/json' }, body: JSON.stringify(cfg.body) }
+}
+
+function uptimeExpects(cfg: Record<string, unknown>, status: number): boolean {
+  const raw = Array.isArray(cfg.expectedStatus) ? cfg.expectedStatus : cfg.expectedStatus === undefined ? [] : [cfg.expectedStatus]
+  const codes = raw.map(code => typeof code === 'string' ? Number(code) : code)
+    .filter((code): code is number => typeof code === 'number' && Number.isInteger(code) && code >= 100 && code <= 599)
+  return codes.length ? codes.includes(status) : status >= 200 && status < 400
+}
+
+/** HTTP uptime check — mirrors RunUptimeCheck (2xx/3xx = up, unless the config says otherwise). */
 async function checkUptime(monitor: Monitor): Promise<Result> {
   const startedAt = performance.now()
   let status: Status = 'down'
   let statusCode: number | undefined
   let message = ''
+  const cfg = parseConfig(monitor.config)
   try {
-    const res = await fetch(monitor.url, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) })
+    const request = uptimeRequest(cfg)
+    const res = await fetch(monitor.url, { ...request, redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) })
     statusCode = res.status
-    status = res.status >= 200 && res.status < 400 ? 'up' : 'down'
+    status = uptimeExpects(cfg, res.status) ? 'up' : 'down'
     message = status === 'up' ? 'OK' : `Unexpected status code ${res.status}`
   }
   catch (error) {

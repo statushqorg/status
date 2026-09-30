@@ -2,6 +2,7 @@ import process from 'node:process'
 import { log } from '@stacksjs/logging'
 import { Job } from '@stacksjs/queue'
 import { evaluateAssertions } from '../Support/evaluateAssertions'
+import { isExpectedStatus, monitorRequest, unexpectedStatusMessage } from '../lib/httpRequest'
 import { applyLatencyThreshold, configNumber, parseMonitorConfig } from '../lib/monitorConfig'
 import CheckResult from '../Models/CheckResult'
 import Monitor from '../Models/Monitor'
@@ -66,21 +67,29 @@ export default new Job({
       return
     }
 
+    // The request and the statuses that count as up come from the monitor's
+    // config (app/lib/httpRequest.ts): a GET that is up on 2xx/3xx unless it
+    // says otherwise, e.g. a POST whose healthy answer is a 404.
+    const cfg = parseMonitorConfig(monitor.config)
+    const request = monitorRequest(cfg)
+
     try {
       const response = await fetch(monitor.url, {
-        method: 'GET',
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
         redirect: 'follow',
         signal: AbortSignal.timeout(15_000),
       })
       statusCode = response.status
-      status = response.status >= 200 && response.status < 400 ? 'up' : 'down'
-      message = status === 'up' ? 'OK' : `Unexpected status code ${response.status}`
+      status = isExpectedStatus(cfg, response.status) ? 'up' : 'down'
+      message = status === 'up' ? 'OK' : unexpectedStatusMessage(cfg, response.status)
 
       // Assertions (stacksjs/status#1 Phase 12) only run when the base
-      // HTTP check already passed — a 500 is already "down" regardless of
-      // what the body says. Body is read in full for keyword/JSONPath-ish
-      // matching; fine for typical monitored health/API/HTML endpoints,
-      // not meant for streaming huge payloads.
+      // HTTP check already passed — an unexpected status is already "down"
+      // regardless of what the body says. Body is read in full for
+      // keyword/JSONPath-ish matching; fine for typical monitored
+      // health/API/HTML endpoints, not meant for streaming huge payloads.
       if (status === 'up') {
         const headers: Record<string, string> = {}
         response.headers.forEach((value, key) => { headers[key.toLowerCase()] = value })
@@ -108,7 +117,7 @@ export default new Job({
     // Slow-but-serving: a reachable endpoint over the latency threshold is
     // reported 'degraded' (config `latencyThresholdMs`, 0 disables), which
     // EvaluateMonitorConsensus propagates to the monitor's status.
-    const latencyThresholdMs = configNumber(parseMonitorConfig(monitor.config), 'latencyThresholdMs', 0)
+    const latencyThresholdMs = configNumber(cfg, 'latencyThresholdMs', 0)
     const degraded = applyLatencyThreshold(status, responseTimeMs, latencyThresholdMs)
     if (degraded !== status) {
       status = degraded

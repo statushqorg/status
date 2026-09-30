@@ -244,6 +244,41 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
             </div>
           </div>
 
+          {{-- The request an uptime check sends (app/lib/httpRequest.ts). Empty
+               means a GET that is up on any 2xx or 3xx, as before. --}}
+          <div class="form-row">
+            <div class="field" data-types="uptime">
+              <label for="request_method">Request method</label>
+              <select id="request_method" name="request_method" class="select">
+                <option value="GET" selected>GET</option>
+                <option value="HEAD">HEAD</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+                <option value="OPTIONS">OPTIONS</option>
+              </select>
+              <p class="help">HEAD checks a large download without fetching it.</p>
+            </div>
+            <div class="field" data-types="uptime">
+              <label for="expected_status">Expected status codes</label>
+              <input id="expected_status" type="text" name="expected_status" class="input" placeholder="any 2xx or 3xx" />
+              <p class="help">e.g. 404 for an API whose healthy answer is not found. Anything else is down.</p>
+            </div>
+          </div>
+
+          <div class="field" data-types="uptime">
+            <label for="request_headers">Request headers</label>
+            <textarea id="request_headers" name="request_headers" class="input mono" rows="2" placeholder="Accept: application/json"></textarea>
+            <p class="help">One <span class="mono">Name: value</span> per line.</p>
+          </div>
+
+          <div class="field" data-types="uptime">
+            <label for="request_body">Request body</label>
+            <textarea id="request_body" name="request_body" class="input mono" rows="3" placeholder='{"key": "..."}'></textarea>
+            <p class="help">Sent with POST, PUT, PATCH, DELETE or OPTIONS. JSON is sent as JSON.</p>
+          </div>
+
           <div class="form-row">
             <div class="field" data-types="uptime tcp_port health ping">
               <label for="latency_threshold_ms">Degraded above (ms)</label>

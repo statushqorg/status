@@ -36,6 +36,7 @@ const chartArea = area
 // NB: `import { x as y }` does NOT work in a server block in this stx build --
 // the alias binds undefined. Import the real names, then bind locally below.
 import { checkPillClass } from '../../../../app/lib/appHealth'
+import { uptimeRequestFormValues } from '../../../../app/lib/monitorForm'
 import { formatDateTime, incidentPillClass, relativeTime, serverStatusPill, siteHost, siteSlug, statusLabel, statusPillClass } from '../../../../app/lib/display'
 import { describeCadence, formatDurationSeconds, pingUrls, summarizeHeartbeat } from '../../../../app/lib/heartbeat'
 
@@ -327,6 +328,9 @@ try {
 catch (err) {
   monitorCfg = {}
 }
+// The uptime request settings as the form shows them (app/lib/monitorForm.ts).
+const uptimeRequest = uptimeRequestFormValues(monitorCfg)
+const requestMethods = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 function cfgValue(key) {
   const value = monitorCfg[key]
   if (value === undefined || value === null) return ''
@@ -1572,6 +1576,32 @@ summary:focus-visible {
                 <label for="edit-health-max-age">Report freshness (seconds)</label>
                 <input id="edit-health-max-age" type="number" name="health_max_age_seconds" class="input" min="30" max="86400" value="{{ cfgValue('healthMaxAgeSeconds') }}" />
               </div>
+            </div>
+
+            {{-- The request an uptime check sends (app/lib/httpRequest.ts). --}}
+            <div class="form-row">
+              <div class="field" data-types="uptime">
+                <label for="edit-request-method">Request method</label>
+                <select id="edit-request-method" name="request_method" class="select">
+                  @foreach(requestMethods as method)
+                    <option value="{{ method }}" {{ uptimeRequest.method === method ? 'selected' : '' }}>{{ method }}</option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="field" data-types="uptime">
+                <label for="edit-expected-status">Expected status codes</label>
+                <input id="edit-expected-status" type="text" name="expected_status" class="input" placeholder="any 2xx or 3xx" value="{{ uptimeRequest.expectedStatus }}" />
+              </div>
+            </div>
+
+            <div class="field" data-types="uptime">
+              <label for="edit-request-headers">Request headers</label>
+              <textarea id="edit-request-headers" name="request_headers" class="input mono" rows="2" placeholder="Accept: application/json">{{ uptimeRequest.headers }}</textarea>
+            </div>
+
+            <div class="field" data-types="uptime">
+              <label for="edit-request-body">Request body</label>
+              <textarea id="edit-request-body" name="request_body" class="input mono" rows="3">{{ uptimeRequest.body }}</textarea>
             </div>
 
             <div class="form-row">

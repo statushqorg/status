@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { acceptsBareHost, buildMonitorConfig, coerceCheckbox, intInRange, isMonitorType, MONITOR_TYPES, parseMonitorForm, parsePortList } from '../../app/lib/monitorForm'
+import { acceptsBareHost, buildMonitorConfig, coerceCheckbox, intInRange, isMonitorType, MONITOR_TYPES, parseMonitorForm, parsePortList, uptimeRequestFormValues } from '../../app/lib/monitorForm'
 
 /** A minimally valid submission; individual tests override one field. */
 function form(overrides: Record<string, unknown> = {}) {
@@ -245,5 +245,46 @@ describe('parseMonitorForm', () => {
 
   test('non-cron monitors carry no heartbeat', () => {
     expect(parseMonitorForm(form()).heartbeat).toBeNull()
+  })
+})
+
+describe('the request an uptime monitor sends, from the form', () => {
+  test('a plain uptime monitor writes nothing, as before', () => {
+    expect(buildMonitorConfig('uptime', { request_method: 'GET', request_headers: '', request_body: '', expected_status: '' })).toEqual({})
+  })
+
+  test('a POST with a JSON body and an expected 404', () => {
+    expect(buildMonitorConfig('uptime', {
+      request_method: 'post',
+      request_headers: 'Accept: application/json\nnot a header\nX-Probe:  statushq ',
+      request_body: '{"key": "UPLK-2222-3333-4444-5555"}',
+      expected_status: '404',
+    })).toEqual({
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-Probe': 'statushq' },
+      body: { key: 'UPLK-2222-3333-4444-5555' },
+      expectedStatus: [404],
+    })
+  })
+
+  test('keeps a body that is not JSON as text, and drops a body a HEAD or GET cannot send', () => {
+    expect(buildMonitorConfig('uptime', { request_method: 'PUT', request_body: 'a=1' })).toEqual({ method: 'PUT', body: 'a=1' })
+    expect(buildMonitorConfig('uptime', { request_method: 'HEAD', request_body: '{"a":1}' })).toEqual({ method: 'HEAD' })
+    expect(buildMonitorConfig('uptime', { request_body: '{"a":1}' })).toEqual({})
+  })
+
+  test('reads a list of expected codes and ignores what is not one', () => {
+    expect(buildMonitorConfig('uptime', { expected_status: '200, 204 204 999 abc' })).toEqual({ expectedStatus: [200, 204] })
+  })
+
+  test('belongs to uptime monitors only', () => {
+    expect(buildMonitorConfig('health', { request_method: 'POST', expected_status: '404' })).toEqual({})
+  })
+
+  test('prefills the edit form with what it saved, so saving again keeps it', () => {
+    const saved = buildMonitorConfig('uptime', { request_method: 'POST', request_headers: 'Accept: application/json', request_body: '{"key":"k"}', expected_status: '404' })
+    const shown = uptimeRequestFormValues(saved)
+    expect(shown.method).toBe('POST')
+    expect(buildMonitorConfig('uptime', { request_method: shown.method, request_headers: shown.headers, request_body: shown.body, expected_status: shown.expectedStatus })).toEqual(saved)
   })
 })

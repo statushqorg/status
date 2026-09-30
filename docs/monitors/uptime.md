@@ -17,6 +17,25 @@ On each run the checker opens an HTTP(S) request to your target URL and measures
 
 Checks run from **US-East** and additional regions, and a failure is only declared after **regional consensus** - a single region blipping won't page you. Intervals range from every **30 seconds** up to hourly.
 
+## The request it sends
+
+By default a check is a `GET` that follows redirects and counts any `2xx` or `3xx` as up. An uptime monitor can send something else, from the monitor's form or its `config`:
+
+| Form field | `config` key | What it does |
+|---|---|---|
+| Request method | `method` | `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS`. `HEAD` checks a large download without fetching it. |
+| Request headers | `headers` | One `Name: value` per line; an object in `config`. |
+| Request body | `body` | Sent with any method but `GET` and `HEAD`. JSON is sent as JSON with a JSON content type. |
+| Expected status codes | `expectedStatus` | The codes that mean up, e.g. `404`. Anything else is down, a `200` included. |
+
+Expected status codes are what let you watch an API whose healthy answer is not a `2xx`. A license API asked about a key that does not exist should answer `404` with `{"valid": false}`, and that answer proves it is up:
+
+```json
+{ "method": "POST", "body": { "key": "UPLK-2222-3333-4444-5555" }, "expectedStatus": [404] }
+```
+
+Add a body assertion (`valid` equals `false`) to check the JSON as well as the status.
+
 ## What triggers an alert
 
 - The request times out, the connection is refused, or DNS/TLS fails.
