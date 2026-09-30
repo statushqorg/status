@@ -704,20 +704,44 @@ useHead({
 
     // Both of these are one-way. Rotating stops the installed agent reporting
     // until it is re-run, and deleting cannot be undone.
-    var rotate = document.getElementById('rotate-form')
-    if (rotate) {
-      rotate.addEventListener('submit', function (event) {
-        if (!window.confirm('Rotate the token? The agent already installed on this box stops reporting until you re-run the install command.'))
-          event.preventDefault()
+    //
+    // stxConfirm is a promise, so the submit is always cancelled first and the
+    // form re-submitted once the operator has answered. form.submit() does not
+    // re-fire this listener, so there is no second pass to guard against.
+    //
+    // window.confirm stays as the fallback rather than assuming the dialog is
+    // there. This is a plain script, not a <script client>, so it runs whether
+    // or not the signals runtime loaded — and an unguarded delete is a worse
+    // outcome than an unstyled prompt.
+    function guardSubmit(formId, message, options, fallback) {
+      var form = document.getElementById(formId)
+      if (!form)
+        return
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault()
+        var ask = window.stxConfirm
+          ? window.stxConfirm(message, options)
+          : Promise.resolve(window.confirm(fallback))
+        Promise.resolve(ask).then(function (ok) {
+          if (ok)
+            form.submit()
+        })
       })
     }
 
-    var remove = document.getElementById('delete-form')
-    if (remove) {
-      remove.addEventListener('submit', function (event) {
-        if (!window.confirm('Delete this server? Its monitors are detached and kept, its samples are deleted, and its open incidents are closed.'))
-          event.preventDefault()
-      })
-    }
+    guardSubmit(
+      'rotate-form',
+      'The agent already installed on this box stops reporting until you re-run the install command.',
+      { title: 'Rotate the token?', confirmText: 'Rotate token', cancelText: 'Cancel', type: 'warning' },
+      'Rotate the token? The agent already installed on this box stops reporting until you re-run the install command.',
+    )
+
+    guardSubmit(
+      'delete-form',
+      'Its monitors are detached and kept, its samples are deleted, and its open incidents are closed.',
+      { title: 'Delete this server?', confirmText: 'Delete server', cancelText: 'Cancel', type: 'error' },
+      'Delete this server? Its monitors are detached and kept, its samples are deleted, and its open incidents are closed.',
+    )
   })()
 </script>
