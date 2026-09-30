@@ -100,6 +100,22 @@ export default {
   // generic og/twitter injector out of the way.
   skipDefaultSeoTags: true,
 
+  // Registers the shipped UI components (@stacksjs/components) by tag name.
+  // This is the ONLY code path that fills stx's _pluginComponentDirs, so
+  // without it a <Button> or <Table> does not fall back to plain markup - it
+  // renders an absolute filesystem path as an error string into the page body.
+  // bughq/loghq/analyticshq register the same plugin; commshq/reportshq reach
+  // the same library through a vendored plugin. statushq had neither.
+  //
+  // Adoption is deliberately partial: 56 of the 102 components hard-code
+  // Tailwind palette colours (bg-blue-500) and 59 carry dark: variants, which
+  // fight this app's crosswind token system, where dark mode is a custom
+  // property swap. See stacksjs/stx#1993. Only the 46 unpainted components
+  // (Table*, Popover, Portal, Transition, VirtualList, Sidebar*) are adoptable
+  // until that lands; registering the plugin makes them reachable and costs
+  // nothing for the rest.
+  plugins: ['@stacksjs/components/stx-plugin'],
+
   // Warning mode first (stx-standards 12-enforcement): surface prohibited
   // DOM usage as a migration work queue without failing builds. Ratchet to
   // failOnViolation: true at the end of the migration (Phase 7).
