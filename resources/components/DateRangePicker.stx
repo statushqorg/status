@@ -15,33 +15,47 @@
     tests/unit/date-range-picker.test.ts evaluates the code that ships. --}}
 <script client>
 // #region pure
+// ---- per-app configuration --------------------------------------------------
+// The only lines in this region that differ between the four HQ pickers; the
+// shared core below is kept byte-identical so a fix in one app ports cleanly.
+/** Spans statushq's server knows by name; these go out as ?range=, not ?from=&to=. */
+const PICK_SERVER_RANGES: string[] = ['24h', '7d', '30d']
+/** Query keys a period change clears, beyond the period keys themselves. */
+const PICK_RESET_KEYS: string[] = []
+
+// ---- shared core: byte-identical in analyticshq, bughq, loghq and statushq ---
+/** One day cell in a month grid. */
+interface PickCell { ymd: string, day: number, inMonth: boolean, future: boolean }
+/** A period: explicit local days, or a span the server knows by name (?range=). */
+type PickSelection = { from: string, to: string, range?: undefined } | { range: string, from?: undefined, to?: undefined }
+
 /** 'YYYY-MM-DD' for a local calendar day; m is 0-based like Date. */
-function pickYmd(y, m, d) {
+function pickYmd(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
-function pickParse(s) {
+function pickParse(s: string): { y: number, m: number, d: number } {
   const [y, m, d] = s.split('-').map(Number)
   return { y, m: m - 1, d }
 }
 /** Day arithmetic through the Date constructor, so DST never shifts a date. */
-function pickShift(s, days) {
+function pickShift(s: string, days: number): string {
   const { y, m, d } = pickParse(s)
   const t = new Date(y, m, d + days)
   return pickYmd(t.getFullYear(), t.getMonth(), t.getDate())
 }
-function pickMonthOf(s) {
+function pickMonthOf(s: string): string {
   return s.slice(0, 7)
 }
-function pickShiftMonth(ym, n) {
+function pickShiftMonth(ym: string, n: number): string {
   const [y, m] = ym.split('-').map(Number)
   const t = new Date(y, m - 1 + n, 1)
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`
 }
 /** Six weeks of cells starting on the Sunday on or before the 1st. */
-function pickGrid(ym, todayYmd) {
+function pickGrid(ym: string, todayYmd: string): PickCell[] {
   const [y, m] = ym.split('-').map(Number)
   const first = new Date(y, m - 1, 1)
-  const cells = []
+  const cells: PickCell[] = []
   for (let i = 0; i < 42; i++) {
     const t = new Date(y, m - 1, 1 - first.getDay() + i)
     const s = pickYmd(t.getFullYear(), t.getMonth(), t.getDate())
@@ -49,16 +63,17 @@ function pickGrid(ym, todayYmd) {
   }
   return cells
 }
-function pickOrder(a, b) {
+function pickOrder(a: string, b: string): { from: string, to: string } {
   return a <= b ? { from: a, to: b } : { from: b, to: a }
 }
 /** What a preset means on a given local day. Server-native spans go out as ?range=. */
-function pickPreset(key, todayYmd) {
+function pickPreset(key: string, todayYmd: string): PickSelection | null {
   const { y, m } = pickParse(todayYmd)
+  if (PICK_SERVER_RANGES.includes(key))
+    return { range: key }
   switch (key) {
     case 'today': return { from: todayYmd, to: todayYmd }
     case 'yesterday': { const d = pickShift(todayYmd, -1); return { from: d, to: d } }
-    case '24h': case '7d': case '30d': return { range: key }
     case 'this-month': return { from: pickYmd(y, m, 1), to: todayYmd }
     case 'last-month': {
       const end = new Date(y, m, 0)
@@ -70,15 +85,20 @@ function pickPreset(key, todayYmd) {
   return null
 }
 /** The next URL: every other key stays (site, filters, compare); the period is replaced. */
-function pickQuery(search, sel) {
+function pickQuery(search: string | Record<string, string>, sel: PickSelection): string {
   const q = new URLSearchParams(search)
   q.delete('from')
   q.delete('to')
   q.delete('range')
+  for (const key of PICK_RESET_KEYS)
+    q.delete(key)
   if (sel.range) {
     q.set('range', sel.range)
   }
-  else {
+  // The guard narrows the union, so from/to are strings here rather than
+  // possibly-undefined; it also means a malformed selection writes nothing
+  // instead of the string "undefined".
+  else if (sel.from && sel.to) {
     q.set('from', sel.from)
     q.set('to', sel.to)
   }
