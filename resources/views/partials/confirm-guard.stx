@@ -1,0 +1,57 @@
+{{--
+  Routes a form's destructive-action confirmation through stxConfirm instead of
+  the browser's own prompt, so the question is asked in this app's theme with a
+  focus trap rather than an unstyled OS dialog.
+
+  Delegated from document rather than bound per form on purpose. The passkey
+  rows are rendered in a loop, so those forms have no stable id to bind to, and
+  a document-level listener keeps working across the router's fragment swaps.
+
+  A form opts in with data-confirm (the consequence, shown as the body) plus:
+
+    data-confirm-title   the question, shown as the heading
+    data-confirm-action  label for the button that proceeds  (default Continue)
+    data-confirm-cancel  label for the button that backs out (default Cancel)
+    data-confirm-type    error for anything irreversible, otherwise warning
+
+  window.confirm stays as the fallback rather than assuming the dialog is
+  there. This is a plain script, not a <script client>, so it runs whether or
+  not the signals runtime loaded, and an unguarded delete is a worse outcome
+  than an unstyled prompt. The fallback rejoins heading and body so the native
+  prompt still reads as one self-contained sentence.
+
+  See also the two guards in dashboard/servers/[id].stx, which bind directly
+  because those two forms are unique on the page and already had a script.
+--}}
+<script>
+  (function () {
+    document.addEventListener('submit', function (event) {
+      var form = event.target
+      if (!form || typeof form.matches !== 'function' || !form.matches('form[data-confirm]'))
+        return
+
+      event.preventDefault()
+
+      var body = form.getAttribute('data-confirm')
+      var heading = form.getAttribute('data-confirm-title') || 'Are you sure?'
+
+      var ask = window.stxConfirm
+        ? window.stxConfirm(body, {
+            title: heading,
+            confirmText: form.getAttribute('data-confirm-action') || 'Continue',
+            cancelText: form.getAttribute('data-confirm-cancel') || 'Cancel',
+            type: form.getAttribute('data-confirm-type') || 'error',
+          })
+        : Promise.resolve(window.confirm(heading + ' ' + body))
+
+      Promise.resolve(ask).then(function (ok) {
+        {{-- form.submit() does not re-fire this listener, so a second attempt is
+             still guarded without a flag to track it. It also skips constraint
+             validation, which is safe here: the submit event only fires once the
+             browser has already validated, so that has happened by now. --}}
+        if (ok)
+          form.submit()
+      })
+    })
+  })()
+</script>

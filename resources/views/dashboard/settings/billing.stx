@@ -178,7 +178,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
               Renews automatically each month.
             @endif
           </p>
-          <form method="POST" action="/api/billing-forms/cancel" onsubmit="return confirm('Cancel your Pro subscription? You will drop to the Free plan at the end of the current billing period.')">
+          <form method="POST" action="/api/billing-forms/cancel" data-confirm="You will drop to the Free plan at the end of the current billing period." data-confirm-title="Cancel your Pro subscription?" data-confirm-action="Cancel subscription" data-confirm-cancel="Keep Pro" data-confirm-type="warning">
             <input type="hidden" name="team_id" value="{{ TEAM_ID }}" />
             <button type="submit" class="button danger">Cancel subscription</button>
           </form>
@@ -224,3 +224,5 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
     </footer>
   @endif
 </main>
+
+@include('../partials/confirm-guard.stx')

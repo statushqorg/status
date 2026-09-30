@@ -1749,7 +1749,7 @@ summary:focus-visible {
 
           <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--border);" />
 
-          <form method="POST" action="/api/monitor-forms/{{ monitor.id }}/delete" onsubmit="return confirm('Delete this monitor? Its check history, incidents and alert routing are deleted with it. This cannot be undone.')">
+          <form method="POST" action="/api/monitor-forms/{{ monitor.id }}/delete" data-confirm="Its check history, incidents and alert routing are deleted with it. This cannot be undone." data-confirm-title="Delete this monitor?" data-confirm-action="Delete monitor">
             <p class="help">Deleting removes this monitor's check history, incidents, certificates and alert routing. There is no undo.</p>
             <button type="submit" class="button danger">Delete monitor</button>
           </form>
@@ -1825,3 +1825,5 @@ summary:focus-visible {
     </footer>
   @endif
 </main>
+
+@include('../partials/confirm-guard.stx')

@@ -130,7 +130,7 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
         </p>
       </div>
       <div class="actions">
-        <form method="POST" action="/api/status-report-forms/{{ report.id }}/delete" onsubmit="return confirm('Delete this announcement and its updates? This cannot be undone.')">
+        <form method="POST" action="/api/status-report-forms/{{ report.id }}/delete" data-confirm="This cannot be undone." data-confirm-title="Delete this announcement and its updates?" data-confirm-action="Delete announcement">
           <button type="submit" class="button danger sm">Delete</button>
         </form>
       </div>
@@ -271,3 +271,5 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
     </footer>
   @endif
 </main>
+
+@include('../partials/confirm-guard.stx')

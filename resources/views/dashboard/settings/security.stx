@@ -172,7 +172,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       <div class="card-body">
         @if (TWO_FA_ENABLED)
           <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6;">Signing in requires your password plus a 6-digit code from your authenticator app. Confirm your password to turn it off.</p>
-          <form method="POST" action="/api/security-forms/two-factor/disable" onsubmit="return confirm('Turn off two-factor authentication? Your account falls back to password-only sign-in.')">
+          <form method="POST" action="/api/security-forms/two-factor/disable" data-confirm="Your account falls back to password-only sign-in." data-confirm-title="Turn off two-factor authentication?" data-confirm-action="Turn it off" data-confirm-type="warning">
             <div class="form-row">
               <div class="field">
                 <label for="two-factor-password">Password</label>
@@ -243,7 +243,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
               <span class="tcell num"><time>{{ dateLabel(passkey.created_at) }}</time></span>
               <span class="tcell num"><time>{{ passkey.last_used_at ? dateLabel(passkey.last_used_at) : 'never' }}</time></span>
               <span class="tcell num">
-                <form method="POST" action="/api/security-forms/passkeys/delete" onsubmit="return confirm('Remove this passkey? Devices using it can no longer sign in with it.')">
+                <form method="POST" action="/api/security-forms/passkeys/delete" data-confirm="Devices using it can no longer sign in with it." data-confirm-title="Remove this passkey?" data-confirm-action="Remove passkey">
                   <input type="hidden" name="id" value="{{ passkey.id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
                 </form>
@@ -323,3 +323,5 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
     })
   })()
 </script>
+
+@include('../partials/confirm-guard.stx')
