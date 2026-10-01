@@ -102,6 +102,48 @@ async function waitFor<T>(read: () => Promise<T> | T, timeout = 12_000): Promise
   return value
 }
 
+/**
+ * Wait for Chrome to publish its DevTools port, and say something useful when it
+ * does not.
+ *
+ * This used to be a plain `waitFor(() => existsSync(portFile), 10_000)` against a
+ * Chrome spawned with stderr discarded, so every launch failure — missing shared
+ * library, unwritable profile, sandbox refusal, OOM — arrived as the same four
+ * words, `Timed out after 10000ms`, with the one line that would have explained it
+ * thrown away. It failed twice in three CI runs and was undiagnosable both times.
+ *
+ * Two changes: the process is polled as well as the file, so a Chrome that exits
+ * reports immediately instead of burning the whole timeout first; and whatever it
+ * wrote to stderr is attached to the error.
+ */
+async function waitForDevToolsPort(
+  portFile: string,
+  chrome: { exitCode: number | null },
+  stderr: () => string,
+  chromeBinary: string,
+  timeout = 30_000,
+): Promise<void> {
+  const started = Date.now()
+  const describe = (headline: string): string => {
+    const tail = stderr().trim().split('\n').slice(-12).join('\n')
+    return [
+      headline,
+      `  binary:  ${chromeBinary}`,
+      `  profile: ${portFile.replace(/\/DevToolsActivePort$/, '')}`,
+      tail ? `  stderr:\n${tail.replace(/^/gm, '    ')}` : '  stderr:  (nothing was written)',
+    ].join('\n')
+  }
+
+  while (!existsSync(portFile)) {
+    // A dead Chrome will never write the file, so there is nothing to wait for.
+    if (chrome.exitCode !== null)
+      throw new Error(describe(`Chrome exited with code ${chrome.exitCode} before opening a debugging port.`))
+    if (Date.now() - started >= timeout)
+      throw new Error(describe(`Chrome did not open a debugging port within ${timeout}ms.`))
+    await Bun.sleep(100)
+  }
+}
+
 class Cdp {
   private id = 0
   private pending = new Map<number, Pending>()
@@ -277,8 +319,9 @@ async function main(): Promise<void> {
     },
   })
   const profile = mkdtempSync(join(tmpdir(), 'hq-visual-'))
+  const chromeBinary = chromePath()
   const chrome = Bun.spawn([
-    chromePath(),
+    chromeBinary,
     '--headless=new',
     '--remote-debugging-port=0',
     `--user-data-dir=${profile}`,
@@ -290,13 +333,28 @@ async function main(): Promise<void> {
     '--hide-scrollbars',
     '--no-sandbox',
     'about:blank',
-  ], { stdout: 'ignore', stderr: 'ignore' })
+  ], { stdout: 'ignore', stderr: 'pipe' })
+
+  // Drained continuously rather than read on failure: a chatty Chrome can fill the
+  // pipe buffer and block on its own output, which would look exactly like the
+  // startup hang this is here to explain.
+  let chromeStderr = ''
+  const drainingStderr = (async () => {
+    try {
+      const decoder = new TextDecoder()
+      for await (const chunk of chrome.stderr as ReadableStream<Uint8Array>)
+        chromeStderr += decoder.decode(chunk, { stream: true })
+    }
+    catch {
+      // The process was killed mid-read; whatever arrived is still worth having.
+    }
+  })()
 
   const failures: string[] = []
   let screenshots = 0
   try {
     const portFile = join(profile, 'DevToolsActivePort')
-    await waitFor(() => existsSync(portFile), 10_000)
+    await waitForDevToolsPort(portFile, chrome, () => chromeStderr, chromeBinary)
     const port = Number(readFileSync(portFile, 'utf8').split('\n')[0])
     const targets = await waitFor(async () => {
       const items = await fetch(`http://127.0.0.1:${port}/json/list`).then(response => response.json()).catch(() => [])
@@ -364,6 +422,7 @@ async function main(): Promise<void> {
   finally {
     chrome.kill()
     await chrome.exited
+    await drainingStderr
     server.stop(true)
     rmSync(profile, { force: true, recursive: true })
   }
