@@ -123,7 +123,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
 
     @if (reports.length > 0)
       <section class="card scroll-x" aria-label="Announcements">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Announcements">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
             <span class="tcell" role="columnheader">Title</span>
             <span class="tcell" role="columnheader">Status</span>

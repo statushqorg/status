@@ -205,7 +205,7 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
 
     @if (incidents.length > 0)
       <section class="card scroll-x" aria-label="Incident list">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Incident list">
           <div class="trow thead" role="row" style="grid-template-columns: 150px minmax(0, 1.5fr) minmax(0, 1fr) 130px 110px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>

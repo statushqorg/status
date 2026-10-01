@@ -165,7 +165,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
 
     @if (serverCount > 0)
       <section class="card scroll-x" aria-label="Server list">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Server list">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
             <span>Name</span>
             <span>Status</span>

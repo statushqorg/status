@@ -141,7 +141,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
           <h2>Members</h2>
           <span class="sub">{{ activeCount }} active &middot; {{ pendingCount }} pending</span>
         </div>
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Team roster">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
             <span class="tcell" role="columnheader">Member</span>
             <span class="tcell" role="columnheader">Role</span>

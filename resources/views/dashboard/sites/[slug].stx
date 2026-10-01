@@ -239,7 +239,7 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
         <h3>Checks</h3>
         <span class="sub">{{ siteMonitors.length }} on this site</span>
       </div>
-      <div class="rows" role="table">
+      <div class="rows" role="table" aria-label="Checks on this site">
         <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
           <span class="tcell" role="columnheader">Status</span>
           <span class="tcell" role="columnheader">Check</span>
@@ -310,7 +310,7 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
         </div>
       @endif
       @if (openIncidents.length > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Open incidents on this site">
           <div class="trow thead" role="row" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>

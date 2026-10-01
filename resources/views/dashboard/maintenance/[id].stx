@@ -224,7 +224,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (attachedMonitors.length > 0)
-          <div class="rows" role="table">
+          <div class="rows" role="table" aria-label="Covered monitors">
             @foreach (attachedMonitors as m)
               <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.6fr) 140px 120px;">
                 <span class="tcell ellipsis name" role="cell">{{ m.name }}</span>
@@ -277,7 +277,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (occurrences.length > 0)
-          <div class="rows" role="table">
+          <div class="rows" role="table" aria-label="Upcoming occurrences">
             <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
               <span class="tcell" role="columnheader">Starts (UTC)</span>
               <span class="tcell" role="columnheader">Ends (UTC)</span>

@@ -183,7 +183,7 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
 
     @if (windows.length > 0)
       <section class="card scroll-x" aria-label="Maintenance windows">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Maintenance windows">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 90px 110px 100px 120px;">
             <span class="tcell" role="columnheader">Title</span>
             <span class="tcell" role="columnheader">Starts (UTC)</span>

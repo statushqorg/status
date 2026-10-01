@@ -228,7 +228,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
         </div>
       @endif
       @if (__passkeys.length > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Passkeys">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
             <span class="tcell" role="columnheader">Credential</span>
             <span class="tcell" role="columnheader">Device</span>

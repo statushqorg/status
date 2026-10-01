@@ -1065,7 +1065,7 @@ summary:focus-visible {
           <h3>DNS snapshots</h3>
           <span class="sub">Last {{ dnsSnapshots.length }}</span>
         </div>
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="DNS snapshots">
           <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
             <span class="tcell" role="columnheader">Record</span>
             <span class="tcell" role="columnheader">Values</span>
@@ -1095,7 +1095,7 @@ summary:focus-visible {
 
           @if (crawlBrokenPages.length > 0)
             <p class="subhead">Broken links, by source page</p>
-            <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
+            <div class="rows" role="table" aria-label="Broken links, by source page" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
               @foreach (crawlBrokenPages as page)
                 <div class="trow" role="row" style="grid-template-columns: 60px minmax(0, 1.4fr) minmax(0, 1fr);">
                   <span class="tcell mono" role="cell" style="color: var(--danger); font-weight: 600; font-size: 0.82rem;">{{ page.status_code }}</span>
@@ -1108,7 +1108,7 @@ summary:focus-visible {
 
           @if (crawlMixedContentPages.length > 0)
             <p class="subhead">Mixed content</p>
-            <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+            <div class="rows" role="table" aria-label="Mixed content" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
               @foreach (crawlMixedContentPages as page)
                 <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);">
                   <span class="tcell" role="cell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
@@ -1180,7 +1180,7 @@ summary:focus-visible {
               This is a shared {{ blocklist.sharedEdge }} edge IP, not your own server. A listing here reflects other sites behind the same CDN and rarely affects your mail. To monitor your real sending reputation, point a blocklist monitor at your mail server's IP instead.
             </p>
           @endif
-          <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+          <div class="rows" role="table" aria-label="Blocklist status" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
             @foreach (blocklist.zones as z)
               <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) 110px; border-bottom: 1px solid var(--border);">
                 <span class="tcell name" role="cell">{{ z.label }} <span class="sub mono">{{ z.zone }}</span></span>
@@ -1215,7 +1215,7 @@ summary:focus-visible {
         </div>
       @endif
       @if (incidents.length > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Incident history">
           <div class="trow thead" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
@@ -1342,7 +1342,7 @@ summary:focus-visible {
       @endif
 
       @if (routedChannelCount > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Routed alert channels">
           @foreach (routedChannels as channel)
             <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) auto;">
               <span class="tcell ellipsis" role="cell">
@@ -1385,7 +1385,7 @@ summary:focus-visible {
           </header>
 
           <div class="dlg-body">
-            <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+            <div class="rows" role="table" aria-label="Alert channels" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
               <div class="trow thead" role="row" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
                 <span class="tcell" role="columnheader">Alert</span>
                 <span class="tcell" role="columnheader">Channel</span>
@@ -1428,7 +1428,7 @@ summary:focus-visible {
       </div>
       <div class="card-body">
         @if (monitorAssertions.length > 0)
-          <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
+          <div class="rows" role="table" aria-label="Response assertions" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
             @foreach (monitorAssertions as assertion)
               <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) auto;">
                 <span class="tcell" role="cell"><span class="mono" style="font-size: 0.85rem;">{{ assertionLabel(assertion) }}</span></span>
@@ -1481,7 +1481,7 @@ summary:focus-visible {
         </div>
       @endif
       @if (recentChecks.length > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Recent check results">
           <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Message</span>

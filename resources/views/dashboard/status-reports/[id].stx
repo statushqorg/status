@@ -218,7 +218,7 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       </div>
 
       @if (assignedMonitors.length > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Affected monitors">
           <div class="trow thead" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>

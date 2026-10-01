@@ -116,7 +116,7 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
 
     @if (statusPages.length > 0)
       <section class="card scroll-x" aria-label="Status pages">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Status pages">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
             <span class="tcell" role="columnheader">Name</span>
             <span class="tcell" role="columnheader">Route</span>

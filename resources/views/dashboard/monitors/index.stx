@@ -294,7 +294,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 
     @if (__monitorRows.length > 0)
       <section class="card scroll-x" aria-label="Monitor list">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Monitor list">
           <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>

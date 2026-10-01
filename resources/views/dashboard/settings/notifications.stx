@@ -165,7 +165,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
 
     @if (channels.length > 0)
       <section class="card scroll-x" aria-label="Notification channels">
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Notification channels">
           <div class="trow thead" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 130px 110px;">
             <span class="tcell" role="columnheader">Type</span>
             <span class="tcell" role="columnheader">Name</span>

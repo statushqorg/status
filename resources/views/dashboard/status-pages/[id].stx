@@ -264,7 +264,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
       @endif
 
       @if (assignedMonitors.length > 0)
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Monitors on this page">
           <div class="trow thead" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>
@@ -330,7 +330,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
           <h3>Maintenance windows</h3>
           <span class="sub">Last {{ maintenanceWindows.length }}</span>
         </div>
-        <div class="rows" role="table">
+        <div class="rows" role="table" aria-label="Maintenance windows">
           <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
             <span class="tcell" role="columnheader">Window</span>
             <span class="tcell" role="columnheader">State</span>
