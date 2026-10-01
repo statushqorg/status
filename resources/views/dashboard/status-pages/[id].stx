@@ -264,19 +264,19 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
       @endif
 
       @if (assignedMonitors.length > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
-            <span class="tcell">Status</span>
-            <span class="tcell">Monitor</span>
-            <span class="tcell">Type</span>
-            <span class="tcell num">Action</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell" role="columnheader">Monitor</span>
+            <span class="tcell" role="columnheader">Type</span>
+            <span class="tcell num" role="columnheader">Action</span>
           </div>
           @foreach (assignedMonitors as monitor)
-            <div class="trow" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
-              <span class="tcell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
-              <span class="tcell ellipsis name">{{ monitor.display_name || monitor.name }}</span>
-              <span class="tcell sub">{{ monitor.type.replace('_', ' ') }}</span>
-              <span class="tcell num">
+            <div class="trow" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
+              <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
+              <span class="tcell ellipsis name" role="cell">{{ monitor.display_name || monitor.name }}</span>
+              <span class="tcell sub" role="cell">{{ monitor.type.replace('_', ' ') }}</span>
+              <span class="tcell num" role="cell">
                 <form method="POST" action="/api/status-page-forms/{{ statusPage.id }}/monitors/remove" style="display: inline-block;">
                   <input type="hidden" name="monitor_id" value="{{ monitor.monitor_id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
@@ -330,17 +330,17 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
           <h3>Maintenance windows</h3>
           <span class="sub">Last {{ maintenanceWindows.length }}</span>
         </div>
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
-            <span class="tcell">Window</span>
-            <span class="tcell">State</span>
-            <span class="tcell num">Schedule</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
+            <span class="tcell" role="columnheader">Window</span>
+            <span class="tcell" role="columnheader">State</span>
+            <span class="tcell num" role="columnheader">Schedule</span>
           </div>
           @foreach (maintenanceWindows as mw)
-            <div class="trow" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
-              <span class="tcell ellipsis name">{{ mw.title }}</span>
-              <span class="tcell"><data class="{{ mwClass(mw.status) }}" value="{{ mw.status }}"><span class="dot"></span>{{ mwLabel(mw.status) }}</data></span>
-              <span class="tcell num"><time>{{ formatDate(mw.starts_at) }} -&gt; {{ formatDate(mw.ends_at) }}</time></span>
+            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
+              <span class="tcell ellipsis name" role="cell">{{ mw.title }}</span>
+              <span class="tcell" role="cell"><data class="{{ mwClass(mw.status) }}" value="{{ mw.status }}"><span class="dot"></span>{{ mwLabel(mw.status) }}</data></span>
+              <span class="tcell num" role="cell"><time>{{ formatDate(mw.starts_at) }} -&gt; {{ formatDate(mw.ends_at) }}</time></span>
             </div>
           @endforeach
         </div>

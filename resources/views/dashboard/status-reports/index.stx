@@ -123,19 +123,19 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
 
     @if (reports.length > 0)
       <section class="card scroll-x" aria-label="Announcements">
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
-            <span class="tcell">Title</span>
-            <span class="tcell">Status</span>
-            <span class="tcell num">Monitors</span>
-            <span class="tcell num">Started</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
+            <span class="tcell" role="columnheader">Title</span>
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell num" role="columnheader">Monitors</span>
+            <span class="tcell num" role="columnheader">Started</span>
           </div>
           @foreach (reports as report)
-            <StxLink class="trow" to="/dashboard/status-reports/{{ report.id }}" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
-              <span class="tcell ellipsis name">{{ report.title }}</span>
-              <span class="tcell"><data class="{{ statusClass(report.status) }}" value="{{ report.status }}"><span class="dot"></span>{{ statusLabel(report.status) }}</data></span>
-              <span class="tcell num">{{ monitorCount[report.id] || 0 }}</span>
-              <span class="tcell num"><time>{{ dateLabel(report.started_at) }}</time></span>
+            <StxLink class="trow" role="row" to="/dashboard/status-reports/{{ report.id }}" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
+              <span class="tcell ellipsis name" role="cell">{{ report.title }}</span>
+              <span class="tcell" role="cell"><data class="{{ statusClass(report.status) }}" value="{{ report.status }}"><span class="dot"></span>{{ statusLabel(report.status) }}</data></span>
+              <span class="tcell num" role="cell">{{ monitorCount[report.id] || 0 }}</span>
+              <span class="tcell num" role="cell"><time>{{ dateLabel(report.started_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>

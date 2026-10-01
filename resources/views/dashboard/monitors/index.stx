@@ -294,24 +294,24 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 
     @if (__monitorRows.length > 0)
       <section class="card scroll-x" aria-label="Monitor list">
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
-            <span class="tcell">Status</span>
-            <span class="tcell">Monitor</span>
-            <span class="tcell">Type</span>
-            <span class="tcell">Last checks</span>
-            <span class="tcell num">Resp</span>
-            <span class="tcell num">Checked</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell" role="columnheader">Monitor</span>
+            <span class="tcell" role="columnheader">Type</span>
+            <span class="tcell" role="columnheader">Last checks</span>
+            <span class="tcell num" role="columnheader">Resp</span>
+            <span class="tcell num" role="columnheader">Checked</span>
           </div>
           @foreach (__monitorRows as monitor)
-            <StxLink class="trow" to="/dashboard/monitors/{{ monitor.id }}" data-monitor-id="{{ monitor.id }}" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
-              <span class="tcell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}" data-monitor-status><span class="dot"></span><span data-monitor-status-label>{{ stLabel(monitor.status) }}</span></data></span>
-              <span class="tcell">
+            <StxLink class="trow" role="row" to="/dashboard/monitors/{{ monitor.id }}" data-monitor-id="{{ monitor.id }}" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
+              <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}" data-monitor-status><span class="dot"></span><span data-monitor-status-label>{{ stLabel(monitor.status) }}</span></data></span>
+              <span class="tcell" role="cell">
                 <span class="name ellipsis" style="display: block;">{{ monitor.name }}</span>
                 <span class="sub" style="display: block;">{{ targetLabel(monitor.url) }}</span>
               </span>
-              <span class="tcell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
-              <span class="tcell">
+              <span class="tcell" role="cell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
+              <span class="tcell" role="cell">
                 @if (recentChecks(monitor.id).length > 0)
                   <span class="ticks" aria-label="Recent check results">
                     @foreach (recentChecks(monitor.id) as tick)
@@ -323,8 +323,8 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
                   <span class="sub">--</span>
                 @endif
               </span>
-              <span class="tcell num" data-monitor-response>{{ fmtDuration(lastResponseMs(monitor.id)) }}</span>
-              <span class="tcell num"><time data-monitor-checked datetime="{{ monitor.last_checked_at }}">{{ agoLabel(monitor.last_checked_at) }}</time></span>
+              <span class="tcell num" role="cell" data-monitor-response>{{ fmtDuration(lastResponseMs(monitor.id)) }}</span>
+              <span class="tcell num" role="cell"><time data-monitor-checked datetime="{{ monitor.last_checked_at }}">{{ agoLabel(monitor.last_checked_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>

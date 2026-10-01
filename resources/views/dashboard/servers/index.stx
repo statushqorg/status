@@ -165,8 +165,8 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
 
     @if (serverCount > 0)
       <section class="card scroll-x" aria-label="Server list">
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
             <span>Name</span>
             <span>Status</span>
             <span>CPU</span>
@@ -176,7 +176,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
             <span>Monitors</span>
           </div>
           @foreach (servers as server)
-            <StxLink class="trow" to="/dashboard/servers/{{ server.id }}" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
+            <StxLink class="trow" role="row" to="/dashboard/servers/{{ server.id }}" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
               <span class="name">{{ server.name }}</span>
               <span><span class="{{ server.pillClass }}"><span class="dot"></span>{{ server.pillLabel }}</span></span>
               <span class="mono">{{ server.cpu }}</span>

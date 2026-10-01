@@ -1065,17 +1065,17 @@ summary:focus-visible {
           <h3>DNS snapshots</h3>
           <span class="sub">Last {{ dnsSnapshots.length }}</span>
         </div>
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
-            <span class="tcell">Record</span>
-            <span class="tcell">Values</span>
-            <span class="tcell num">Checked</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
+            <span class="tcell" role="columnheader">Record</span>
+            <span class="tcell" role="columnheader">Values</span>
+            <span class="tcell num" role="columnheader">Checked</span>
           </div>
           @foreach (dnsSnapshots as snap)
-            <div class="trow" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
-              <span class="tcell name mono">{{ snap.record_type }}</span>
-              <span class="tcell sub" style="white-space: normal; overflow-wrap: anywhere;">{{ snap.record_values }}</span>
-              <span class="tcell num"><time>{{ formatDate(snap.checked_at) }}</time></span>
+            <div class="trow" role="row" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
+              <span class="tcell name mono" role="cell">{{ snap.record_type }}</span>
+              <span class="tcell sub" role="cell" style="white-space: normal; overflow-wrap: anywhere;">{{ snap.record_values }}</span>
+              <span class="tcell num" role="cell"><time>{{ formatDate(snap.checked_at) }}</time></span>
             </div>
           @endforeach
         </div>
@@ -1095,12 +1095,12 @@ summary:focus-visible {
 
           @if (crawlBrokenPages.length > 0)
             <p class="subhead">Broken links, by source page</p>
-            <div class="rows" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
+            <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
               @foreach (crawlBrokenPages as page)
-                <div class="trow" style="grid-template-columns: 60px minmax(0, 1.4fr) minmax(0, 1fr);">
-                  <span class="tcell mono" style="color: var(--danger); font-weight: 600; font-size: 0.82rem;">{{ page.status_code }}</span>
-                  <span class="tcell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
-                  <span class="tcell sub" style="white-space: normal; overflow-wrap: anywhere;">found on {{ page.found_on_url }}</span>
+                <div class="trow" role="row" style="grid-template-columns: 60px minmax(0, 1.4fr) minmax(0, 1fr);">
+                  <span class="tcell mono" role="cell" style="color: var(--danger); font-weight: 600; font-size: 0.82rem;">{{ page.status_code }}</span>
+                  <span class="tcell" role="cell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
+                  <span class="tcell sub" role="cell" style="white-space: normal; overflow-wrap: anywhere;">found on {{ page.found_on_url }}</span>
                 </div>
               @endforeach
             </div>
@@ -1108,11 +1108,11 @@ summary:focus-visible {
 
           @if (crawlMixedContentPages.length > 0)
             <p class="subhead">Mixed content</p>
-            <div class="rows" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+            <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
               @foreach (crawlMixedContentPages as page)
-                <div class="trow" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);">
-                  <span class="tcell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
-                  <span class="tcell sub" style="white-space: normal; overflow-wrap: anywhere;">on {{ page.found_on_url }}</span>
+                <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);">
+                  <span class="tcell" role="cell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
+                  <span class="tcell sub" role="cell" style="white-space: normal; overflow-wrap: anywhere;">on {{ page.found_on_url }}</span>
                 </div>
               @endforeach
             </div>
@@ -1180,11 +1180,11 @@ summary:focus-visible {
               This is a shared {{ blocklist.sharedEdge }} edge IP, not your own server. A listing here reflects other sites behind the same CDN and rarely affects your mail. To monitor your real sending reputation, point a blocklist monitor at your mail server's IP instead.
             </p>
           @endif
-          <div class="rows" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+          <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
             @foreach (blocklist.zones as z)
-              <div class="trow" style="grid-template-columns: minmax(0, 1fr) 110px; border-bottom: 1px solid var(--border);">
-                <span class="tcell name">{{ z.label }} <span class="sub mono">{{ z.zone }}</span></span>
-                <span class="tcell">
+              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) 110px; border-bottom: 1px solid var(--border);">
+                <span class="tcell name" role="cell">{{ z.label }} <span class="sub mono">{{ z.zone }}</span></span>
+                <span class="tcell" role="cell">
                   @if (z.listed)
                     <span class="pill pill-degraded"><span class="dot"></span>Listed</span>
                   @endif
@@ -1215,19 +1215,19 @@ summary:focus-visible {
         </div>
       @endif
       @if (incidents.length > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
-            <span class="tcell">Status</span>
-            <span class="tcell">Cause</span>
-            <span class="tcell num">Started</span>
-            <span class="tcell num">Resolved</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell" role="columnheader">Cause</span>
+            <span class="tcell num" role="columnheader">Started</span>
+            <span class="tcell num" role="columnheader">Resolved</span>
           </div>
           @foreach (incidents as incident)
-            <div class="trow" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
-              <span class="tcell"><data class="{{ incidentPillClass(incident, monitor ? monitor.type : '') }}" value="{{ incident.status }}"><span class="dot"></span>{{ incident.status.replace('_', ' ') }}</data></span>
-              <span class="tcell ellipsis" style="font-size: 0.88rem;">{{ incident.cause }}</span>
-              <span class="tcell num"><time>{{ formatDate(incident.started_at) }}</time></span>
-              <span class="tcell num"><time>{{ incident.resolved_at ? formatDate(incident.resolved_at) : '--' }}</time></span>
+            <div class="trow" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
+              <span class="tcell" role="cell"><data class="{{ incidentPillClass(incident, monitor ? monitor.type : '') }}" value="{{ incident.status }}"><span class="dot"></span>{{ incident.status.replace('_', ' ') }}</data></span>
+              <span class="tcell ellipsis" role="cell" style="font-size: 0.88rem;">{{ incident.cause }}</span>
+              <span class="tcell num" role="cell"><time>{{ formatDate(incident.started_at) }}</time></span>
+              <span class="tcell num" role="cell"><time>{{ incident.resolved_at ? formatDate(incident.resolved_at) : '--' }}</time></span>
             </div>
           @endforeach
         </div>
@@ -1342,14 +1342,14 @@ summary:focus-visible {
       @endif
 
       @if (routedChannelCount > 0)
-        <div class="rows">
+        <div class="rows" role="table">
           @foreach (routedChannels as channel)
-            <div class="trow" style="grid-template-columns: minmax(0, 1fr) auto;">
-              <span class="tcell ellipsis">
+            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) auto;">
+              <span class="tcell ellipsis" role="cell">
                 <span class="name">{{ channel.name }}</span>
                 <span class="sub" style="margin-left: 0.5rem;"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
               </span>
-              <span class="tcell"><data class="pill pill-up" value="{{ channel.firesOn }}"><span class="dot"></span>{{ firesOnLabel(channel.firesOn) }}</data></span>
+              <span class="tcell" role="cell"><data class="pill pill-up" value="{{ channel.firesOn }}"><span class="dot"></span>{{ firesOnLabel(channel.firesOn) }}</data></span>
             </div>
           @endforeach
         </div>
@@ -1385,22 +1385,22 @@ summary:focus-visible {
           </header>
 
           <div class="dlg-body">
-            <div class="rows" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
-              <div class="trow thead" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
-                <span class="tcell">Alert</span>
-                <span class="tcell">Channel</span>
-                <span class="tcell">Fires on</span>
+            <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+              <div class="trow thead" role="row" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
+                <span class="tcell" role="columnheader">Alert</span>
+                <span class="tcell" role="columnheader">Channel</span>
+                <span class="tcell" role="columnheader">Fires on</span>
               </div>
               @foreach (routableChannels as channel)
-                <div class="trow" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
-                  <span class="tcell">
+                <div class="trow" role="row" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
+                  <span class="tcell" role="cell">
                     <input type="checkbox" id="chan-{{ channel.id }}" name="chan_{{ channel.id }}" value="1" {{ channel.routed ? 'checked' : '' }} />
                   </span>
-                  <label class="tcell ellipsis" for="chan-{{ channel.id }}" style="cursor: pointer;">
+                  <label class="tcell ellipsis" role="cell" for="chan-{{ channel.id }}" style="cursor: pointer;">
                     <span class="name" style="font-size: 0.9rem; font-weight: 600;">{{ channel.name }}</span>
                     <span class="sub" style="margin-left: 0.5rem;"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
                   </label>
-                  <span class="tcell">
+                  <span class="tcell" role="cell">
                     <select name="fires_{{ channel.id }}" class="select sm" style="width: auto;" aria-label="Fires on for {{ channel.name }}">
                       <option value="both" {{ channel.firesOn === 'both' ? 'selected' : '' }}>Down + issues</option>
                       <option value="down" {{ channel.firesOn === 'down' ? 'selected' : '' }}>Down only</option>
@@ -1428,10 +1428,10 @@ summary:focus-visible {
       </div>
       <div class="card-body">
         @if (monitorAssertions.length > 0)
-          <div class="rows" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
+          <div class="rows" role="table" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
             @foreach (monitorAssertions as assertion)
-              <div class="trow" style="grid-template-columns: minmax(0, 1fr) auto;">
-                <span class="tcell"><span class="mono" style="font-size: 0.85rem;">{{ assertionLabel(assertion) }}</span></span>
+              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) auto;">
+                <span class="tcell" role="cell"><span class="mono" style="font-size: 0.85rem;">{{ assertionLabel(assertion) }}</span></span>
                 <form method="POST" action="/api/assertion-forms/monitors/{{ monitor.id }}/remove">
                   <input type="hidden" name="assertion_id" value="{{ assertion.id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
@@ -1481,23 +1481,23 @@ summary:focus-visible {
         </div>
       @endif
       @if (recentChecks.length > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
-            <span class="tcell">Status</span>
-            <span class="tcell">Message</span>
-            <span class="tcell num">Code</span>
-            <span class="tcell">Region</span>
-            <span class="tcell num">Resp</span>
-            <span class="tcell num">Checked</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell" role="columnheader">Message</span>
+            <span class="tcell num" role="columnheader">Code</span>
+            <span class="tcell" role="columnheader">Region</span>
+            <span class="tcell num" role="columnheader">Resp</span>
+            <span class="tcell num" role="columnheader">Checked</span>
           </div>
           @foreach (recentChecks as check)
-            <div class="trow" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
-              <span class="tcell"><data class="{{ stClass(check.status) }}" value="{{ check.status }}"><span class="dot"></span>{{ stLabel(check.status) }}</data></span>
-              <span class="tcell sub ellipsis">{{ check.message }}</span>
-              <span class="tcell num"><samp>{{ check.status_code !== null && check.status_code !== undefined ? check.status_code : '--' }}</samp></span>
-              <span class="tcell sub">{{ check.region || '--' }}</span>
-              <span class="tcell num"><samp>{{ check.response_time_ms !== null ? check.response_time_ms + 'ms' : '--' }}</samp></span>
-              <span class="tcell num"><time>{{ formatDate(check.checked_at) }}</time></span>
+            <div class="trow" role="row" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
+              <span class="tcell" role="cell"><data class="{{ stClass(check.status) }}" value="{{ check.status }}"><span class="dot"></span>{{ stLabel(check.status) }}</data></span>
+              <span class="tcell sub ellipsis" role="cell">{{ check.message }}</span>
+              <span class="tcell num" role="cell"><samp>{{ check.status_code !== null && check.status_code !== undefined ? check.status_code : '--' }}</samp></span>
+              <span class="tcell sub" role="cell">{{ check.region || '--' }}</span>
+              <span class="tcell num" role="cell"><samp>{{ check.response_time_ms !== null ? check.response_time_ms + 'ms' : '--' }}</samp></span>
+              <span class="tcell num" role="cell"><time>{{ formatDate(check.checked_at) }}</time></span>
             </div>
           @endforeach
         </div>

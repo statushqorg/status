@@ -116,21 +116,21 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
 
     @if (statusPages.length > 0)
       <section class="card scroll-x" aria-label="Status pages">
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
-            <span class="tcell">Name</span>
-            <span class="tcell">Route</span>
-            <span class="tcell">Custom domain</span>
-            <span class="tcell">Access</span>
-            <span class="tcell num">Visibility</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
+            <span class="tcell" role="columnheader">Name</span>
+            <span class="tcell" role="columnheader">Route</span>
+            <span class="tcell" role="columnheader">Custom domain</span>
+            <span class="tcell" role="columnheader">Access</span>
+            <span class="tcell num" role="columnheader">Visibility</span>
           </div>
           @foreach (statusPages as page)
-            <StxLink class="trow" to="/dashboard/status-pages/{{ page.id }}" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
-              <span class="tcell ellipsis name">{{ page.title }}</span>
-              <span class="tcell sub ellipsis">/status/{{ page.slug }}</span>
-              <span class="tcell sub ellipsis">{{ page.custom_domain || '--' }}</span>
-              <span class="tcell sub">{{ accessLabel(page.access_type) }}</span>
-              <span class="tcell num"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Live' : 'Hidden' }}</data></span>
+            <StxLink class="trow" role="row" to="/dashboard/status-pages/{{ page.id }}" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
+              <span class="tcell ellipsis name" role="cell">{{ page.title }}</span>
+              <span class="tcell sub ellipsis" role="cell">/status/{{ page.slug }}</span>
+              <span class="tcell sub ellipsis" role="cell">{{ page.custom_domain || '--' }}</span>
+              <span class="tcell sub" role="cell">{{ accessLabel(page.access_type) }}</span>
+              <span class="tcell num" role="cell"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Live' : 'Hidden' }}</data></span>
             </StxLink>
           @endforeach
         </div>

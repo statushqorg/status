@@ -228,21 +228,21 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
         </div>
       @endif
       @if (__passkeys.length > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
-            <span class="tcell">Credential</span>
-            <span class="tcell">Device</span>
-            <span class="tcell num">Added</span>
-            <span class="tcell num">Last used</span>
-            <span class="tcell num">Remove</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
+            <span class="tcell" role="columnheader">Credential</span>
+            <span class="tcell" role="columnheader">Device</span>
+            <span class="tcell num" role="columnheader">Added</span>
+            <span class="tcell num" role="columnheader">Last used</span>
+            <span class="tcell num" role="columnheader">Remove</span>
           </div>
           @foreach (__passkeys as passkey)
-            <div class="trow" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
-              <span class="tcell ellipsis mono">{{ credentialLabel(passkey.id) }}</span>
-              <span class="tcell sub">{{ passkey.device_type || 'unknown' }}</span>
-              <span class="tcell num"><time>{{ dateLabel(passkey.created_at) }}</time></span>
-              <span class="tcell num"><time>{{ passkey.last_used_at ? dateLabel(passkey.last_used_at) : 'never' }}</time></span>
-              <span class="tcell num">
+            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
+              <span class="tcell ellipsis mono" role="cell">{{ credentialLabel(passkey.id) }}</span>
+              <span class="tcell sub" role="cell">{{ passkey.device_type || 'unknown' }}</span>
+              <span class="tcell num" role="cell"><time>{{ dateLabel(passkey.created_at) }}</time></span>
+              <span class="tcell num" role="cell"><time>{{ passkey.last_used_at ? dateLabel(passkey.last_used_at) : 'never' }}</time></span>
+              <span class="tcell num" role="cell">
                 <form method="POST" action="/api/security-forms/passkeys/delete" data-confirm="Devices using it can no longer sign in with it." data-confirm-title="Remove this passkey?" data-confirm-action="Remove passkey">
                   <input type="hidden" name="id" value="{{ passkey.id }}" />
                   <button type="submit" class="button danger sm">Remove</button>

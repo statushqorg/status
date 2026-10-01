@@ -239,19 +239,19 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
         <h3>Checks</h3>
         <span class="sub">{{ siteMonitors.length }} on this site</span>
       </div>
-      <div class="rows">
-        <div class="trow thead" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
-          <span class="tcell">Status</span>
-          <span class="tcell">Check</span>
-          <span class="tcell">Type</span>
-          <span class="tcell num">Checked</span>
+      <div class="rows" role="table">
+        <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
+          <span class="tcell" role="columnheader">Status</span>
+          <span class="tcell" role="columnheader">Check</span>
+          <span class="tcell" role="columnheader">Type</span>
+          <span class="tcell num" role="columnheader">Checked</span>
         </div>
         @foreach (siteMonitors as monitor)
-          <StxLink class="trow" to="/dashboard/monitors/{{ monitor.id }}" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
-            <span class="tcell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
-            <span class="tcell"><span class="name ellipsis" style="display: block;">{{ monitor.name }}</span></span>
-            <span class="tcell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
-            <span class="tcell num"><time>{{ agoLabel(monitor.last_checked_at) }}</time></span>
+          <StxLink class="trow" role="row" to="/dashboard/monitors/{{ monitor.id }}" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
+            <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
+            <span class="tcell" role="cell"><span class="name ellipsis" style="display: block;">{{ monitor.name }}</span></span>
+            <span class="tcell" role="cell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
+            <span class="tcell num" role="cell"><time>{{ agoLabel(monitor.last_checked_at) }}</time></span>
           </StxLink>
         @endforeach
       </div>
@@ -310,19 +310,19 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
         </div>
       @endif
       @if (openIncidents.length > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
-            <span class="tcell">Status</span>
-            <span class="tcell">Cause</span>
-            <span class="tcell">Check</span>
-            <span class="tcell num">Opened</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell" role="columnheader">Cause</span>
+            <span class="tcell" role="columnheader">Check</span>
+            <span class="tcell num" role="columnheader">Opened</span>
           </div>
           @foreach (openIncidents as incident)
-            <StxLink class="trow" to="/dashboard/monitors/{{ incident.monitor_id }}" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
-              <span class="tcell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
-              <span class="tcell ellipsis name">{{ incident.cause }}</span>
-              <span class="tcell sub ellipsis">{{ incident.monitor_name }}</span>
-              <span class="tcell num"><time>{{ agoLabel(incident.started_at) }}</time></span>
+            <StxLink class="trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
+              <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
+              <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
+              <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>
+              <span class="tcell num" role="cell"><time>{{ agoLabel(incident.started_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>

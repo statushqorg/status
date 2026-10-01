@@ -224,12 +224,12 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (attachedMonitors.length > 0)
-          <div class="rows">
+          <div class="rows" role="table">
             @foreach (attachedMonitors as m)
-              <div class="trow" style="grid-template-columns: minmax(0, 1.6fr) 140px 120px;">
-                <span class="tcell ellipsis name">{{ m.name }}</span>
-                <span class="tcell sub">{{ m.type }}</span>
-                <span class="tcell num">
+              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.6fr) 140px 120px;">
+                <span class="tcell ellipsis name" role="cell">{{ m.name }}</span>
+                <span class="tcell sub" role="cell">{{ m.type }}</span>
+                <span class="tcell num" role="cell">
                   <form method="POST" action="/api/maintenance-forms/{{ win.id }}/monitors/remove">
                     <input type="hidden" name="monitor_id" value="{{ m.id }}" />
                     <button type="submit" class="button sm">Remove</button>
@@ -277,15 +277,15 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (occurrences.length > 0)
-          <div class="rows">
-            <div class="trow thead" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
-              <span class="tcell">Starts (UTC)</span>
-              <span class="tcell">Ends (UTC)</span>
+          <div class="rows" role="table">
+            <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+              <span class="tcell" role="columnheader">Starts (UTC)</span>
+              <span class="tcell" role="columnheader">Ends (UTC)</span>
             </div>
             @foreach (occurrences as occ)
-              <div class="trow" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
-                <span class="tcell sub">{{ fmt(occ.startMs) }}</span>
-                <span class="tcell sub">{{ fmt(occ.endMs) }}</span>
+              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+                <span class="tcell sub" role="cell">{{ fmt(occ.startMs) }}</span>
+                <span class="tcell sub" role="cell">{{ fmt(occ.endMs) }}</span>
               </div>
             @endforeach
           </div>

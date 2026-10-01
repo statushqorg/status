@@ -141,21 +141,21 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
           <h2>Members</h2>
           <span class="sub">{{ activeCount }} active &middot; {{ pendingCount }} pending</span>
         </div>
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
-            <span class="tcell">Member</span>
-            <span class="tcell">Role</span>
-            <span class="tcell">Status</span>
-            <span class="tcell num">Joined</span>
-            <span class="tcell num">Remove</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
+            <span class="tcell" role="columnheader">Member</span>
+            <span class="tcell" role="columnheader">Role</span>
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell num" role="columnheader">Joined</span>
+            <span class="tcell num" role="columnheader">Remove</span>
           </div>
           @foreach (members as member)
-            <div class="trow" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
-              <span class="tcell ellipsis name">{{ member.invited_email }}</span>
+            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
+              <span class="tcell ellipsis name" role="cell">{{ member.invited_email }}</span>
               {{-- Saves on change: a per-row Save button next to a per-row
                    Remove button is two submits a keystroke apart, and the
                    wrong one is destructive. --}}
-              <span class="tcell">
+              <span class="tcell" role="cell">
                 <form method="POST" action="/api/team-forms/{{ member.id }}/role" data-role-form>
                   <input type="hidden" name="id" value="{{ member.id }}" />
                   <select name="role" class="select sm" style="width: auto;" aria-label="Role for {{ member.invited_email }}">
@@ -166,7 +166,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
                   <noscript><button type="submit" class="button sm">Save</button></noscript>
                 </form>
               </span>
-              <span class="tcell">
+              <span class="tcell" role="cell">
                 @if (member.status === 'pending')
                   <data class="pill pill-unknown" value="pending"><span class="dot"></span>Pending</data>
                 @endif
@@ -174,8 +174,8 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
                   <data class="pill pill-up" value="active"><span class="dot"></span>Active</data>
                 @endif
               </span>
-              <span class="tcell num"><time>{{ dateLabel(member.joined_at || member.invited_at) }}</time></span>
-              <span class="tcell num">
+              <span class="tcell num" role="cell"><time>{{ dateLabel(member.joined_at || member.invited_at) }}</time></span>
+              <span class="tcell num" role="cell">
                 <form method="POST" action="/api/team-forms/{{ member.id }}/remove">
                   <input type="hidden" name="team_id" value="{{ TEAM_ID }}" />
                   <button type="submit" class="button danger sm">Remove</button>

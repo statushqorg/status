@@ -282,19 +282,19 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
         </div>
       @endif
       @if (openIncidents.length > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
-            <span class="tcell">Status</span>
-            <span class="tcell">Cause</span>
-            <span class="tcell">Monitor</span>
-            <span class="tcell num">Opened</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
+            <span class="tcell" role="columnheader">Status</span>
+            <span class="tcell" role="columnheader">Cause</span>
+            <span class="tcell" role="columnheader">Monitor</span>
+            <span class="tcell num" role="columnheader">Opened</span>
           </div>
           @foreach (openIncidents as incident)
-            <StxLink class="trow" to="/dashboard/monitors/{{ incident.monitor_id }}" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
-              <span class="tcell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
-              <span class="tcell ellipsis name">{{ incident.cause }}</span>
-              <span class="tcell sub ellipsis">{{ incident.monitor_name }}</span>
-              <span class="tcell num"><time>{{ agoLabel(incident.started_at) }}</time></span>
+            <StxLink class="trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
+              <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
+              <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
+              <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>
+              <span class="tcell num" role="cell"><time>{{ agoLabel(incident.started_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>
@@ -315,17 +315,17 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
         </div>
       @endif
       @if (statusPageCount > 0)
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 110px;">
-            <span class="tcell">Name</span>
-            <span class="tcell">Route</span>
-            <span class="tcell num">Visibility</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 110px;">
+            <span class="tcell" role="columnheader">Name</span>
+            <span class="tcell" role="columnheader">Route</span>
+            <span class="tcell num" role="columnheader">Visibility</span>
           </div>
           @foreach (statusPages as page)
-            <StxLink class="trow" to="/dashboard/status-pages/{{ page.id }}" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 110px;">
-              <span class="tcell ellipsis name">{{ page.title }}</span>
-              <span class="tcell sub ellipsis">/status/{{ page.slug }}</span>
-              <span class="tcell num"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Public' : 'Hidden' }}</data></span>
+            <StxLink class="trow" role="row" to="/dashboard/status-pages/{{ page.id }}" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 110px;">
+              <span class="tcell ellipsis name" role="cell">{{ page.title }}</span>
+              <span class="tcell sub ellipsis" role="cell">/status/{{ page.slug }}</span>
+              <span class="tcell num" role="cell"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Public' : 'Hidden' }}</data></span>
             </StxLink>
           @endforeach
         </div>

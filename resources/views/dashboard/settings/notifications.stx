@@ -165,18 +165,18 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
 
     @if (channels.length > 0)
       <section class="card scroll-x" aria-label="Notification channels">
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: 130px minmax(0, 1.6fr) 130px 110px;">
-            <span class="tcell">Type</span>
-            <span class="tcell">Name</span>
-            <span class="tcell">State</span>
-            <span class="tcell num">Test</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 130px 110px;">
+            <span class="tcell" role="columnheader">Type</span>
+            <span class="tcell" role="columnheader">Name</span>
+            <span class="tcell" role="columnheader">State</span>
+            <span class="tcell num" role="columnheader">Test</span>
           </div>
           @foreach (channels as channel)
-            <div class="trow" style="grid-template-columns: 130px minmax(0, 1.6fr) 130px 110px;">
-              <span class="tcell sub"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
-              <span class="tcell ellipsis name">{{ channel.name }}</span>
-              <span class="tcell">
+            <div class="trow" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 130px 110px;">
+              <span class="tcell sub" role="cell"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
+              <span class="tcell ellipsis name" role="cell">{{ channel.name }}</span>
+              <span class="tcell" role="cell">
                 @if (channel.enabled)
                   <data class="pill pill-up" value="enabled"><span class="dot"></span>Enabled</data>
                 @endif
@@ -184,7 +184,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
                   <data class="pill pill-unknown" value="disabled"><span class="dot"></span>Disabled</data>
                 @endif
               </span>
-              <span class="tcell num">
+              <span class="tcell num" role="cell">
                 <form method="POST" action="/api/notification-channel-forms/{{ channel.id }}/test-send">
                   <button type="submit" class="button sm">Send test</button>
                 </form>

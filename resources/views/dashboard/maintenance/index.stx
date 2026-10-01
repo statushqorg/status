@@ -183,23 +183,23 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
 
     @if (windows.length > 0)
       <section class="card scroll-x" aria-label="Maintenance windows">
-        <div class="rows">
-          <div class="trow thead" style="grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 90px 110px 100px 120px;">
-            <span class="tcell">Title</span>
-            <span class="tcell">Starts (UTC)</span>
-            <span class="tcell">Length</span>
-            <span class="tcell">Repeats</span>
-            <span class="tcell num">Monitors</span>
-            <span class="tcell num">Status</span>
+        <div class="rows" role="table">
+          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 90px 110px 100px 120px;">
+            <span class="tcell" role="columnheader">Title</span>
+            <span class="tcell" role="columnheader">Starts (UTC)</span>
+            <span class="tcell" role="columnheader">Length</span>
+            <span class="tcell" role="columnheader">Repeats</span>
+            <span class="tcell num" role="columnheader">Monitors</span>
+            <span class="tcell num" role="columnheader">Status</span>
           </div>
           @foreach (windows as w)
-            <StxLink class="trow" to="/dashboard/maintenance/{{ w.id }}" style="grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 90px 110px 100px 120px;">
-              <span class="tcell ellipsis name">{{ w.title }}</span>
-              <span class="tcell sub">{{ fmt(w.starts_at) }}</span>
-              <span class="tcell sub">{{ durationLabel(w.starts_at, w.ends_at) }}</span>
-              <span class="tcell sub ellipsis">{{ w.recurrence_cron || 'One-off' }}</span>
-              <span class="tcell num {{ monitorCountByWindow[w.id] ? '' : 'sub' }}">{{ monitorCountByWindow[w.id] || 0 }}</span>
-              <span class="tcell num"><data class="{{ statusPill(w.status) }}" value="{{ w.status }}"><span class="dot"></span>{{ statusLabel(w.status) }}</data></span>
+            <StxLink class="trow" role="row" to="/dashboard/maintenance/{{ w.id }}" style="grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 90px 110px 100px 120px;">
+              <span class="tcell ellipsis name" role="cell">{{ w.title }}</span>
+              <span class="tcell sub" role="cell">{{ fmt(w.starts_at) }}</span>
+              <span class="tcell sub" role="cell">{{ durationLabel(w.starts_at, w.ends_at) }}</span>
+              <span class="tcell sub ellipsis" role="cell">{{ w.recurrence_cron || 'One-off' }}</span>
+              <span class="tcell num {{ monitorCountByWindow[w.id] ? '' : 'sub' }}" role="cell">{{ monitorCountByWindow[w.id] || 0 }}</span>
+              <span class="tcell num" role="cell"><data class="{{ statusPill(w.status) }}" value="{{ w.status }}"><span class="dot"></span>{{ statusLabel(w.status) }}</data></span>
             </StxLink>
           @endforeach
         </div>
