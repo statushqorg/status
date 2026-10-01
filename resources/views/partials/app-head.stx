@@ -603,6 +603,32 @@
     line-height: 1.6;
     overflow-x: auto;
   }
+  /* Copy affordance for .code-block. The wrapper and the button are attached by
+     the script at the end of this partial, not written into the five call sites
+     across the two views that have them — a copy button cannot do anything
+     without JS, so building it in JS costs nothing and keeps the markup to the
+     command itself. Colours are the code surface's own, not the page tokens:
+     .code-block is deliberately dark in both themes, so a panel-coloured button
+     would sit on it as a light patch. */
+  .code-wrap { position: relative; }
+  .code-wrap > .code-block { padding-right: 4.75rem; }
+  .copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(140, 232, 187, 0.28);
+    background: rgba(13, 18, 16, 0.92);
+    color: #8ce8bb;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+  }
+  .copy-btn:hover { border-color: rgba(140, 232, 187, 0.62); background: rgba(140, 232, 187, 0.12); }
+  .copy-btn:focus-visible { outline: 2px solid #8ce8bb; outline-offset: 2px; }
   /* Dialog shell and chrome, shared by every dashboard dialog. Styled through
      the same tokens as the cards, so it inherits both themes rather than
      needing a second palette. */
@@ -801,5 +827,72 @@
         marker.setAttribute('opacity', '1')
       }
     }, { passive: true })
+  })()
+</script>
+
+<script>
+  // Copy buttons on every .code-block. Each one is a command meant to be run on
+  // another machine, so the thing the page most often wants is the text on a
+  // clipboard rather than selected by hand across a wrapped line.
+  //
+  // Same shape as the chart tooltip above: one delegated listener rather than a
+  // handler per button, so blocks added to a page later are covered too.
+  (function () {
+    function legacyCopy(text) {
+      var ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.top = '-1000px'
+      document.body.appendChild(ta)
+      ta.select()
+      var ok = false
+      try { ok = document.execCommand('copy') } catch (_e) { ok = false }
+      document.body.removeChild(ta)
+      return ok
+    }
+
+    var blocks = document.querySelectorAll('pre.code-block')
+    for (var i = 0; i < blocks.length; i++) {
+      var pre = blocks[i]
+      if (pre.parentElement && pre.parentElement.classList.contains('code-wrap')) continue
+      var wrap = document.createElement('div')
+      wrap.className = 'code-wrap'
+      pre.parentNode.insertBefore(wrap, pre)
+      wrap.appendChild(pre)
+      var btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'copy-btn'
+      btn.textContent = 'Copy'
+      // The label is the status too, so it is announced when it changes rather
+      // than silently becoming "Copied" for sighted users only.
+      btn.setAttribute('aria-live', 'polite')
+      wrap.appendChild(btn)
+    }
+
+    document.addEventListener('click', function (event) {
+      var btn = event.target && event.target.closest ? event.target.closest('.copy-btn') : null
+      if (!btn) return
+      var pre = btn.parentElement && btn.parentElement.querySelector('pre.code-block')
+      if (!pre) return
+
+      var settle = function (ok) {
+        // Never claim a copy that did not happen: a denied clipboard permission
+        // leaves the operator pasting nothing into a root shell.
+        btn.textContent = ok ? 'Copied' : 'Press \u2318C'
+        setTimeout(function () { btn.textContent = 'Copy' }, 1600)
+      }
+
+      var text = pre.textContent || ''
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { settle(true) },
+          function () { settle(legacyCopy(text)) },
+        )
+      }
+      else {
+        settle(legacyCopy(text))
+      }
+    })
   })()
 </script>
