@@ -332,6 +332,11 @@ async function main(): Promise<void> {
     '--disable-extensions',
     '--hide-scrollbars',
     '--no-sandbox',
+    // CI runners give /dev/shm 64MB and run no session bus, and Chrome will sit
+    // there retrying both instead of binding its debugging port. Locally these
+    // are no-ops, so they stay unconditional rather than gated on process.env.CI.
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
     'about:blank',
   ], { stdout: 'ignore', stderr: 'pipe' })
 
