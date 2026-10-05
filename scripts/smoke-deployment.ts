@@ -88,6 +88,29 @@ export function assertHealthyDeployment(body: string): void {
   }
 }
 
+/*
+ * Unresolved stx expressions in the SERVED html.
+ *
+ * This has to run against a served page, because the two render paths disagree:
+ * `bun run build` resolves a component's expressions correctly, while
+ * `buddy serve` — what production actually runs — can ship the component's own
+ * template verbatim. bughq went live with every <Button> reading
+ * `class="{{ buttonClasses }}"` while its dist/ was correct and lint, tsc, stx
+ * typecheck, the tests and release:validate were all clean (stacksjs/stx#2037).
+ * No check over dist/ can see it.
+ *
+ * Attributes specifically: the visual gate already looks for `{{`, but through
+ * `document.body.innerText`, which by definition never contains an attribute
+ * value. That blind spot is why it shipped. A served attribute value never
+ * legitimately contains `{{`.
+ */
+function unresolvedAttributes(html: string): string[] {
+  const found = new Set<string>()
+  for (const m of html.matchAll(/\s([a-zA-Z_:@][\w:.-]*)\s*=\s*"([^"]*\{\{[^"]*)"/g))
+    found.add(`${m[1]}="${m[2].trim()}"`)
+  return [...found]
+}
+
 async function run(): Promise<void> {
   const home = await readWithRetry('/')
   if (!home.includes(contract.homeText)) throw new Error(`Homepage does not contain the expected release marker: ${contract.homeText}`)
@@ -98,11 +121,21 @@ async function run(): Promise<void> {
   const health = await readWithRetry('/api/health')
   assertHealthyDeployment(health)
 
+  for (const [label, body] of [['homepage', home], ['login', login]] as const) {
+    const leftovers = unresolvedAttributes(body)
+    if (leftovers.length > 0) {
+      throw new Error(
+        `Deployed ${label} ships ${leftovers.length} unresolved stx expression(s) in attributes, `
+        + `so a component rendered its own template instead of its output: ${leftovers.join(', ')}`,
+      )
+    }
+  }
+
   const robots = await readWithRetry('/robots.txt')
   if (robots.includes('http://localhost')) throw new Error('Deployed robots.txt contains a localhost URL.')
   if (!robots.includes(new URL(baseUrl).hostname)) throw new Error(`Deployed robots.txt does not name ${new URL(baseUrl).hostname}.`)
 
-  console.log(`Deployment smoke passed for ${baseUrl}: homepage, login, database health, and robots metadata are live.`)
+  console.log(`Deployment smoke passed for ${baseUrl}: homepage, login, database health, robots metadata, and no unresolved stx expressions are live.`)
 }
 
 if (import.meta.main)
