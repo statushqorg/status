@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "A self-hostable status page & uptime monitoring platform — built as a Stacks app.",
+  "description": "A self-hostable status page & uptime monitoring platform \u2014 built as a Stacks app.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "contributors": [
     "Chris Breuer <chris@stacksjs.org>"
@@ -68,7 +68,8 @@
     "test:coverage": "./buddy test:coverage",
     "test:types": "./buddy test:types",
     "bud": "./buddy",
-    "stx": "./buddy"
+    "stx": "./buddy",
+    "serve:validate": "bun scripts/validate-serve.ts"
   },
   "dependencies": {
     "@bughq/stacks": "^0.2.2",

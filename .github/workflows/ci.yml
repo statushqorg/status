@@ -260,6 +260,14 @@ jobs:
       - name: Build application
         run: bun run build
 
+      - name: Validate the serve path renders components
+        # Before the deploy, not after: `buddy serve` renders views from source
+        # and resolves components differently from `bun run build`, so every
+        # build-based gate above can be green while the served page ships a
+        # component's raw template (stacksjs/stx#2037). This is the only gate
+        # that renders the way production does.
+        run: bun run serve:validate
+
       - name: Validate production artifact
         run: bun run release:validate
 
