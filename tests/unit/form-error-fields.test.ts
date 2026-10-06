@@ -49,6 +49,7 @@ const MAPPED_ELSEWHERE = [
   'dashboard/servers/index.stx',
   'dashboard/servers/[id].stx',
   'dashboard/settings/cloud.stx',
+  'dashboard/settings/notifications.stx',
 ]
 
 /** The `code === '…'` comparisons inside one function body. */

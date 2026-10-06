@@ -50,6 +50,11 @@ const ERRORS = {
 }
 const errorMessage = ERRORS[query.get('error')] || ''
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+// `missing_config` and `invalid_headers` are about the per-type fields, whose
+// ids are generated from the field name, so only the type select is targetable.
+const invalidFields = query.get('error') === 'unknown_type' ? ['chan-type'] : []
+
 // Display-only helpers below this line.
 const enabledCount = channels.filter((c) => c.enabled).length
 
@@ -155,7 +160,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     @endif
 
     @if (errorMessage)
-      <div class="flash error" role="alert">{{ errorMessage }}</div>
+      <div id="chan-form-error" class="flash error" role="alert">{{ errorMessage }}</div>
     @endif
 
     @if (channels.length === 0)
@@ -216,7 +221,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
             </div>
             <div class="field">
               <label for="chan-type">Type</label>
-              <select id="chan-type" name="type" class="select">
+              <select id="chan-type" name="type" class="select" aria-invalid="{{ invalidFields.includes('chan-type') ? 'true' : 'false' }}"@if (invalidFields.includes('chan-type')) aria-describedby="chan-form-error"@endif>
                 @foreach (CHANNEL_TYPES as chanType)
                   <option value="{{ chanType.value }}">{{ chanType.label }}</option>
                 @endforeach
