@@ -26,7 +26,7 @@ import { incidentPillClass, relativeTime, serverStatusPill, statusLabel, statusP
 import { aggregateHostStatus, DEFAULT_HOST, readingsFromSamples } from '~/app/lib/agentHosts'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
-import { serverFormErrorLabel } from '~/app/lib/serverForm'
+import { serverFormErrorFields, serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
 import { config } from '@stacksjs/config'
 
@@ -59,6 +59,9 @@ const flashSaved = query.get('saved') === '1'
 const flashRotated = query.get('rotated') === '1'
 const flashMonitors = query.get('monitors') === '1'
 const flashError = query.get('error') || ''
+
+// Which control the banner is about, so that one alone carries aria-invalid.
+const invalidFields = flashError ? serverFormErrorFields(flashError, 'edit-server-') : []
 
 // Team-scoped fetch. TEAM_ID is -1 when auth failed, so this fails closed to
 // "no such server" rather than to somebody else's box.
@@ -369,19 +372,19 @@ useHead({
     </header>
 
     @if (flashCreated)
-      <div class="flash">Server created. Install the agent below, then attach the monitors that run on it.</div>
+      <div class="flash" role="status">Server created. Install the agent below, then attach the monitors that run on it.</div>
     @endif
     @if (flashSaved)
-      <div class="flash">Saved. Status re-evaluates within a minute.</div>
+      <div class="flash" role="status">Saved. Status re-evaluates within a minute.</div>
     @endif
     @if (flashRotated)
-      <div class="flash">Token rotated. Re-run the install command below on the box, or it stops reporting.</div>
+      <div class="flash" role="status">Token rotated. Re-run the install command below on the box, or it stops reporting.</div>
     @endif
     @if (flashMonitors)
-      <div class="flash">Monitors updated.</div>
+      <div class="flash" role="status">Monitors updated.</div>
     @endif
     @if (flashError)
-      <div class="flash error">{{ errorLabel(flashError) }}</div>
+      <div id="server-form-error" class="flash error" role="alert">{{ errorLabel(flashError) }}</div>
     @endif
 
     {{-- The band is the ONE place a breach or a silence is explained. Amber,
@@ -637,7 +640,7 @@ useHead({
         <div class="dlg-body">
           <div class="field">
             <label for="edit-server-name">Name</label>
-            <input id="edit-server-name" type="text" name="name" class="input" maxlength="150" value="{{ serverView.name }}" required />
+            <input id="edit-server-name" type="text" name="name" class="input" maxlength="150" value="{{ serverView.name }}" required aria-invalid="{{ invalidFields.includes('edit-server-name') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-server-name')) aria-describedby="server-form-error"@endif />
           </div>
           <div class="form-row">
             <div class="field">
@@ -656,7 +659,7 @@ useHead({
             </div>
             <div class="field">
               <label for="edit-server-window">Missed-push window (seconds)</label>
-              <input id="edit-server-window" type="number" name="metrics_window_seconds" class="input" min="30" max="86400" value="{{ serverView.windowSeconds }}" />
+              <input id="edit-server-window" type="number" name="metrics_window_seconds" class="input" min="30" max="86400" value="{{ serverView.windowSeconds }}" aria-invalid="{{ invalidFields.includes('edit-server-window') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-server-window')) aria-describedby="server-form-error"@endif />
               <p class="help">Keep the agent's interval under this or the box alerts between pushes.</p>
             </div>
           </div>

@@ -95,6 +95,18 @@ function errorLabel(code) {
   return ''
 }
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+// `setup_expired` is about the session, not a field, so it marks nothing.
+function errorFields(code) {
+  if (code === 'invalid_code')
+    return ['two-factor-code']
+  if (code === 'bad_password')
+    return ['two-factor-password']
+  return []
+}
+
+const invalidFields = errorLabel(flashError) ? errorFields(flashError) : []
+
 // Shared display helper (migration Phase 5); an unambiguous, sortable date
 // is what an audit column wants.
 const dateLabel = isoDate
@@ -146,19 +158,19 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
     </div>
 
     @if (flashEnabled)
-      <div class="flash">Two-factor authentication is on. You will be asked for a code at every sign-in.</div>
+      <div class="flash" role="status">Two-factor authentication is on. You will be asked for a code at every sign-in.</div>
     @endif
     @if (flashDisabled)
-      <div class="flash">Two-factor authentication is off.</div>
+      <div class="flash" role="status">Two-factor authentication is off.</div>
     @endif
     @if (flashPasskeyAdded)
-      <div class="flash">Passkey added. You can now sign in with it.</div>
+      <div class="flash" role="status">Passkey added. You can now sign in with it.</div>
     @endif
     @if (flashPasskeyRemoved)
-      <div class="flash">Passkey removed.</div>
+      <div class="flash" role="status">Passkey removed.</div>
     @endif
     @if (flashError && errorLabel(flashError))
-      <div class="flash error">{{ errorLabel(flashError) }}</div>
+      <div id="tfa-form-error" class="flash error" role="alert">{{ errorLabel(flashError) }}</div>
     @endif
 
     <section class="card" aria-label="Two-factor authentication">
@@ -178,7 +190,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
             <div class="form-row">
               <div class="field">
                 <label for="two-factor-password">Password</label>
-                <input id="two-factor-password" type="password" name="password" required class="input" autocomplete="current-password" placeholder="Confirm your password" />
+                <input id="two-factor-password" type="password" name="password" required class="input" autocomplete="current-password" placeholder="Confirm your password" aria-invalid="{{ invalidFields.includes('two-factor-password') ? 'true' : 'false' }}"@if (invalidFields.includes('two-factor-password')) aria-describedby="tfa-form-error"@endif />
               </div>
             </div>
             <button type="submit" class="button danger">Turn off two-factor auth</button>
@@ -201,7 +213,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
             <div class="form-row">
               <div class="field">
                 <label for="two-factor-code">6-digit code</label>
-                <input id="two-factor-code" type="text" name="code" required class="input mono" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" />
+                <input id="two-factor-code" type="text" name="code" required class="input mono" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-invalid="{{ invalidFields.includes('two-factor-code') ? 'true' : 'false' }}"@if (invalidFields.includes('two-factor-code')) aria-describedby="tfa-form-error"@endif />
               </div>
             </div>
             <button type="submit" class="button primary">Confirm and enable</button>

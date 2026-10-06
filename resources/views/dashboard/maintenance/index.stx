@@ -69,6 +69,27 @@ function errorLabel(code) {
   return ''
 }
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+// Marking every field would be worse than marking none. `ends_before_starts`
+// is relational, so it marks both ends of the range.
+function errorFields(code) {
+  if (code === 'title_required' || code === 'title_too_long')
+    return ['mw-title']
+  if (code === 'description_too_long')
+    return ['mw-description']
+  if (code === 'starts_at_invalid')
+    return ['mw-starts']
+  if (code === 'ends_at_invalid')
+    return ['mw-ends']
+  if (code === 'ends_before_starts')
+    return ['mw-starts', 'mw-ends']
+  if (code === 'cron_invalid')
+    return ['mw-cron']
+  return []
+}
+
+const invalidFields = errorLabel(errorCode) ? errorFields(errorCode) : []
+
 const nowMs = Date.now()
 const activeCount = windows.filter(w => w.status === 'active').length
 const upcomingCount = windows.filter(w => w.status === 'scheduled' && Date.parse(w.starts_at || '') > nowMs).length
@@ -144,7 +165,7 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
     </header>
 
     @if (errorCode && errorLabel(errorCode))
-      <div class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
+      <div id="mw-form-error" class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
     @endif
 
     @if (justDeleted)
@@ -217,29 +238,29 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
         <form method="POST" action="/api/maintenance-forms/create">
           <div class="field">
             <label for="mw-title">Title</label>
-            <input id="mw-title" type="text" name="title" required maxlength="150" class="input" placeholder="Database upgrade" />
+            <input id="mw-title" type="text" name="title" required maxlength="150" class="input" placeholder="Database upgrade" aria-invalid="{{ invalidFields.includes('mw-title') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-title')) aria-describedby="mw-form-error"@endif />
             <p class="help">Shown to status page visitors and emailed to subscribers.</p>
           </div>
 
           <div class="field">
             <label for="mw-description">Description</label>
-            <textarea id="mw-description" name="description" maxlength="2000" class="input" rows="3" placeholder="What you're doing and what visitors should expect."></textarea>
+            <textarea id="mw-description" name="description" maxlength="2000" class="input" rows="3" placeholder="What you're doing and what visitors should expect." aria-invalid="{{ invalidFields.includes('mw-description') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-description')) aria-describedby="mw-form-error"@endif></textarea>
           </div>
 
           <div class="form-row">
             <div class="field">
               <label for="mw-starts">Starts (UTC)</label>
-              <input id="mw-starts" type="datetime-local" name="starts_at" required class="input" value="{{ defaultStart }}" />
+              <input id="mw-starts" type="datetime-local" name="starts_at" required class="input" value="{{ defaultStart }}" aria-invalid="{{ invalidFields.includes('mw-starts') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-starts')) aria-describedby="mw-form-error"@endif />
             </div>
             <div class="field">
               <label for="mw-ends">Ends (UTC)</label>
-              <input id="mw-ends" type="datetime-local" name="ends_at" required class="input" value="{{ defaultEnd }}" />
+              <input id="mw-ends" type="datetime-local" name="ends_at" required class="input" value="{{ defaultEnd }}" aria-invalid="{{ invalidFields.includes('mw-ends') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-ends')) aria-describedby="mw-form-error"@endif />
             </div>
           </div>
 
           <div class="field">
             <label for="mw-cron">Repeat (optional)</label>
-            <input id="mw-cron" type="text" name="recurrence_cron" maxlength="120" class="input" placeholder="0 2 * * 0" />
+            <input id="mw-cron" type="text" name="recurrence_cron" maxlength="120" class="input" placeholder="0 2 * * 0" aria-invalid="{{ invalidFields.includes('mw-cron') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-cron')) aria-describedby="mw-form-error"@endif />
             <p class="help">A 5-field cron expression, or a nickname like @weekly, giving the start of each occurrence — each one lasts as long as the window above. Leave blank for a one-off.</p>
           </div>
 

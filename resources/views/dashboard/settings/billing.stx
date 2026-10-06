@@ -123,16 +123,16 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
     </div>
 
     @if (CHECKOUT_RESULT === 'success')
-      <div class="flash">Checkout complete. Your plan will update within a few seconds once Stripe's webhook lands.</div>
+      <div class="flash" role="status">Checkout complete. Your plan will update within a few seconds once Stripe's webhook lands.</div>
     @endif
     @if (CHECKOUT_RESULT === 'cancelled')
-      <div class="flash">Checkout was cancelled. No changes were made.</div>
+      <div class="flash" role="status">Checkout was cancelled. No changes were made.</div>
     @endif
     @if (CANCELLED === '1')
-      <div class="flash">Subscription cancelled. You'll stay on Pro until the current billing period ends, then drop to Free.</div>
+      <div class="flash" role="status">Subscription cancelled. You'll stay on Pro until the current billing period ends, then drop to Free.</div>
     @endif
     @if (ERROR)
-      <div class="flash error">{{ ERROR === 'no_owner' ? 'This team has no active owner to bill.' : ERROR === 'no_active_subscription' ? 'No active subscription to cancel.' : ERROR }}</div>
+      <div class="flash error" role="alert">{{ ERROR === 'no_owner' ? 'This team has no active owner to bill.' : ERROR === 'no_active_subscription' ? 'No active subscription to cancel.' : ERROR }}</div>
     @endif
 
     <section class="card" aria-label="Current plan">

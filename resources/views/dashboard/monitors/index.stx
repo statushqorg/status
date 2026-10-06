@@ -237,7 +237,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     </header>
 
     @if (flashDeleted)
-      <div class="flash">Monitor deleted.</div>
+      <div class="flash" role="status">Monitor deleted.</div>
     @endif
 
     <dl class="stat-grid">

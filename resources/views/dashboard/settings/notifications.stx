@@ -147,15 +147,15 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     </div>
 
     @if (sent)
-      <div class="flash">Test notification sent.</div>
+      <div class="flash" role="status">Test notification sent.</div>
     @endif
 
     @if (created)
-      <div class="flash">Channel added. Send it a test, then route it to your monitors.</div>
+      <div class="flash" role="status">Channel added. Send it a test, then route it to your monitors.</div>
     @endif
 
     @if (errorMessage)
-      <div class="flash error">{{ errorMessage }}</div>
+      <div class="flash error" role="alert">{{ errorMessage }}</div>
     @endif
 
     @if (channels.length === 0)

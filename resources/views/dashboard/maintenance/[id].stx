@@ -84,6 +84,29 @@ function errorLabel(code) {
   return ''
 }
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+// Marking every field would be worse than marking none. `ends_before_starts`
+// is relational, so it marks both ends of the range.
+function errorFields(code) {
+  if (code === 'title_required' || code === 'title_too_long')
+    return ['mw-title']
+  if (code === 'description_too_long')
+    return ['mw-description']
+  if (code === 'starts_at_invalid')
+    return ['mw-starts']
+  if (code === 'ends_at_invalid')
+    return ['mw-ends']
+  if (code === 'ends_before_starts')
+    return ['mw-starts', 'mw-ends']
+  if (code === 'cron_invalid')
+    return ['mw-cron']
+  if (code === 'status_invalid')
+    return ['mw-status']
+  return []
+}
+
+const invalidFields = errorLabel(errorCode) ? errorFields(errorCode) : []
+
 // Preview the next occurrences from the SAME function the suppression path
 // uses, rather than re-deriving the schedule for display. A recurrence rule
 // that reads plausibly but expands to nothing is exactly the mistake worth
@@ -154,7 +177,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
     </header>
 
     @if (errorCode && errorLabel(errorCode))
-      <div class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
+      <div id="mw-form-error" class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
     @endif
 
     @if (justSaved)
@@ -176,34 +199,34 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         <form method="POST" action="/api/maintenance-forms/{{ win.id }}/update">
           <div class="field">
             <label for="mw-title">Title</label>
-            <input id="mw-title" type="text" name="title" required maxlength="150" class="input" value="{{ win.title }}" />
+            <input id="mw-title" type="text" name="title" required maxlength="150" class="input" value="{{ win.title }}" aria-invalid="{{ invalidFields.includes('mw-title') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-title')) aria-describedby="mw-form-error"@endif />
           </div>
 
           <div class="field">
             <label for="mw-description">Description</label>
-            <textarea id="mw-description" name="description" maxlength="2000" class="input" rows="3">{{ win.description || '' }}</textarea>
+            <textarea id="mw-description" name="description" maxlength="2000" class="input" rows="3" aria-invalid="{{ invalidFields.includes('mw-description') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-description')) aria-describedby="mw-form-error"@endif>{{ win.description || '' }}</textarea>
           </div>
 
           <div class="form-row">
             <div class="field">
               <label for="mw-starts">Starts (UTC)</label>
-              <input id="mw-starts" type="datetime-local" name="starts_at" required class="input" value="{{ startsValue }}" />
+              <input id="mw-starts" type="datetime-local" name="starts_at" required class="input" value="{{ startsValue }}" aria-invalid="{{ invalidFields.includes('mw-starts') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-starts')) aria-describedby="mw-form-error"@endif />
             </div>
             <div class="field">
               <label for="mw-ends">Ends (UTC)</label>
-              <input id="mw-ends" type="datetime-local" name="ends_at" required class="input" value="{{ endsValue }}" />
+              <input id="mw-ends" type="datetime-local" name="ends_at" required class="input" value="{{ endsValue }}" aria-invalid="{{ invalidFields.includes('mw-ends') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-ends')) aria-describedby="mw-form-error"@endif />
             </div>
           </div>
 
           <div class="form-row">
             <div class="field">
               <label for="mw-cron">Repeat</label>
-              <input id="mw-cron" type="text" name="recurrence_cron" maxlength="120" class="input" value="{{ win.recurrence_cron || '' }}" placeholder="0 2 * * 0" />
+              <input id="mw-cron" type="text" name="recurrence_cron" maxlength="120" class="input" value="{{ win.recurrence_cron || '' }}" placeholder="0 2 * * 0" aria-invalid="{{ invalidFields.includes('mw-cron') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-cron')) aria-describedby="mw-form-error"@endif />
               <p class="help">Blank for a one-off. Each occurrence lasts as long as the window above.</p>
             </div>
             <div class="field">
               <label for="mw-status">Status</label>
-              <select id="mw-status" name="status" class="select">
+              <select id="mw-status" name="status" class="select" aria-invalid="{{ invalidFields.includes('mw-status') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-status')) aria-describedby="mw-form-error"@endif>
                 @foreach (statusOptions as opt)
                   <option value="{{ opt.value }}" {{ win.status === opt.value ? 'selected' : '' }}>{{ opt.label }}</option>
                 @endforeach

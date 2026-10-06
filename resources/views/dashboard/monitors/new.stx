@@ -71,6 +71,22 @@ function errorLabel(code) {
   return ''
 }
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+// Marking every field on the form would be worse than marking none of them.
+function errorField(code) {
+  if (code === 'name_required' || code === 'name_too_long')
+    return 'name'
+  if (code === 'type_invalid')
+    return 'type'
+  if (code === 'url_required' || code === 'url_too_long' || code === 'url_scheme' || code === 'url_invalid')
+    return 'url'
+  if (code === 'interval_invalid' || code === 'plan_interval')
+    return 'check_interval_seconds'
+  return ''
+}
+
+const invalidField = errorLabel(errorCode) ? errorField(errorCode) : ''
+
 // Type options, ordered the way an operator thinks about them (the common
 // availability checks first). Labels are duplicated from app/lib's
 // TYPE_LABELS rather than imported so the ordering and the operator-facing
@@ -150,7 +166,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
     </header>
 
     @if (errorCode && errorLabel(errorCode))
-      <div class="flash error">{{ errorLabel(errorCode) }}</div>
+      <div id="form-error" class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
     @endif
 
     <form method="POST" action="/api/monitor-forms/create">
@@ -163,11 +179,11 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
           <div class="form-row">
             <div class="field">
               <label for="name">Name</label>
-              <input id="name" type="text" name="name" required maxlength="150" class="input" placeholder="Checkout API" />
+              <input id="name" type="text" name="name" required maxlength="150" class="input" placeholder="Checkout API" aria-invalid="{{ invalidField === 'name' ? 'true' : 'false' }}"@if (invalidField === 'name') aria-describedby="form-error"@endif />
             </div>
             <div class="field">
               <label for="type">Type</label>
-              <select id="type" name="type" class="select">
+              <select id="type" name="type" class="select" aria-invalid="{{ invalidField === 'type' ? 'true' : 'false' }}"@if (invalidField === 'type') aria-describedby="form-error"@endif>
                 @foreach (monitorTypes as t)
                   <option value="{{ t.value }}">{{ t.label }}</option>
                 @endforeach
@@ -178,14 +194,14 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
 
           <div class="field">
             <label for="url">URL or host</label>
-            <input id="url" type="text" name="url" required maxlength="2048" class="input" placeholder="{{ defaultType.example }}" />
+            <input id="url" type="text" name="url" required maxlength="2048" class="input" placeholder="{{ defaultType.example }}" aria-invalid="{{ invalidField === 'url' ? 'true' : 'false' }}"@if (invalidField === 'url') aria-describedby="form-error"@endif />
             <p class="help" id="url-help">A full http(s) URL, including the scheme.</p>
           </div>
 
           <div class="form-row">
             <div class="field">
               <label for="check_interval_seconds">Check every (seconds)</label>
-              <input id="check_interval_seconds" type="number" name="check_interval_seconds" class="input" value="60" min="10" max="86400" step="1" />
+              <input id="check_interval_seconds" type="number" name="check_interval_seconds" class="input" value="60" min="10" max="86400" step="1" aria-invalid="{{ invalidField === 'check_interval_seconds' ? 'true' : 'false' }}"@if (invalidField === 'check_interval_seconds') aria-describedby="form-error"@endif />
               <p class="help">Your plan sets the floor. Failing monitors back off automatically.</p>
             </div>
             <div class="field">

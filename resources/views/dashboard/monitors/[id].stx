@@ -319,6 +319,24 @@ function formErrorLabel(code) {
   return ''
 }
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+// Marking all 22 controls on this form would be worse than marking none.
+// `plan_interval` is a plan ceiling rather than a bad value, but the interval
+// field is still the one to change, so it is marked too.
+function errorFields(code) {
+  if (code === 'name_required' || code === 'name_too_long')
+    return ['edit-name']
+  if (code === 'type_invalid')
+    return ['edit-type']
+  if (code === 'url_required' || code === 'url_too_long' || code === 'url_scheme' || code === 'url_invalid')
+    return ['edit-url']
+  if (code === 'interval_invalid' || code === 'plan_interval')
+    return ['edit-interval']
+  return []
+}
+
+const invalidFields = formErrorLabel(formError) ? errorFields(formError) : []
+
 // Fail-soft exactly like every job reader: a malformed config prefills as
 // empty rather than breaking the page.
 let monitorCfg = {}
@@ -860,16 +878,16 @@ summary:focus-visible {
     </header>
 
     @if (flashCreated)
-      <div class="flash">Monitor created. Checks start on the next dispatch, within a minute.</div>
+      <div class="flash" role="status">Monitor created. Checks start on the next dispatch, within a minute.</div>
     @endif
     @if (flashSaved)
-      <div class="flash">Changes saved.</div>
+      <div class="flash" role="status">Changes saved.</div>
     @endif
     @if (flashServer)
-      <div class="flash">Server updated.</div>
+      <div class="flash" role="status">Server updated.</div>
     @endif
     @if (formError && formErrorLabel(formError))
-      <div class="flash error">{{ formErrorLabel(formError) }}</div>
+      <div id="edit-form-error" class="flash error" role="alert">{{ formErrorLabel(formError) }}</div>
     @endif
 
     <dl class="stat-grid">
@@ -1133,7 +1151,7 @@ summary:focus-visible {
         </div>
         <div class="card-body">
           @if (lighthouseRegression)
-            <div class="flash error" style="margin-bottom: 1.25rem;">Performance regression: the score dropped more than 10 points since the previous run.</div>
+            <div class="flash error" role="alert" style="margin-bottom: 1.25rem;">Performance regression: the score dropped more than 10 points since the previous run.</div>
           @endif
           <dl class="kv">
             <div><dt>Performance</dt><dd class="big">{{ latestLighthouse.performance_score }}</dd></div>
@@ -1324,7 +1342,7 @@ summary:focus-visible {
            it — two different left edges in one card. --}}
       @if (routingSaved)
         <div class="card-body" style="padding-bottom: 0;">
-          <div class="flash">Alert routing saved.</div>
+          <div class="flash" role="status">Alert routing saved.</div>
         </div>
       @endif
 
@@ -1525,11 +1543,11 @@ summary:focus-visible {
             <div class="form-row">
               <div class="field">
                 <label for="edit-name">Name</label>
-                <input id="edit-name" type="text" name="name" required maxlength="150" class="input" value="{{ monitor.name }}" />
+                <input id="edit-name" type="text" name="name" required maxlength="150" class="input" value="{{ monitor.name }}" aria-invalid="{{ invalidFields.includes('edit-name') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-name')) aria-describedby="edit-form-error"@endif />
               </div>
               <div class="field">
                 <label for="edit-type">Type</label>
-                <select id="edit-type" name="type" class="select">
+                <select id="edit-type" name="type" class="select" aria-invalid="{{ invalidFields.includes('edit-type') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-type')) aria-describedby="edit-form-error"@endif>
                   @foreach (monitorTypes as t)
                     <option value="{{ t.value }}" {{ monitor.type === t.value ? 'selected' : '' }}>{{ t.label }}</option>
                   @endforeach
@@ -1539,13 +1557,13 @@ summary:focus-visible {
 
             <div class="field">
               <label for="edit-url">URL or host</label>
-              <input id="edit-url" type="text" name="url" required maxlength="2048" class="input" value="{{ monitor.url }}" />
+              <input id="edit-url" type="text" name="url" required maxlength="2048" class="input" value="{{ monitor.url }}" aria-invalid="{{ invalidFields.includes('edit-url') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-url')) aria-describedby="edit-form-error"@endif />
             </div>
 
             <div class="form-row">
               <div class="field">
                 <label for="edit-interval">Check every (seconds)</label>
-                <input id="edit-interval" type="number" name="check_interval_seconds" class="input" min="10" max="86400" step="1" value="{{ monitor.check_interval_seconds }}" />
+                <input id="edit-interval" type="number" name="check_interval_seconds" class="input" min="10" max="86400" step="1" value="{{ monitor.check_interval_seconds }}" aria-invalid="{{ invalidFields.includes('edit-interval') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-interval')) aria-describedby="edit-form-error"@endif />
               </div>
               <div class="field">
                 <label for="edit-enabled">Status</label>

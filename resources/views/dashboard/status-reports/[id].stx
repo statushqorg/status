@@ -139,10 +139,10 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
     </header>
 
     @if (flashPosted)
-      <div class="flash"><span>Update posted. Subscribers of any status page showing an attached monitor have been notified.</span></div>
+      <div class="flash" role="status"><span>Update posted. Subscribers of any status page showing an attached monitor have been notified.</span></div>
     @endif
     @if (flashError === 'update')
-      <div class="flash error"><span>An update needs a message and a valid status.</span></div>
+      <div class="flash error" role="alert"><span>An update needs a message and a valid status.</span></div>
     @endif
 
     @if (report.body)

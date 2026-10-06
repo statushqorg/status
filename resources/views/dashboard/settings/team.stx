@@ -123,11 +123,11 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
     </div>
 
     @if (roleSaved)
-      <div class="flash">Role updated.</div>
+      <div class="flash" role="status">Role updated.</div>
     @endif
 
     @if (roleError)
-      <div class="flash error">{{ roleError }}</div>
+      <div class="flash error" role="alert">{{ roleError }}</div>
     @endif
 
     @if (members.length === 0)

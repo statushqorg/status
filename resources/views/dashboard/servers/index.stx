@@ -21,7 +21,7 @@
 import { relativeTime, serverStatusPill } from '~/app/lib/display'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
-import { serverFormErrorLabel } from '~/app/lib/serverForm'
+import { serverFormErrorFields, serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
 
 const agoLabel = relativeTime
@@ -42,6 +42,9 @@ const NAV_ACTIVE = 'servers'
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const flashDeleted = query.get('deleted') === '1'
 const flashError = query.get('error') || ''
+
+// Which control the banner is about, so that one alone carries aria-invalid.
+const invalidFields = flashError ? serverFormErrorFields(flashError, 'server-') : []
 
 // Raw rows, `__`-prefixed so the bridge never collects them, projected on the
 // next line. Nothing below this point can reach a token.
@@ -150,11 +153,11 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
     </header>
 
     @if (flashDeleted)
-      <div class="flash">Server deleted. Its monitors were detached and kept.</div>
+      <div class="flash" role="status">Server deleted. Its monitors were detached and kept.</div>
     @endif
 
     @if (flashError)
-      <div class="flash error">{{ errorLabel(flashError) }}</div>
+      <div id="server-form-error" class="flash error" role="alert">{{ errorLabel(flashError) }}</div>
     @endif
 
     @if (serverCount === 0)
@@ -209,7 +212,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
         <div class="dlg-body">
           <div class="field">
             <label for="server-name">Name</label>
-            <input id="server-name" type="text" name="name" class="input" maxlength="150" placeholder="web-01" required />
+            <input id="server-name" type="text" name="name" class="input" maxlength="150" placeholder="web-01" required aria-invalid="{{ invalidFields.includes('server-name') ? 'true' : 'false' }}"@if (invalidFields.includes('server-name')) aria-describedby="server-form-error"@endif />
             <p class="help">Use the box's hostname if you can. It is what the monitor attach suggestion matches on.</p>
           </div>
 
@@ -231,7 +234,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
             </div>
             <div class="field">
               <label for="server-window">Missed-push window (seconds)</label>
-              <input id="server-window" type="number" name="metrics_window_seconds" class="input" min="30" max="86400" placeholder="300" />
+              <input id="server-window" type="number" name="metrics_window_seconds" class="input" min="30" max="86400" placeholder="300" aria-invalid="{{ invalidFields.includes('server-window') ? 'true' : 'false' }}"@if (invalidFields.includes('server-window')) aria-describedby="server-form-error"@endif />
             </div>
           </div>
           <p class="help">Blank uses the defaults: 90/90/85 and a 300 second window. A threshold of 0 turns that one off. Keep the agent's push interval comfortably under the window or the box alerts between pushes.</p>

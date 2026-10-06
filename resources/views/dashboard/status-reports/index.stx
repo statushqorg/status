@@ -74,6 +74,17 @@ function errorLabel(code) {
   return ''
 }
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+function errorFields(code) {
+  if (code === 'title')
+    return ['sr-title']
+  if (code === 'status')
+    return ['sr-status']
+  return []
+}
+
+const invalidFields = errorLabel(flashError) ? errorFields(flashError) : []
+
 const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
 
 // Real document title + noindex for the app surface (the serve wrapper
@@ -113,7 +124,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
     </div>
 
     @if (flashError && errorLabel(flashError))
-      <div class="flash error" role="alert"><span>{{ errorLabel(flashError) }}</span></div>
+      <div id="sr-form-error" class="flash error" role="alert"><span>{{ errorLabel(flashError) }}</span></div>
     @endif
 
     @if (reports.length === 0)
@@ -152,7 +163,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
         <form method="POST" action="/api/status-report-forms/create">
           <div class="field">
             <label for="sr-title">Title</label>
-            <input id="sr-title" type="text" name="title" required class="input" placeholder="Scheduled database maintenance" />
+            <input id="sr-title" type="text" name="title" required class="input" placeholder="Scheduled database maintenance" aria-invalid="{{ invalidFields.includes('sr-title') ? 'true' : 'false' }}"@if (invalidFields.includes('sr-title')) aria-describedby="sr-form-error"@endif />
           </div>
           <div class="field">
             <label for="sr-body">Summary</label>
@@ -161,7 +172,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
           <div class="form-row">
             <div class="field">
               <label for="sr-status">Initial status</label>
-              <select id="sr-status" name="status" class="select">
+              <select id="sr-status" name="status" class="select" aria-invalid="{{ invalidFields.includes('sr-status') ? 'true' : 'false' }}"@if (invalidFields.includes('sr-status')) aria-describedby="sr-form-error"@endif>
                 <option value="investigating">Investigating</option>
                 <option value="identified">Identified</option>
                 <option value="monitoring">Monitoring</option>

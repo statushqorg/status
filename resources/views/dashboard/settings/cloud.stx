@@ -63,6 +63,13 @@ const ERROR_MESSAGES = {
 }
 const errorMessage = ERROR_MESSAGES[errorCode] || ''
 
+// Which control the banner is about, so that one alone carries aria-invalid.
+const ERROR_FIELDS = {
+  access_key_required: ['access_key_id'],
+  secret_required: ['secret_access_key'],
+}
+const invalidFields = errorMessage ? (ERROR_FIELDS[errorCode] || []) : []
+
 // The minimal IAM policy the automation needs: describe instances to find the
 // target box, and push an ephemeral SSH key to it via EC2 Instance Connect so
 // the agent installer can connect. No long-lived key pair, no broad EC2 write.
@@ -145,11 +152,11 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
     </div>
 
     @if (saved)
-      <div class="flash">AWS credentials saved.</div>
+      <div class="flash" role="status">AWS credentials saved.</div>
     @endif
 
     @if (errorMessage)
-      <div class="flash error">{{ errorMessage }}</div>
+      <div id="aws-form-error" class="flash error" role="alert">{{ errorMessage }}</div>
     @endif
 
     <section class="card" aria-label="AWS credentials">
@@ -166,11 +173,11 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
         <form class="cloud-form" method="POST" action="/api/cloud-credential-forms/aws">
           <div>
             <label for="access_key_id">Access key ID</label>
-            <input id="access_key_id" name="access_key_id" type="text" autocomplete="off" spellcheck="false" placeholder="AKIA..." value="{{ awsAccessKeyId }}" required>
+            <input id="access_key_id" name="access_key_id" type="text" autocomplete="off" spellcheck="false" placeholder="AKIA..." value="{{ awsAccessKeyId }}" required aria-invalid="{{ invalidFields.includes('access_key_id') ? 'true' : 'false' }}"@if (invalidFields.includes('access_key_id')) aria-describedby="aws-form-error"@endif>
           </div>
           <div>
             <label for="secret_access_key">Secret access key</label>
-            <input id="secret_access_key" name="secret_access_key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ hasSecret ? 'Stored — leave blank to keep' : 'Enter secret access key' }}">
+            <input id="secret_access_key" name="secret_access_key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ hasSecret ? 'Stored — leave blank to keep' : 'Enter secret access key' }}" aria-invalid="{{ invalidFields.includes('secret_access_key') ? 'true' : 'false' }}"@if (invalidFields.includes('secret_access_key')) aria-describedby="aws-form-error"@endif>
             <p class="help">Stored encrypted (AES-256-GCM). It is never shown again after saving.</p>
           </div>
           <div>

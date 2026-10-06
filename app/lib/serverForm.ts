@@ -110,6 +110,26 @@ export function parseServerForm(input: ServerFormInput): ServerFormResult {
   }
 }
 
+/**
+ * The control ids a `?error=` code is about, so the banner's message and the
+ * field marked `aria-invalid` agree. Both server views render the same fields
+ * under different id prefixes, so the caller passes the prefix.
+ *
+ * `server_not_found` and `monitor_not_found` are about the row, not a field,
+ * and correctly mark nothing.
+ */
+export function serverFormErrorFields(code: string | null | undefined, prefix: string): string[] {
+  switch (code) {
+    case 'name_required':
+    case 'name_too_long':
+      return [`${prefix}name`]
+    case 'window_invalid':
+      return [`${prefix}window`]
+    default:
+      return []
+  }
+}
+
 /** The message a `?error=` code becomes on the page. */
 export function serverFormErrorLabel(code: string | null | undefined): string {
   switch (code) {
