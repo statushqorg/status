@@ -41,7 +41,7 @@ useHead({
         <span class="brand-name">{{ appName }}</span>
       </StxLink>
 
-      <div id="error" class="error"></div>
+      <div id="error" class="error" role="alert"></div>
 
       <form id="register-form">
         <h1>Create your account</h1>
@@ -96,8 +96,24 @@ useHead({
           document.cookie = 'X-CSRF-Token=' + tok + '; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '')
           return tok
         }
-        function showError(msg) { errorEl.textContent = msg; errorEl.classList.add('show') }
-        function clearError() { errorEl.textContent = ''; errorEl.classList.remove('show') }
+        // The banner is an alert region, so writing to it announces the
+        // message. The fields need marking separately: without aria-invalid and
+        // a link to the text, the control itself still looks untouched.
+        function markFields(invalid) {
+          ['name', 'email', 'password'].forEach(function (id) {
+            var el = document.getElementById(id)
+            if (!el)
+              return
+            el.setAttribute('aria-invalid', invalid ? 'true' : 'false')
+            if (invalid)
+              el.setAttribute('aria-describedby', 'error')
+            else
+              el.removeAttribute('aria-describedby')
+          })
+        }
+
+        function showError(msg) { errorEl.textContent = msg; errorEl.classList.add('show'); markFields(true) }
+        function clearError() { errorEl.textContent = ''; errorEl.classList.remove('show'); markFields(false) }
 
         form.addEventListener('submit', async function (e) {
           e.preventDefault()

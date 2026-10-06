@@ -170,7 +170,7 @@ useHead({
 
   @if (state === 'pending')
     @if (errorMessage)
-      <div class="error">{{ errorMessage }}</div>
+      <div id="form-error" class="error" role="alert">{{ errorMessage }}</div>
     @endif
 
     <h1>Join {{ teamName }}</h1>
@@ -184,12 +184,12 @@ useHead({
       @if (!hasAccount)
         <div class="field">
           <label for="name">Your name</label>
-          <input id="name" name="name" type="text" autocomplete="name" placeholder="First and last name" required>
+          <input id="name" name="name" type="text" autocomplete="name" placeholder="First and last name" required aria-invalid="{{ errorMessage ? 'true' : 'false' }}"@if (errorMessage) aria-describedby="form-error"@endif>
         </div>
       @endif
       <div class="field">
         <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="{{ hasAccount ? 'current-password' : 'new-password' }}" placeholder="{{ hasAccount ? 'Your existing password' : 'At least 6 characters' }}" minlength="6" required>
+        <input id="password" name="password" type="password" autocomplete="{{ hasAccount ? 'current-password' : 'new-password' }}" placeholder="{{ hasAccount ? 'Your existing password' : 'At least 6 characters' }}" minlength="6" required aria-invalid="{{ errorMessage ? 'true' : 'false' }}"@if (errorMessage) aria-describedby="form-error"@endif>
         @if (!hasAccount)
           <p class="help">This becomes your password for signing in.</p>
         @endif
