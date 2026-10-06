@@ -64,22 +64,38 @@ if (!await waitForPort(120_000)) {
   throw new Error(`The serve path did not start on port ${port}.\n${err}`)
 }
 
-const failures: string[] = []
+const unresolved: string[] = []
+const unreachable: string[] = []
 let checked = 0
 for (const route of ROUTES) {
   const res = await fetch(`http://127.0.0.1:${port}${route}`, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(45_000) })
   const html = await res.text()
-  if (!res.ok) { failures.push(`${route} responded ${res.status}`); continue }
+  if (!res.ok) { unreachable.push(`${route} responded ${res.status}`); continue }
   checked += 1
   for (const leftover of unresolvedAttributes(html))
-    failures.push(`${route} ships an unresolved expression in an attribute: ${leftover}`)
+    unresolved.push(`${route}  ${leftover}`)
 }
 proc.kill()
 
-if (failures.length > 0) {
-  console.error('A component rendered its own template instead of its output:')
-  for (const f of failures) console.error(`  - ${f}`)
-  throw new Error(`${failures.length} unresolved expression(s) across ${ROUTES.length} served routes.`)
+// Two different failures, reported as two different things: a 404 is a routing
+// or build problem, not a component rendering its own template, and labelling
+// it as the latter sends the next person looking in the wrong place.
+if (unreachable.length > 0) {
+  console.error(`${unreachable.length} route(s) did not serve:`)
+  for (const f of unreachable) console.error(`  - ${f}`)
 }
+if (unresolved.length > 0) {
+  console.error(`${unresolved.length} unresolved expression(s) in attributes — a component rendered its own template instead of its output:`)
+  for (const f of unresolved) console.error(`  - ${f}`)
+}
+if (unreachable.length + unresolved.length > 0) process.exit(1)
 
 console.log(`Serve path renders clean: ${checked} routes, no stx expressions left in attributes.`)
+/*
+ * Explicit exit. Killing the spawned server can leave a socket or a piped
+ * stdio handle pending, and loghq reliably rejected one AFTER every route had
+ * passed — the checks printed clean and the process still exited 1, which in
+ * CI is a red build with a green log. Nothing below this line matters, so stop
+ * here rather than waiting for the loop to drain.
+ */
+process.exit(0)
