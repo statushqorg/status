@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "A self-hostable status page & uptime monitoring platform \u2014 built as a Stacks app.",
+  "description": "A self-hostable status page & uptime monitoring platform — built as a Stacks app.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "contributors": [
     "Chris Breuer <chris@stacksjs.org>"
@@ -74,12 +74,12 @@
   "dependencies": {
     "@bughq/stacks": "^0.2.2",
     "@loghq/stacks": "^0.2.6",
-    "@stacksjs/components": "0.2.378",
+    "@stacksjs/components": "0.2.382",
     "@stacksjs/logging": "^0.75.37",
-    "@stacksjs/stx": "0.2.378",
+    "@stacksjs/stx": "0.2.382",
     "@stacksjs/ts-validation": "^0.5.6",
     "@ts-analytics/tracking": "^0.1.15",
-    "bun-plugin-stx": "0.2.378",
+    "bun-plugin-stx": "0.2.382",
     "bun-query-builder": "^0.3.3",
     "stacks": "^0.75.37",
     "stripe": "22.3.2",
