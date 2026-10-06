@@ -18,10 +18,10 @@
   tests/unit/bridge-hygiene.test.ts.
 -->
 <script server>
-import { relativeTime, serverStatusPill } from '../../../../app/lib/display'
-import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
-import { authRequest } from '../../../../app/lib/authRequest'
-import { serverFormErrorLabel } from '../../../../app/lib/serverForm'
+import { relativeTime, serverStatusPill } from '~/app/lib/display'
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
+import { serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
 
 const agoLabel = relativeTime

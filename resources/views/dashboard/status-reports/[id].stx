@@ -7,11 +7,11 @@
   same convention as status-pages/[id].stx.
 -->
 <script server>
-import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
-import { authRequest } from '../../../../app/lib/authRequest'
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 import { db } from '@stacksjs/database'
-import { formatDateTime, statusLabel, statusPillClass } from '../../../../app/lib/display'
+import { formatDateTime, statusLabel, statusPillClass } from '~/app/lib/display'
 
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import
 // { x as y }` binds undefined in a server block in this stx build, so the

@@ -22,11 +22,11 @@
 -->
 <script server>
 import { scaleLinear, line, curveMonotoneX } from 'ts-charts'
-import { incidentPillClass, relativeTime, serverStatusPill, statusLabel, statusPillClass } from '../../../../app/lib/display'
-import { aggregateHostStatus, DEFAULT_HOST, readingsFromSamples } from '../../../../app/lib/agentHosts'
-import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
-import { authRequest } from '../../../../app/lib/authRequest'
-import { serverFormErrorLabel } from '../../../../app/lib/serverForm'
+import { incidentPillClass, relativeTime, serverStatusPill, statusLabel, statusPillClass } from '~/app/lib/display'
+import { aggregateHostStatus, DEFAULT_HOST, readingsFromSamples } from '~/app/lib/agentHosts'
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
+import { serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
 import { config } from '@stacksjs/config'
 

@@ -10,9 +10,9 @@
   fields, two visual cards.
 -->
 <script server>
-import { formatDateTime, statusLabel, statusPillClass } from '../../../../app/lib/display'
-import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
-import { authRequest } from '../../../../app/lib/authRequest'
+import { formatDateTime, statusLabel, statusPillClass } from '~/app/lib/display'
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
 
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import

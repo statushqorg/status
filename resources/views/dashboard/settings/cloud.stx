@@ -11,8 +11,8 @@
   pages.
 -->
 <script server>
-import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
-import { authRequest } from '../../../../app/lib/authRequest'
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
 
 // Auth + team resolution — see resources/views/dashboard/monitors/index.stx

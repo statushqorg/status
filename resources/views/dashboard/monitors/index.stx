@@ -27,10 +27,10 @@
   app-nav.stx, so the app reads as the same product as the site.
 -->
 <script server>
-import { relativeTime, statusLabel, statusPillClass } from '../../../../app/lib/display'
+import { relativeTime, statusLabel, statusPillClass } from '~/app/lib/display'
 import { config } from '@stacksjs/config'
-import { resolveHealedTeamContext } from '../../../../app/lib/teamContext'
-import { authRequest } from '../../../../app/lib/authRequest'
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
 
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import

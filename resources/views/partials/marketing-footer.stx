@@ -5,7 +5,7 @@
   the theme-toggle wiring so every page that includes it gets the toggle.
 -->
 <script server>
-import { authRequest } from '../../../app/lib/authRequest'
+import { authRequest } from '~/app/lib/authRequest'
 
 // Same session test, and for the same reason, as partials/marketing-nav.stx
 // — see that file for why cookie presence is the whole check and why this

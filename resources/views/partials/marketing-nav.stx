@@ -4,7 +4,7 @@
   nav). Expects `appName` from the including page's server script.
 -->
 <script server>
-import { authRequest } from '../../../app/lib/authRequest'
+import { authRequest } from '~/app/lib/authRequest'
 
 // This is the codebase's first server block in a PARTIAL, so: it works.
 // stx's include processor branches on the `server` attribute and runs
