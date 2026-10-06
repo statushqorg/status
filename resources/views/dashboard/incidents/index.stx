@@ -133,11 +133,13 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your incidents.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your incidents."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)

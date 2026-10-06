@@ -117,11 +117,13 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to manage account security.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to manage account security."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -221,10 +223,10 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       </div>
       @if (__passkeys.length === 0)
         <div class="card-body">
-          <div class="empty" style="border: none; padding: 2.5rem 1rem;">
-            <h3>No passkeys yet</h3>
-            <p>Add your first passkey above to sign in without a password.</p>
-          </div>
+          <EmptyState
+            title="No passkeys yet"
+            description="Add your first passkey above to sign in without a password."
+          />
         </div>
       @endif
       @if (__passkeys.length > 0)

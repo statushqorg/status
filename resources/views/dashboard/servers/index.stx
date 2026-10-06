@@ -129,11 +129,13 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your servers.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your servers."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -156,11 +158,12 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
     @endif
 
     @if (serverCount === 0)
-      <div class="empty">
-        <h3>No servers yet</h3>
-        <p>A server is a box that pushes CPU, memory and disk to StatusHQ. Add one, install its agent, then attach the monitors that run on it.</p>
-        <div class="actions"><button type="button" class="button primary" id="server-create-open-empty">Add a server</button></div>
-      </div>
+      <EmptyState
+        title="No servers yet"
+        description="A server is a box that pushes CPU, memory and disk to StatusHQ. Add one, install its agent, then attach the monitors that run on it."
+      >
+        <button type="button" class="button primary" id="server-create-open-empty">Add a server</button>
+      </EmptyState>
     @endif
 
     @if (serverCount > 0)

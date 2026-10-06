@@ -123,19 +123,23 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view this maintenance window.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view this maintenance window."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && !win)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Maintenance window not found</h3>
-      <p>It may have been deleted, or it belongs to another team.</p>
-      <div class="actions"><StxLink class="button" to="/dashboard/maintenance">Back to maintenance</StxLink></div>
-    </div>
+    <EmptyState
+      title="Maintenance window not found"
+      description="It may have been deleted, or it belongs to another team."
+      className="my-12"
+    >
+      <StxLink class="button" to="/dashboard/maintenance">Back to maintenance</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && win)

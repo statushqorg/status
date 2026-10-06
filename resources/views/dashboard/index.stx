@@ -186,11 +186,13 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your overview.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your overview."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -275,10 +277,10 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
       </div>
       @if (openIncidents.length === 0)
         <div class="card-body">
-          <div class="empty" style="border: 0; padding: 1.5rem 0;">
-            <h3>No open incidents. All clear.</h3>
-            <p>Failed checks open incidents here automatically.</p>
-          </div>
+          <EmptyState
+            title="No open incidents. All clear."
+            description="Failed checks open incidents here automatically."
+          />
         </div>
       @endif
       @if (openIncidents.length > 0)

@@ -828,19 +828,23 @@ summary:focus-visible {
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your monitors.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your monitors."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && !monitor)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Monitor not found</h3>
-      <p>No monitor with this id is registered to your team.</p>
-      <div class="actions"><StxLink class="button" to="/dashboard/monitors">Back to monitors</StxLink></div>
-    </div>
+    <EmptyState
+      title="Monitor not found"
+      description="No monitor with this id is registered to your team."
+      className="my-12"
+    >
+      <StxLink class="button" to="/dashboard/monitors">Back to monitors</StxLink>
+    </EmptyState>
   @endif
 
   @if (monitor)

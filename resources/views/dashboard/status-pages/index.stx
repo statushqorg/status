@@ -67,11 +67,13 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your status pages.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your status pages."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -108,10 +110,10 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
     </dl>
 
     @if (statusPages.length === 0)
-      <div class="empty">
-        <h3>No status pages yet</h3>
-        <p>A status page gives your users a public view of your monitors. Create your first one below.</p>
-      </div>
+      <EmptyState
+        title="No status pages yet"
+        description="A status page gives your users a public view of your monitors. Create your first one below."
+      />
     @endif
 
     @if (statusPages.length > 0)

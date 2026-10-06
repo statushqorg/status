@@ -108,18 +108,21 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to manage cloud credentials.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to manage cloud credentials."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && credsError)
-    <div class="empty" style="margin: 2rem 0;">
-      <h3>Credentials could not be read</h3>
-      <p>You are signed in — this is a storage error, not an authentication one: {{ credsError }}</p>
-    </div>
+    <EmptyState
+      title="Credentials could not be read"
+      description="You are signed in — this is a storage error, not an authentication one: {{ credsError }}"
+      className="my-8"
+    />
   @endif
 
   @if (AUTH_USER)

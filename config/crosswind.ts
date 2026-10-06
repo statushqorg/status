@@ -70,6 +70,15 @@ export default {
         line: 'var(--border)',
         'line-strong': 'var(--border-strong)',
         'accent-solid': 'var(--accent)',
+        /*
+         * `panel` is @stacksjs/components' role name for a raised surface —
+         * <EmptyState variant="panel"> is `bg-panel rounded-panel ring-1
+         * ring-line`. Aliased to the same vars this app's own `.empty` rule
+         * already uses (surface + border + radius) so a component renders
+         * identically to the hand-written markup it replaces, rather than
+         * losing its background to an undefined utility.
+         */
+        panel: 'var(--surface)',
       },
       fontFamily: {
         display: ['var(--font-display)'],
@@ -79,6 +88,9 @@ export default {
       borderRadius: {
         card: 'var(--radius)',
         'card-sm': 'var(--radius-sm)',
+        // Same alias as the `panel` colour above: the component library's
+        // radius role name, pointed at this app's existing radius.
+        panel: 'var(--radius)',
       },
     },
   },

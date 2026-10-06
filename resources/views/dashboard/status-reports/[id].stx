@@ -109,11 +109,13 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
 
 <main class="app-shell">
   @if (!report)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Announcement not found</h3>
-      <p>This announcement does not exist for your team, or your session has expired.</p>
-      <div class="actions"><StxLink class="button" to="/dashboard/status-reports">Back to announcements</StxLink></div>
-    </div>
+    <EmptyState
+      title="Announcement not found"
+      description="This announcement does not exist for your team, or your session has expired."
+      className="my-12"
+    >
+      <StxLink class="button" to="/dashboard/status-reports">Back to announcements</StxLink>
+    </EmptyState>
   @endif
 
   @if (report)
@@ -188,10 +190,10 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       </div>
       @if (updates.length === 0)
         <div class="card-body">
-          <div class="empty" style="border: 0; padding: 2rem 1rem;">
-            <h3>No updates yet</h3>
-            <p>Post the first update above to announce this on your status pages.</p>
-          </div>
+          <EmptyState
+            title="No updates yet"
+            description="Post the first update above to announce this on your status pages."
+          />
         </div>
       @endif
       @if (updates.length > 0)
@@ -257,10 +259,10 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
 
       @if (availableMonitors.length === 0 && assignedMonitors.length === 0)
         <div class="card-body">
-          <div class="empty" style="border: 0; padding: 2rem 1rem;">
-            <h3>No monitors on this team</h3>
-            <p>Create a monitor first, then attach it here.</p>
-          </div>
+          <EmptyState
+            title="No monitors on this team"
+            description="Create a monitor first, then attach it here."
+          />
         </div>
       @endif
     </section>

@@ -118,11 +118,13 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your notification channels.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your notification channels."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -157,10 +159,10 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     @endif
 
     @if (channels.length === 0)
-      <div class="empty">
-        <h3>No channels yet</h3>
-        <p>Alerts have nowhere to go until a channel exists. Add your first channel below.</p>
-      </div>
+      <EmptyState
+        title="No channels yet"
+        description="Alerts have nowhere to go until a channel exists. Add your first channel below."
+      />
     @endif
 
     @if (channels.length > 0)

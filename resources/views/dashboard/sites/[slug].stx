@@ -203,19 +203,23 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view this site.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view this site."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && !siteExists)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Site not found</h3>
-      <p>No tracked site matches this address, or it belongs to another team.</p>
-      <div class="actions"><StxLink class="button primary" to="/dashboard">Back to overview</StxLink></div>
-    </div>
+    <EmptyState
+      title="Site not found"
+      description="No tracked site matches this address, or it belongs to another team."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/dashboard">Back to overview</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && siteExists)
@@ -303,10 +307,10 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
       </div>
       @if (openIncidents.length === 0)
         <div class="card-body">
-          <div class="empty" style="border: 0; padding: 1.5rem 0;">
-            <h3>No open incidents on this site.</h3>
-            <p>Failed checks open incidents here automatically.</p>
-          </div>
+          <EmptyState
+            title="No open incidents on this site."
+            description="Failed checks open incidents here automatically."
+          />
         </div>
       @endif
       @if (openIncidents.length > 0)

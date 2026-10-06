@@ -216,11 +216,13 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view your monitors.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view your monitors."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -285,11 +287,12 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     </div>
 
     @if (__monitorRows.length === 0)
-      <div class="empty">
-        <h3>No monitors match these filters</h3>
-        <p>Create your first monitor to start tracking uptime, or clear the filters above.</p>
-        <div class="actions"><StxLink to="/dashboard/monitors/new" class="button primary">New monitor</StxLink></div>
-      </div>
+      <EmptyState
+        title="No monitors match these filters"
+        description="Create your first monitor to start tracking uptime, or clear the filters above."
+      >
+        <StxLink to="/dashboard/monitors/new" class="button primary">New monitor</StxLink>
+      </EmptyState>
     @endif
 
     @if (__monitorRows.length > 0)

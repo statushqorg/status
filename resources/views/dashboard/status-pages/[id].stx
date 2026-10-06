@@ -141,11 +141,13 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
 
 <main class="app-shell">
   @if (!statusPage)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Status page not found</h3>
-      <p>This status page does not exist for your team, or your session has expired.</p>
-      <div class="actions"><StxLink class="button" to="/dashboard/status-pages">Back to status pages</StxLink></div>
-    </div>
+    <EmptyState
+      title="Status page not found"
+      description="This status page does not exist for your team, or your session has expired."
+      className="my-12"
+    >
+      <StxLink class="button" to="/dashboard/status-pages">Back to status pages</StxLink>
+    </EmptyState>
   @endif
 
   @if (statusPage)
@@ -256,10 +258,10 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
 
       @if (assignedMonitors.length === 0)
         <div class="card-body">
-          <div class="empty" style="border: 0; padding: 2rem 1rem;">
-            <h3>No monitors attached</h3>
-            <p>This page shows nothing to visitors until you attach a monitor below.</p>
-          </div>
+          <EmptyState
+            title="No monitors attached"
+            description="This page shows nothing to visitors until you attach a monitor below."
+          />
         </div>
       @endif
 

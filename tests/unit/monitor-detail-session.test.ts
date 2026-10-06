@@ -85,7 +85,18 @@ async function renderDetail(search = '', teamId: number | null = 7, authenticate
   expect(start).toBeGreaterThan(0)
   expect(end).toBeGreaterThan(start)
   const markup = `${source.slice(start, end)}\n@endif\n</main>`
-  const html = await processDirectives(markup, context, viewPath, { autoShell: false }, new Set())
+  /*
+   * componentsDir: this calls processDirectives directly, so it never reads
+   * config/ui.ts and therefore never sees `plugins:
+   * ['@stacksjs/components/stx-plugin']`. Without it a library tag resolves to
+   * nothing and the branch under test renders as an HTML comment — the
+   * assertions below would then fail for a reason that has nothing to do with
+   * the auth boundary they exist to guard.
+   */
+  const html = await processDirectives(markup, context, viewPath, {
+    autoShell: false,
+    componentsDir: join(import.meta.dir, '../../node_modules/@stacksjs/components/src/ui'),
+  }, new Set())
   return { context, html }
 }
 

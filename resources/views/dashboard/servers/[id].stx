@@ -336,19 +336,23 @@ useHead({
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view this server.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view this server."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER && !serverView)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Server not found</h3>
-      <p>It may have been deleted, or it belongs to another team.</p>
-      <div class="actions"><StxLink class="button primary" to="/dashboard/servers">All servers</StxLink></div>
-    </div>
+    <EmptyState
+      title="Server not found"
+      description="It may have been deleted, or it belongs to another team."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/dashboard/servers">All servers</StxLink>
+    </EmptyState>
   @endif
 
   @if (serverView)

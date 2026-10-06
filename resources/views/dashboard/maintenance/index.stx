@@ -126,11 +126,13 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
 
 <main class="app-shell">
   @if (!AUTH_USER)
-    <div class="empty" style="margin: 3rem 0;">
-      <h3>Sign in required</h3>
-      <p>You need an authenticated session to view maintenance windows.</p>
-      <div class="actions"><StxLink class="button primary" to="/login">Sign in</StxLink></div>
-    </div>
+    <EmptyState
+      title="Sign in required"
+      description="You need an authenticated session to view maintenance windows."
+      className="my-12"
+    >
+      <StxLink class="button primary" to="/login">Sign in</StxLink>
+    </EmptyState>
   @endif
 
   @if (AUTH_USER)
@@ -175,10 +177,10 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
     @endif
 
     @if (windows.length === 0)
-      <div class="empty">
-        <h3>No maintenance windows yet</h3>
-        <p>Schedule one before planned work so a deliberate outage doesn't page anyone or turn your status page red.</p>
-      </div>
+      <EmptyState
+        title="No maintenance windows yet"
+        description="Schedule one before planned work so a deliberate outage doesn't page anyone or turn your status page red."
+      />
     @endif
 
     @if (windows.length > 0)
