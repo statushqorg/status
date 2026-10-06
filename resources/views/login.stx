@@ -40,7 +40,7 @@ useHead({
         <span class="brand-name">{{ appName }}</span>
       </StxLink>
 
-      <div id="error" class="error"></div>
+      <div id="error" class="error" role="alert"></div>
 
       <!-- Step 1: credentials -->
       <form id="login-form">
@@ -129,9 +129,29 @@ useHead({
           return tok
         }
 
+        // The banner is role="alert", so writing to it announces the message.
+        // The fields it refers to need marking too: without aria-invalid and a
+        // link to the text, a failed sign-in leaves the control itself looking
+        // untouched to assistive technology.
+        var errorFields = ['email', 'password', 'code']
+
+        function markFields(invalid) {
+          errorFields.forEach(function (id) {
+            var el = document.getElementById(id)
+            if (!el)
+              return
+            el.setAttribute('aria-invalid', invalid ? 'true' : 'false')
+            if (invalid)
+              el.setAttribute('aria-describedby', 'error')
+            else
+              el.removeAttribute('aria-describedby')
+          })
+        }
+
         function showError(msg) {
           errorEl.textContent = msg
           errorEl.classList.add('show')
+          markFields(true)
         }
 
         // SSO callback failures land here as /login?error=sso_* (the
@@ -150,6 +170,7 @@ useHead({
         function clearError() {
           errorEl.textContent = ''
           errorEl.classList.remove('show')
+          markFields(false)
         }
 
         async function post(url, body) {
