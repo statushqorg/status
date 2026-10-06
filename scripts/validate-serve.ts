@@ -19,6 +19,11 @@
  * Unlike the deployment smoke test this runs BEFORE a deploy, so it blocks
  * rather than reports.
  */
+// `export {}` makes this a module. Without it TypeScript treats a file with no
+// imports or exports as a script, where top-level `await` is an error (TS1375) —
+// which analyticshq's tsconfig surfaces because it includes scripts/.
+export {}
+
 const ROUTES = [
   '/',
   '/login',
