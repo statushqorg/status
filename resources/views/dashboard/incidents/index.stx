@@ -193,16 +193,20 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
     </div>
 
     @if (incidents.length === 0)
-      <div class="empty">
-        @if (filterStatus)
-          <h3>No incidents match this filter</h3>
-          <p>Nothing on record with this status. <StxLink to="{{ statusUrl('') }}">Clear the filter</StxLink> to see everything.</p>
-        @endif
-        @if (!filterStatus)
-          <h3>No incidents on record</h3>
-          <p>Quiet is good. Failed checks open incidents here automatically.</p>
-        @endif
-      </div>
+      @if (filterStatus)
+        <EmptyState
+          title="No incidents match this filter"
+          description="Nothing on record with this status."
+        >
+          <StxLink class="button primary" to="{{ statusUrl('') }}">Clear the filter</StxLink>
+        </EmptyState>
+      @endif
+      @if (!filterStatus)
+        <EmptyState
+          title="No incidents on record"
+          description="Quiet is good. Failed checks open incidents here automatically."
+        />
+      @endif
     @endif
 
     @if (incidents.length > 0)

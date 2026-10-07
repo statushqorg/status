@@ -684,24 +684,6 @@
   }
   .flash.error { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 
-  /* Empty states */
-  .empty {
-    padding: 3.5rem 1.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    text-align: center;
-  }
-  .empty h3 {
-    margin: 0 0 0.4rem;
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
-  .empty p { margin: 0 auto; max-width: 30rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
-  .empty .actions { margin-top: 1.25rem; display: flex; justify-content: center; gap: 0.6rem; }
-  .empty a:not(.button) { color: var(--accent); font-weight: 600; }
-
   /* Type tags: quiet bordered labels so the type column reads as metadata */
   .tag {
     display: inline-block;

@@ -243,10 +243,12 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
         <span class="sub">{{ siteCount }} tracked &middot; pick one to view its checks</span>
       </div>
       @if (siteCount === 0)
-        <div class="empty">
-          <h3>No sites yet</h3>
-          <p>Add a monitor and its domain shows up here as a site. <StxLink to="/dashboard/monitors">Go to monitors</StxLink>.</p>
-        </div>
+        <EmptyState
+          title="No sites yet"
+          description="Add a monitor and its domain shows up here as a site."
+        >
+          <StxLink class="button primary" to="/dashboard/monitors">Go to monitors</StxLink>
+        </EmptyState>
       @endif
       @if (siteCount > 0)
         <div class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
@@ -310,10 +312,13 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
       </div>
       @if (statusPageCount === 0)
         <div class="card-body">
-          <div class="empty" style="border: 0; padding: 1.5rem 0;">
-            <h3>No status pages yet</h3>
-            <p>A status page gives your users a public view of your monitors. <StxLink to="/dashboard/status-pages">Create your first one</StxLink>.</p>
-          </div>
+          <EmptyState
+            variant="bare"
+            title="No status pages yet"
+            description="A status page gives your users a public view of your monitors."
+          >
+            <StxLink class="button primary" to="/dashboard/status-pages">Create your first one</StxLink>
+          </EmptyState>
         </div>
       @endif
       @if (statusPageCount > 0)
