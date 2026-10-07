@@ -48,15 +48,15 @@ useHead({
         <p class="sub">Start monitoring in under two minutes. No credit card required.</p>
         <div class="field">
           <label for="name">Name</label>
-          <input id="name" name="name" type="text" autocomplete="name" placeholder="Ada Lovelace" required>
+          <input id="name" name="name" type="text" autocomplete="name" placeholder="Ada Lovelace" required aria-describedby="error">
         </div>
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required aria-describedby="error">
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Create a password" minlength="6" required>
+          <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Create a password" minlength="6" required aria-describedby="error">
           <p class="hint">At least 6 characters.</p>
         </div>
         <button id="register-btn" class="button" type="submit">Create account</button>
@@ -105,10 +105,6 @@ useHead({
             if (!el)
               return
             el.setAttribute('aria-invalid', invalid ? 'true' : 'false')
-            if (invalid)
-              el.setAttribute('aria-describedby', 'error')
-            else
-              el.removeAttribute('aria-describedby')
           })
         }
 

@@ -48,13 +48,13 @@ useHead({
         <p class="sub">Sign in to your {{ appName }} account.</p>
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required aria-describedby="error">
         </div>
         <div class="field">
           <div class="row-between">
             <label for="password">Password</label>
           </div>
-          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required aria-describedby="error">
         </div>
         <label for="remember" style="display:flex;align-items:center;gap:.5rem;margin:-.25rem 0 .85rem;font-size:.85rem;color:var(--muted,#6b7280);cursor:pointer;user-select:none">
           <input id="remember" name="remember" type="checkbox" style="width:16px;height:16px;margin:0;accent-color:var(--accent,#4f46e5);cursor:pointer">
@@ -83,7 +83,7 @@ useHead({
         <p class="sub">Enter the 6-digit code from your authenticator app.</p>
         <div class="field">
           <label for="code">Authentication code</label>
-          <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required>
+          <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required aria-describedby="error">
         </div>
         <button id="twofa-btn" class="button" type="submit">Verify &amp; sign in</button>
       </form>
@@ -141,10 +141,6 @@ useHead({
             if (!el)
               return
             el.setAttribute('aria-invalid', invalid ? 'true' : 'false')
-            if (invalid)
-              el.setAttribute('aria-describedby', 'error')
-            else
-              el.removeAttribute('aria-describedby')
           })
         }
 
