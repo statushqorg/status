@@ -77,6 +77,25 @@ export default {
   // Theme pre-paint scripts stay per-page: the public status pages run a
   // forced-theme resolver with different semantics, and a config-level
   // script would override a server-stamped forced theme.
+  //
+  // Tried and reverted on stx 0.2.401 (2026-10-08). That release added
+  // `colorMode.respectExisting`, which is exactly the missing piece: it treats
+  // an already-stamped concrete light or dark as authoritative instead of
+  // resolving from storage over the top. It works at the generator level, and
+  // simulating all nine combinations of stamped value, stored value and OS
+  // preference against generateColorModeBootScript gave the right answer every
+  // time.
+  //
+  // It does not reach the serve path. Adding the colorMode block here emits a
+  // boot script whose embedded config has no respectExisting key at all, and
+  // the emitted body contains neither `forced` nor any getAttribute call, so it
+  // cannot consult what the server stamped. Running those exact served bytes
+  // against a forced page: owner forces light + visitor stored dark lands on
+  // dark, and owner forces dark + visitor stored light lands on light. That is
+  // the regression this comment was written about, so the block came back out.
+  //
+  // Reported upstream. Revisit when a release emits a boot script that mentions
+  // `forced`, which is the one-grep check: curl a page and look for it.
   app: {
     head: {
       link: [
