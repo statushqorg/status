@@ -8,8 +8,10 @@
   history now belong to the box, and monitors attach to it.
 
   Server-rendered like monitors/index.stx, and for the same reason recorded
-  there: the client-reactive state()/:for pattern hit an unresolved hydration
-  warning on these pages.
+  there: the client-reactive state()/:for pattern produced a hydration warning
+  on these pages. That is now diagnosed and no longer a blocker; `:for` cannot
+  read a a server-block binding, and `state()` in a client block fixes it.
+  See that file's header and stacksjs/stx#2051.
 
   SECURITY: a servers row carries metrics_token, the agent-ingest credential.
   Raw rows are bound only under `__` names and projected before anything

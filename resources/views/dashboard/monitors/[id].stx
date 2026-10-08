@@ -5,11 +5,13 @@
   status pages. Charts are hand-rolled inline SVG computed server-side
   from CheckResult rows rather than @stacksjs/charts + a client script +
   useChart() (the framework's real, working convention elsewhere) --
-  this app's own dashboard pages hit an unresolved client-hydration bug
-  earlier in this project (see monitors/index.stx's header comment), so
-  charts here stay on the same proven server-rendered path rather than
-  re-risking that. Revisit once the underlying stx bug is confirmed
-  fixed.
+  this app's own dashboard pages hit what looked like a client-hydration
+  bug earlier in this project, so charts here stay on the same proven
+  server-rendered path. That bug is now diagnosed and is narrower than it
+  seemed: `:for` cannot read a a server-block binding, and wrapping the
+  array in `state()` inside a client block is enough (monitors/index.stx's
+  header has the detail, upstream is stacksjs/stx#2051). Converting these
+  charts is unblocked work rather than a risk, whenever it is worth doing.
 
   Visual language: the marketing site's design system (emerald accent,
   Space Grotesk display, light + dark) via partials/app-head.stx +

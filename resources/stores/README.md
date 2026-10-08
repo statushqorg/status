@@ -7,6 +7,11 @@ directory must exist even while empty — same reason as
 
 Nothing lives here yet by design: this app is server-rendered with plain
 scripts, a decision documented in
-`resources/views/dashboard/monitors/index.stx`'s header (the unresolved
-`:for expected an array` hydration warning). A real store is Phase 6 work and
-is gated on re-testing that on the upgraded stx — see STX-MIGRATION-PLAN.md.
+`resources/views/dashboard/monitors/index.stx`'s header.
+
+The `:for expected an array` warning behind that decision was re-tested on
+stx 0.2.399 and diagnosed (2026-10-08): `:for` is expanded client-side and
+cannot see a `<script server>` binding, which is the only form that fails.
+Every signal form works, including a server array wrapped in `state()`. So a
+real store is no longer gated on anything upstream, just on the work itself.
+Upstream report: stacksjs/stx#2051.

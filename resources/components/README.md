@@ -14,5 +14,7 @@ inference.
 
 The starter scaffold that used to sit here — 13 unreferenced demo components
 from the Stacks template — was deleted in Phase 0. Real components arrive in
-Phase 6, which is gated on the stx upgrade and the `:for` hydration question;
-see the plan.
+Phase 6. That was gated on the stx upgrade and the `:for` hydration question;
+the latter is settled as of 2026-10-08 (it needs `state()` in a client block,
+see `resources/views/dashboard/monitors/index.stx` and stacksjs/stx#2051), so
+only the work itself remains. See the plan.

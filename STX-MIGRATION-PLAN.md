@@ -27,11 +27,17 @@ re-derive decisions from them:**
    `pantry/bun-plugin-stx/dist/serve.js` forwards `strict`, `router`,
    `app`, and the SEO keys from `config/ui.ts`.
 
-The genuinely load-bearing deviation stays: the documented, unresolved
-`:for expected an array` hydration bug (see
-`resources/views/dashboard/monitors/index.stx` header) is why the app is
-server-rendered with plain scripts. That decision is respected until
-Phase 6 re-tests it on an upgraded stx.
+The deviation that was genuinely load-bearing, the `:for expected an array`
+hydration bug, is why the app is server-rendered with plain scripts. Phase 6
+re-tested it on 2026-10-08 as this plan asked, and it is **resolved**: `:for`
+is expanded client-side and cannot read a `<script server>` binding, which is
+the single failing form out of six probed. Binding the array into a
+`<script client>` block with `state()` is the whole fix. Upstream report:
+stacksjs/stx#2051; detail in
+`resources/views/dashboard/monitors/index.stx`'s header.
+
+The plain-script architecture is therefore a free choice now rather than a
+constraint, and converting a page is ordinary work.
 
 Push cadence: one phase = one commit (or a small commit series) = one
 push. CI deploys `main` to prod, gated on lint + typecheck (app code) +
@@ -346,9 +352,11 @@ purpose.
 
 - Upgrade `@stacksjs/stx` + `stx-router` off the 0.2.82 pin to ≥0.2.176
   (the pin predates the fixes for 36 broken library components).
-- **Re-test the `:for` hydration bug** that justifies the plain-script
+- ~~**Re-test the `:for` hydration bug** that justifies the plain-script
   architecture; record the result in `monitors/index.stx`'s header either
-  way.
+  way.~~ Done 2026-10-08: resolved, `:for` cannot read a `<script server>`
+  binding and `state()` in a client block is the fix. Recorded in that header
+  and filed as stacksjs/stx#2051.
 - Then wire `@stacksjs/components`, replace the 4 `onsubmit`-confirm
   attributes with `stxConfirm`, adopt `<Icon>` for the 54 inline SVGs.
 

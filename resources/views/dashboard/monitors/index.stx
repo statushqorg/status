@@ -3,12 +3,31 @@
 
   Server-rendered like resources/views/status/[slug].stx rather than the
   client-reactive script-client + state()/:for pattern used by some
-  framework-shipped dashboard pages: that pattern hit an unresolved
+  framework-shipped dashboard pages. That choice was made because the
+  reactive pattern produced
   `:for expected an array; got empty/error for expression "monitors()"`
-  warning here that didn't reproduce in the framework's own shipped
-  example, and this simpler, already-proven-working approach (see the
-  public status pages) ships a correct page now rather than staying
-  blocked on a client-hydration issue.
+  here while not reproducing in the framework's own shipped example.
+
+  RESOLVED 2026-10-08, and it was never the bug it looked like. Re-probed all
+  six expression forms on stx 0.2.399: a plain client const, a signal call
+  `monitors()`, a bare signal `monitors`, a defensive `(monitors() ?? [])` and
+  a server array wrapped in `state()` all render every row. Exactly one form
+  fails, and it is the one this page used: iterating a server-block const
+  directly.
+
+  :for is expanded on the client only, and its expression scope
+  holds client-block bindings but not server-block ones, so a server
+  array resolves to nothing (`inScope=false type=string`) and the list comes
+  out empty. The warning's hint, "if this is a signal call, try the bare
+  reference", is what sent the original investigation at a signal problem that
+  did not exist, and that misread is why this whole app is plain scripts.
+  Filed upstream as stacksjs/stx#2051.
+
+  The fix is one line per list: bind the server array into a client
+  block with `state()` and iterate the signal. `@foreach` also stays correct,
+  because it runs on the server where the binding does exist. So the reactive
+  pattern is available whenever these pages are worth converting; it is no
+  longer blocked on anything.
 
   Status starts from the server-rendered snapshot (current status at page
   load) and then updates live over a WebSocket: the plain script at the
@@ -17,10 +36,9 @@
   down shows without a reload. Progressive enhancement — if realtime is
   disabled or the socket can't connect, the page keeps the on-load
   snapshot. The WS client is a plain script (not a script-client block
-  with state()/:for), matching login.stx, because the reactive pattern
-  hit an unresolved `:for expected an array` hydration warning on this
-  page. (No literal script tags in this comment — stx parser constraint,
-  see partials/app-head.stx.)
+  with state()/:for), matching login.stx, for the reason recorded above.
+  (No literal script tags in this comment, an stx parser constraint; see
+  partials/app-head.stx.)
 
   Visual language: the marketing site's design system (emerald accent,
   Space Grotesk display, light + dark) via partials/app-head.stx +
