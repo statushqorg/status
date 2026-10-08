@@ -13,11 +13,18 @@
       // no JS at all (the server already stamped data-theme); only 'system'
       // needs this resolver, so a no-JS visitor on a 'system' page sees the
       // light default — an acceptable edge.
+      //
+      // Strict mode flags the localStorage read below. Neither replacement can
+      // express the first branch of this resolver: both @appearanceBootstrap
+      // and the config colorMode boot script stamp data-theme from storage
+      // unconditionally, so a visitor carrying 'dark' would override a page
+      // owner who forced light. Verified against the generated boot script.
       (function () {
         try {
           var el = document.documentElement
           var theme = el.getAttribute('data-theme')
           if (theme !== 'light' && theme !== 'dark') {
+            // stx-strict-ignore-next-line window.localStorage
             var stored = localStorage.getItem('uptimestatus-theme')
             if (stored === 'light' || stored === 'dark')
               theme = stored

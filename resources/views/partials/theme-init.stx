@@ -15,10 +15,21 @@
 
   Nothing is written here; the toggle in partials/theme-toggle.stx is what
   stores the choice, under the same key.
+
+  Strict mode flags the localStorage read and suggests @appearanceBootstrap.
+  That directive does not fit: it reads a JSON preference object out of one
+  key, so the bare 'light'/'dark' string written by theme-toggle.stx parses to
+  nothing and every stored choice resolves to the default instead. It also
+  requires a second 'appearance' axis this app does not have. The config-level
+  colorMode boot script has the same storage shape as this code and would fit,
+  but it is injected into every page -- including layouts/status.stx, where a
+  page owner's forced theme has to win over a visitor's stored one, which
+  neither mechanism can express. So this stays hand-written.
 --}}
 <script>
   (function () {
     try {
+      // stx-strict-ignore-next-line window.localStorage
       var stored = localStorage.getItem('uptimestatus-theme')
       if (stored === 'light' || stored === 'dark') {
         document.documentElement.setAttribute('data-theme', stored)
