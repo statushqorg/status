@@ -15,7 +15,7 @@
         "bun-plugin-stx": "0.2.401",
         "bun-query-builder": "^0.3.3",
         "stacks": "^0.75.37",
-        "stripe": "22.3.2",
+        "stripe": "23.0.0",
         "ts-charts": "github:stacksjs/ts-charts",
       },
       "devDependencies": {
@@ -514,7 +514,7 @@
 
     "strip-ansi-cjs": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
 
-    "stripe": ["stripe@22.3.2", "", { "peerDependencies": { "@types/node": ">=18" }, "optionalPeers": ["@types/node"] }, "sha512-O13QOvgEIQvDlTy6Ubb5kB980wpbhmoZNsgCXKILjCMZS67f+bW+6w99k3gnSi/N1lkryoj1WYdpGT5Wc5edjg=="],
+    "stripe": ["stripe@23.0.0", "", { "peerDependencies": { "@types/node": ">=20" }, "optionalPeers": ["@types/node"] }, "sha512-MDE2A5ZVVluYURORaZEVghSmnLJc3w6aHAlZSxDQMsOjOb3V0O6ro/CiaeFlJS4N7uIVmsg98ocRsPmUK6YfyA=="],
 
     "stx-router": ["stx-router@0.2.401", "", {}, "sha512-WtdMe3rMnJUskdNsbRp5QAVdN8Gucuu7H5GaSReFyk2FMEzYw2HK0YlxruWpckt6y9ipenn+djgsaI9y69GOwQ=="],
 

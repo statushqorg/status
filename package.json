@@ -82,7 +82,7 @@
     "bun-plugin-stx": "0.2.401",
     "bun-query-builder": "^0.3.3",
     "stacks": "^0.75.37",
-    "stripe": "22.3.2",
+    "stripe": "23.0.0",
     "ts-charts": "github:stacksjs/ts-charts"
   },
   "devDependencies": {
