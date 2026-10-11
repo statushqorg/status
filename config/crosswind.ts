@@ -133,6 +133,28 @@ export default {
         'secondary-soft-ink': 'var(--muted)',
         inverse: 'var(--fg)',
         'inverse-ink': 'var(--bg)',
+
+        // The remaining roles. Omitted on the first pass because nothing in
+        // this app used them yet, which was the wrong test: an unmapped role
+        // does not fall back to this palette, it falls back to stx's own light
+        // value, and the `.dark` half of that never matches a [data-theme] app.
+        // So any component reaching for one of these would have rendered a
+        // light chip on a dark page the moment it was adopted.
+        'surface-raised-hover': 'color-mix(in srgb, var(--fg) 6%, var(--surface-2))',
+        'surface-sunken-hover': 'color-mix(in srgb, var(--fg) 6%, var(--bg))',
+        'success-solid-hover': 'color-mix(in srgb, var(--success) 92%, var(--fg))',
+        'danger-solid-hover': 'color-mix(in srgb, var(--danger) 92%, var(--fg))',
+        'warning-solid-hover': 'color-mix(in srgb, var(--amber) 92%, var(--fg))',
+        'info-solid': 'var(--muted)',
+        'info-solid-hover': 'var(--fg)',
+        'secondary-solid': 'var(--muted)',
+        'secondary-solid-hover': 'var(--fg)',
+        // The danger-* detail roles, used by the library's destructive inputs
+        // and confirm dialogs for their text, hairline and focus ring.
+        'danger-fg': 'var(--danger)',
+        'danger-fg-subtle': 'color-mix(in srgb, var(--danger) 70%, var(--surface))',
+        'danger-line': 'color-mix(in srgb, var(--danger) 34%, transparent)',
+        'danger-focus': 'color-mix(in srgb, var(--danger) 45%, transparent)',
       },
       fontFamily: {
         display: ['var(--font-display)'],
