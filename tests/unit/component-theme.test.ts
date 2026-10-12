@@ -56,4 +56,20 @@ describe('component palette contract', () => {
     expect(colors.info).toBe('var(--muted)')
     expect(colors.secondary).toBe('var(--muted)')
   })
+
+  test('the quiet text scale collapses on purpose, because this palette has two steps', () => {
+    /*
+     * fg-soft is the one that matters: <Breadcrumb> paints separators with it
+     * and links with fg-muted, so equal values mean a divider as loud as the
+     * labels it divides. The other four HQ apps have a third text step and
+     * point fg-soft at it; this palette has only --fg and --muted, so all three quiet
+     * roles share one value.
+     *
+     * Pinned as a test so it reads as a decision. If a third step is ever
+     * added, this fails and points at the four roles that should use it.
+     */
+    expect(colors['fg-strong']).toBe('var(--fg)')
+    for (const role of ['fg-muted', 'fg-soft', 'fg-subtle'])
+      expect(colors[role]).toBe('var(--muted)')
+  })
 })
