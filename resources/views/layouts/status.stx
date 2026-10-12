@@ -14,11 +14,19 @@
       // needs this resolver, so a no-JS visitor on a 'system' page sees the
       // light default — an acceptable edge.
       //
-      // Strict mode flags the localStorage read below. Neither replacement can
-      // express the first branch of this resolver: both @appearanceBootstrap
-      // and the config colorMode boot script stamp data-theme from storage
-      // unconditionally, so a visitor carrying 'dark' would override a page
-      // owner who forced light. Verified against the generated boot script.
+      // Strict mode flags the localStorage read below. @appearanceBootstrap
+      // still cannot express the first branch of this resolver, but the config
+      // colorMode boot script now can: `respectExisting: true` treats an
+      // already-stamped concrete light or dark as authoritative, so an owner
+      // who forced light wins over a visitor carrying 'dark'. app.colorMode in
+      // config/ui.ts declares exactly that, and the served bytes were run
+      // against all 18 combinations of stamped, stored and OS preference:
+      // identical to this resolver, every time.
+      //
+      // This stays until someone can confirm on a real status page that the
+      // boot script is injected into THIS layout. Both running is harmless --
+      // they agree and both are idempotent -- and the failure mode of removing
+      // it too early is a forced theme flashing the wrong way.
       (function () {
         try {
           var el = document.documentElement

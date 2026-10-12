@@ -97,6 +97,48 @@ export default {
   // Reported upstream. Revisit when a release emits a boot script that mentions
   // `forced`, which is the one-grep check: curl a page and look for it.
   app: {
+    /*
+     * The pre-paint theme resolver, from the framework rather than by hand.
+     *
+     * `respectExisting` is the whole reason this is possible: a status page
+     * owner can force light or dark for visitors, and the server stamps that
+     * onto data-theme before any script runs. Without it the boot script
+     * resolves from storage over the top, so a visitor carrying 'dark' would
+     * override an owner who forced light. With it, an already-stamped concrete
+     * light or dark is authoritative and storage is only consulted when there
+     * is nothing stamped.
+     *
+     * That is exactly what layouts/status.stx's hand-written resolver does, and
+     * what partials/theme-init.stx does for every other page minus the OS
+     * fallback. All three now agree, and this one is declared once.
+     *
+     * Stamping a value where nothing was stamped before is a no-op here, which
+     * is worth saying because it is the thing that could have gone wrong.
+     * Measured in both head partials: `html[data-theme="dark"]` is
+     * byte-identical to the `@media (prefers-color-scheme: dark)
+     * html:not([data-theme="light"])` block it would replace (17 tokens in
+     * app-head, 18 in marketing-head), and there is NO
+     * `html[data-theme="light"]` token block, so stamping 'light' suppresses
+     * the media block and falls through to :root -- which is what a light-OS
+     * visitor already got.
+     *
+     * darkClass null because nothing here styles off a `dark` class, and
+     * because leaving it unset would let the component library's own `dark:`
+     * variants start matching.
+     *
+     * This was tried and reverted once, on 0.2.401, when the serve path emitted
+     * a boot script with no `respectExisting` key and no `forced` in its body.
+     * The note that came out of that named the check: curl a page and grep for
+     * `forced`. It is there now.
+     */
+    colorMode: {
+      storageKey: 'uptimestatus-theme',
+      attribute: 'data-theme',
+      darkClass: null,
+      initialMode: 'auto',
+      respectExisting: true,
+    },
+
     head: {
       link: [
         { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },

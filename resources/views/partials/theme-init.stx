@@ -20,11 +20,17 @@
   That directive does not fit: it reads a JSON preference object out of one
   key, so the bare 'light'/'dark' string written by theme-toggle.stx parses to
   nothing and every stored choice resolves to the default instead. It also
-  requires a second 'appearance' axis this app does not have. The config-level
-  colorMode boot script has the same storage shape as this code and would fit,
-  but it is injected into every page -- including layouts/status.stx, where a
-  page owner's forced theme has to win over a visitor's stored one, which
-  neither mechanism can express. So this stays hand-written.
+  requires a second 'appearance' axis this app does not have.
+
+  The config-level colorMode boot script DOES fit now, and app.colorMode in
+  config/ui.ts declares it: `respectExisting: true` leaves a server-stamped
+  forced theme alone, which is the one thing it could not express before. All
+  18 combinations of stamped, stored and OS were run against the served bytes
+  and match this file's behaviour plus an OS fallback.
+
+  This is kept anyway, for now, because removing it needs proof that the boot
+  script reaches layouts/status.stx, and that layout only renders for a real
+  status page. Running both is harmless: they agree, and both are idempotent.
 --}}
 <script>
   (function () {
