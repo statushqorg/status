@@ -870,7 +870,20 @@ summary:focus-visible {
   @if (monitor)
     <header class="page-head">
       <div>
-        <nav class="crumb" aria-label="Breadcrumb"><StxLink to="/dashboard/sites/{{ monitorSiteSlug }}">&larr; {{ monitorSiteHost }}</StxLink> &middot; <StxLink to="/dashboard/monitors">All monitors</StxLink>@if (serverCard) &middot; <StxLink to="/dashboard/servers/{{ serverCard.id }}">{{ serverCard.name }}</StxLink>@endif</nav>
+        {{-- Not a breadcrumb, despite how this read for a long time. A trail is
+             a hierarchy ending at the page you are on; this is a row of
+             SIBLING destinations - the site this monitor belongs to, the
+             monitor index, and the server it runs on when there is one. Every
+             item is a link, there is no current page and no containment
+             between them, so "Breadcrumb" told a screen reader user to expect
+             a structure that is not here.
+
+             The arrow and the separators are decoration and are hidden from
+             assistive tech: the arrow was being announced as part of the first
+             link's name ("left arrow status.example.com"), and the middots
+             were read between the links. They stay flex items of `.crumb`, so
+             the 0.4rem gaps are unchanged. --}}
+        <nav class="crumb" aria-label="Related pages"><StxLink to="/dashboard/sites/{{ monitorSiteSlug }}"><span aria-hidden="true">&larr;</span> {{ monitorSiteHost }}</StxLink> <span aria-hidden="true">&middot;</span> <StxLink to="/dashboard/monitors">All monitors</StxLink>@if (serverCard) <span aria-hidden="true">&middot;</span> <StxLink to="/dashboard/servers/{{ serverCard.id }}">{{ serverCard.name }}</StxLink>@endif</nav>
         <h1 style="overflow-wrap: anywhere;">{{ monitor.name }}</h1>
         <p class="meta"><span class="mono">{{ monitor.url }}</span> &middot; {{ monitor.type.replace('_', ' ') }} &middot; {{ intervalLabel(monitor.check_interval_seconds) }} &middot; {{ monitor.enabled ? 'enabled' : 'disabled' }}</p>
       </div>
