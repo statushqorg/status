@@ -14,7 +14,25 @@
  * of stamped, stored and OS preference.
  */
 import { describe, expect, test } from 'bun:test'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import ui from '../../config/ui'
+
+const ROOT = join(import.meta.dir, '../..')
+
+function stxFiles(dir: string): string[] {
+  const out: string[] = []
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory())
+      out.push(...stxFiles(full))
+    else if (entry.endsWith('.stx'))
+      out.push(full)
+  }
+  return out
+}
+
+const views = stxFiles(join(ROOT, 'resources')).map(f => [f.replace(`${ROOT}/`, ''), readFileSync(f, 'utf8')] as const)
 
 const colorMode = (ui as any).app?.colorMode as Record<string, unknown> | undefined
 
@@ -47,5 +65,36 @@ describe('color mode config', () => {
 
   test('falls back to the OS when nothing is stamped and nothing is stored', () => {
     expect(colorMode!.initialMode).toBe('auto')
+  })
+
+  test('no view hand-rolls a pre-paint resolver any more', () => {
+    /*
+     * There used to be two: partials/theme-init.stx, included by both head
+     * partials and the auth layout, and an inline resolver in
+     * layouts/status.stx for the forced-theme case. Both are gone, verified
+     * end to end on a seeded status page before removal: with only the boot
+     * script, an owner forcing light beats a visitor carrying dark, an owner
+     * forcing dark beats a visitor carrying light, and 'system' falls through
+     * to the stored choice.
+     *
+     * A second resolver is not just redundant, it is a race: whichever runs
+     * last wins, and the one that loses is the one that knows about `forced`.
+     */
+    expect(existsSync(join(ROOT, 'resources/views/partials/theme-init.stx'))).toBe(false)
+
+    for (const [file, source] of views) {
+      const reads = /localStorage\.getItem\(\s*['"]uptimestatus-theme['"]/.test(source)
+      expect(`${file}: reads the theme key directly = ${reads}`).toBe(`${file}: reads the theme key directly = false`)
+    }
+  })
+
+  test('the strict-mode escapes those resolvers needed are gone with them', () => {
+    // Each hand-written resolver carried an `stx-strict-ignore-next-line
+    // window.localStorage`. Removing the code removes the exemption, so this
+    // stays closed rather than quietly reappearing with the next guard.
+    for (const [file, source] of views) {
+      const escaped = /stx-strict-ignore-next-line\s+window\.localStorage/.test(source)
+      expect(`${file}: localStorage strict escape = ${escaped}`).toBe(`${file}: localStorage strict escape = false`)
+    }
   })
 })

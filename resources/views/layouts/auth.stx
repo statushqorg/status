@@ -15,7 +15,7 @@
     {{-- Favicons + fonts come from config/ui.ts app.head. --}}
     {{-- Title/description/robots come from each page's useSeoMeta call
          (stx-standards 04); the framework splices them in server-side. --}}
-    @include('../partials/theme-init.stx')
+    {{-- The pre-paint theme script is app.colorMode in config/ui.ts now. --}}
     {{-- window.stacksPasskey, for login's passkey button. It lives in the
          head, at layout level, for two ordering reasons.
          Layout level: the router only re-executes INLINE page scripts on a

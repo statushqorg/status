@@ -5,45 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="@yield('description')">
     <title>@yield('title')</title>
-    <script>
-      // Resolve the final theme before first paint (no flash of the wrong
-      // theme). A status page owner's forced 'light'/'dark' wins outright;
-      // 'system' follows the visitor's stored choice (shared with the
-      // marketing site) then their OS. Forced themes render dark/light with
-      // no JS at all (the server already stamped data-theme); only 'system'
-      // needs this resolver, so a no-JS visitor on a 'system' page sees the
-      // light default — an acceptable edge.
-      //
-      // Strict mode flags the localStorage read below. @appearanceBootstrap
-      // still cannot express the first branch of this resolver, but the config
-      // colorMode boot script now can: `respectExisting: true` treats an
-      // already-stamped concrete light or dark as authoritative, so an owner
-      // who forced light wins over a visitor carrying 'dark'. app.colorMode in
-      // config/ui.ts declares exactly that, and the served bytes were run
-      // against all 18 combinations of stamped, stored and OS preference:
-      // identical to this resolver, every time.
-      //
-      // This stays until someone can confirm on a real status page that the
-      // boot script is injected into THIS layout. Both running is harmless --
-      // they agree and both are idempotent -- and the failure mode of removing
-      // it too early is a forced theme flashing the wrong way.
-      (function () {
-        try {
-          var el = document.documentElement
-          var theme = el.getAttribute('data-theme')
-          if (theme !== 'light' && theme !== 'dark') {
-            // stx-strict-ignore-next-line window.localStorage
-            var stored = localStorage.getItem('uptimestatus-theme')
-            if (stored === 'light' || stored === 'dark')
-              theme = stored
-            else
-              theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'
-          }
-          el.setAttribute('data-theme', theme)
-        }
-        catch (err) {}
-      })()
-    </script>
+    {{-- The pre-paint theme resolver is app.colorMode in config/ui.ts, which
+         the framework injects into this layout as well (verified on a real
+         status page: the boot script is the first thing in this head).
+
+         It reproduces what this file used to do by hand. `respectExisting`
+         makes an already-stamped concrete light or dark authoritative, which
+         is the owner's forced theme above; 'system' is not concrete, so it
+         falls through to the visitor's stored choice and then their OS. A
+         no-JS visitor on a 'system' page still sees the light default, the
+         same acceptable edge as before. --}}
     <style>
       /* Dark theme for the public status page. The page is built from
          Crosswind utilities with a light palette; these rules remap that

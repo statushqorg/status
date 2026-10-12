@@ -1116,4 +1116,4 @@
      partial's FIRST element is treated as its component script and
      stripped from the output (the deleted font links used to shield
      them; the style block shields them now). --}}
-@include('./theme-init.stx')
+{{-- The pre-paint theme script is app.colorMode in config/ui.ts now. --}}

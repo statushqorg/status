@@ -1,7 +1,7 @@
 {{--
   Click handler for the #theme-toggle button. Flips the resolved theme (the
   stored one, else the OS preference) and stores the result under the same key
-  partials/theme-init.stx reads back on the next page load.
+  the app.colorMode boot script reads back on the next page load.
 
   Included by partials/app-nav.stx, partials/marketing-footer.stx and
   index.stx, which each carried an identical copy before migration Phase 5.

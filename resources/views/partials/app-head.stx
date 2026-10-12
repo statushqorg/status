@@ -777,7 +777,7 @@
      stripped from the output (the deleted font links used to shield
      them; the style block shields them now). --}}
 <script src="/assets/scripts/csrf-forms.js" defer></script>
-@include('./theme-init.stx')
+{{-- The pre-paint theme script is app.colorMode in config/ui.ts now. --}}
 
 <script>
   // Chart tooltips: every .chart-hit rect carries data-tip; a single
