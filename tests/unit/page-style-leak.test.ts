@@ -39,12 +39,11 @@ const VIEWS = join(ROOT, 'resources/views')
  * page. Its block also styles the coming-soon screen, which renders as a
  * SIBLING of the site content rather than inside it.
  *
- * invite/[uuid].stx renders as a fragment with no <main> of its own. It has no
- * layout, so it falls back to group 'default' with the dashboard and its 27
- * rules DO leak there -- but there is no container to move them into, so the
- * fix is structural rather than a relocation. Tracked, not silently allowed.
+ * invite/[uuid].stx was the other exemption and is not any more. It had no
+ * <main> to put its block in, while sitting in group 'default' alongside the
+ * whole dashboard. It has one now, so it is covered by the loop below.
  */
-const EXEMPT = ['index.stx', 'invite/[uuid].stx']
+const EXEMPT = ['index.stx']
 
 function views(dir: string): string[] {
   const out: string[] = []
@@ -90,9 +89,27 @@ describe('page style leak', () => {
     }
   })
 
-  test('the exempt list is exactly the two files that cannot comply', () => {
-    // A third entry here should be a deliberate act with a reason beside it,
+  test('the exempt list is exactly the one file that cannot comply', () => {
+    // A second entry here should be a deliberate act with a reason beside it,
     // not a way to make this file go quiet.
-    expect(EXEMPT).toEqual(['index.stx', 'invite/[uuid].stx'])
+    expect(EXEMPT).toEqual(['index.stx'])
+  })
+
+  test('the invite page keeps its layout off body, where it would leak', () => {
+    /*
+     * This view is alone in needing saying. It has no layout, so it shares the
+     * group 'default' with every dashboard page, and its block used to put
+     * `min-height`, `display: grid`, `place-items` and `padding` on `body` --
+     * four properties the dashboard's own body rule never sets, so source
+     * order would not have decided it. They live on its <main> now, which is
+     * both where a page's own layout belongs and inside the container the
+     * router actually swaps.
+     */
+    const invite = readFileSync(join(VIEWS, 'invite/[uuid].stx'), 'utf8')
+    const body = /(?:^|\n)\s*body \{([^}]*)\}/.exec(invite)
+    expect(body).not.toBeNull()
+    for (const prop of ['display', 'place-items', 'padding', 'min-height'])
+      expect(`${prop} on body: ${body![1].includes(prop)}`).toBe(`${prop} on body: false`)
+    expect(invite).toMatch(/(?:^|\n)\s*main \{[^}]*place-items: center/)
   })
 })
