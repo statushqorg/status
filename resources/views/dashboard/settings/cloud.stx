@@ -94,6 +94,11 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
 @include('../partials/app-head.stx')
 @include('../partials/app-nav.stx')
 
+<main class="app-shell">
+{{-- Inside <main>, which is the router's container, so these rules are part of
+    the swapped fragment and live exactly as long as the page does. Outside it
+    they were never removed: the dashboard is one layout group, so entering on
+    any of these pages kept its CSS applied to every other one for the session. --}}
 <style>
   .cloud-form { display: grid; gap: 1.1rem; max-width: 560px; }
   .cloud-form label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 600; }
@@ -112,8 +117,6 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
   .perm-list { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
   .perm-list code { font-family: var(--font-mono); color: var(--fg); }
 </style>
-
-<main class="app-shell">
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

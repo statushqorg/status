@@ -233,6 +233,15 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 @include('../partials/app-nav.stx')
 
 <main class="app-shell">
+{{-- Inside <main>, which is the router's container, so these rules are part of
+    the swapped fragment and live exactly as long as the page does. Outside it
+    they were never removed: the dashboard is one layout group, so entering on
+    any of these pages kept its CSS applied to every other one for the session. --}}
+<style>
+  .rt-live { color: var(--success); font-weight: 600; }
+  .rt-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: var(--success); margin-right: 0.3rem; vertical-align: baseline; animation: rt-pulse 2s ease-in-out infinite; }
+  @keyframes rt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+</style>
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"
@@ -358,12 +367,6 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     </footer>
   @endif
 </main>
-
-<style>
-  .rt-live { color: var(--success); font-weight: 600; }
-  .rt-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: var(--success); margin-right: 0.3rem; vertical-align: baseline; animation: rt-pulse 2s ease-in-out infinite; }
-  @keyframes rt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-</style>
 
 <script>
   ;(function () {

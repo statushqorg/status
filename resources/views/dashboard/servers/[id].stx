@@ -321,6 +321,11 @@ useHead({
 @include('../partials/app-head.stx')
 @include('../partials/app-nav.stx')
 
+<main class="app-shell">
+{{-- Inside <main>, which is the router's container, so these rules are part of
+    the swapped fragment and live exactly as long as the page does. Outside it
+    they were never removed: the dashboard is one layout group, so entering on
+    any of these pages kept its CSS applied to every other one for the session. --}}
 <style>
   /* Page-specific, on app-head tokens: the metrics chart and its legend.
      sites/[slug].stx carries its own variant of these, so they stay per page. */
@@ -336,8 +341,6 @@ useHead({
     letter-spacing: 0.05em;
   }
 </style>
-
-<main class="app-shell">
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

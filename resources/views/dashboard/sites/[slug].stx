@@ -195,13 +195,16 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
 @include('../partials/app-head.stx')
 @include('../partials/app-nav.stx')
 
+<main class="app-shell">
+{{-- Inside <main>, which is the router's container, so these rules are part of
+    the swapped fragment and live exactly as long as the page does. Outside it
+    they were never removed: the dashboard is one layout group, so entering on
+    any of these pages kept its CSS applied to every other one for the session. --}}
 <style>
   .mon-chart { width: 100%; height: auto; display: block; }
   .chart-hit:hover { fill: var(--accent-soft); }
   .mon-legend { display: flex; gap: 1.25rem; margin-top: 0.6rem; font-size: 0.8rem; font-weight: 600; }
 </style>
-
-<main class="app-shell">
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

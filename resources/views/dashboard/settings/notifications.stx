@@ -91,6 +91,11 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
 @include('../partials/app-head.stx')
 @include('../partials/app-nav.stx')
 
+<main class="app-shell">
+{{-- Inside <main>, which is the router's container, so these rules are part of
+    the swapped fragment and live exactly as long as the page does. Outside it
+    they were never removed: the dashboard is one layout group, so entering on
+    any of these pages kept its CSS applied to every other one for the session. --}}
 <style>
   /* Inline brand mark next to each channel type label. Monochrome,
      inherits currentColor so it reads in light + dark. */
@@ -120,8 +125,6 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     color: var(--muted);
   }
 </style>
-
-<main class="app-shell">
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

@@ -128,6 +128,16 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
 @include('../partials/app-nav.stx')
 
 <main class="app-shell">
+{{-- Inside <main>, which is the router's container, so these rules are part of
+    the swapped fragment and live exactly as long as the page does. Outside it
+    they were never removed: the dashboard is one layout group, so entering on
+    any of these pages kept its CSS applied to every other one for the session. --}}
+<style>
+  .pk-msg { margin-top: 0.85rem; font-size: 0.85rem; display: none; }
+  .pk-msg.show { display: block; }
+  .pk-msg.ok { color: var(--success); }
+  .pk-msg.err { color: var(--danger); }
+</style>
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"
@@ -274,13 +284,6 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
     </footer>
   @endif
 </main>
-
-<style>
-  .pk-msg { margin-top: 0.85rem; font-size: 0.85rem; display: none; }
-  .pk-msg.show { display: block; }
-  .pk-msg.ok { color: var(--success); }
-  .pk-msg.err { color: var(--danger); }
-</style>
 
 <script src="/assets/scripts/webauthn-client.js" defer></script>
 <script>
