@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 
 const root = process.cwd()
@@ -35,7 +35,25 @@ function report(file: string, source: string, index: number, message: string): v
 
 const files = filesIn(resources)
 const markupFiles = files.filter(file => /\.(?:stx|html)$/.test(file))
-const combined = files.map(file => readFileSync(file, 'utf8')).join('\n')
+
+/*
+ * The two app-wide checks at the bottom of this file -- focus treatment and
+ * responsive breakpoints -- used to read resources/ alone. That stopped
+ * working when the last page <style> block moved out of a view and into
+ * config/crosswind.ts under stx-standards rule 3: the treatments were still
+ * there, in the one place the router preserves, and this script could no
+ * longer see any of them. CI went red on `3135b80` and stayed red, which
+ * skipped deploy-prod, so main stopped reaching production.
+ *
+ * So the corpus is resources/ PLUS the CSS config, which is where a page's CSS
+ * is now supposed to live. Missing the config is a hard failure rather than an
+ * empty read: a check that silently has nothing to search always passes.
+ */
+const cssConfig = resolve(root, 'config/crosswind.ts')
+if (!existsSync(cssConfig))
+  throw new Error(`validate-ui: expected the CSS config at ${relative(root, cssConfig)}`)
+
+const combined = [...files, cssConfig].map(file => readFileSync(file, 'utf8')).join('\n')
 
 for (const file of markupFiles) {
   const original = readFileSync(file, 'utf8')
@@ -80,7 +98,14 @@ for (const file of markupFiles) {
 
 if (!/(?:focus-visible|:focus|focus:|focus-within)/.test(combined))
   issues.add('resources: no visible keyboard focus treatment found')
-if (!/(?:@media|\b(?:sm|md|lg|xl):)/.test(combined))
+/*
+ * The utility half needs a class-token boundary and not \b, which sits between
+ * the hyphen and the s in `--radius-sm:` -- a custom property name was passing
+ * this check on its own. With that fixed the check is carried by the 12 real
+ * @media blocks in the CSS config, and removing them fails it, which is the
+ * point.
+ */
+if (!/(?:@media|(?:^|[\s"'`:])(?:sm|md|lg|xl):)/m.test(combined))
   issues.add('resources: no responsive breakpoint treatment found')
 
 console.log(`Validated ${markupFiles.length} UI templates across desktop, tablet, and mobile contracts.`)
