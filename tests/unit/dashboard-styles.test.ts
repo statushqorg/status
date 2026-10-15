@@ -81,8 +81,9 @@ describe('dashboard styles', () => {
   test('phone-width inputs are at least 16px so iOS does not zoom on focus', () => {
     const phone = PREFLIGHT.slice(PREFLIGHT.indexOf('@media (max-width: 860px)'))
     expect(phone).toContain('.input, .select, .textarea { min-height: 44px; font-size: 16px; }')
-    const auth = readFileSync(join(VIEWS, 'layouts/auth.stx'), 'utf8')
-    const field = auth.match(/\.field input\s*\{[^}]*\}/)?.[0] ?? ''
+    // The auth form's rule moved to `authCss()` in the same file, so it is
+    // read from the preflight too rather than from layouts/auth.stx.
+    const field = PREFLIGHT.match(/\.field input\s*\{[^}]*\}/)?.[0] ?? ''
     expect(field).toContain('font-size: 16px')
   })
 })
