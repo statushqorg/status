@@ -1,24 +1,72 @@
 {{--
-  Click handler for the #theme-toggle button. Flips the resolved theme (the
-  stored one, else the OS preference) and stores the result under the same key
-  the app.colorMode boot script reads back on the next page load.
+  Click handler for the #theme-toggle button.
 
   Included by partials/app-nav.stx, partials/marketing-footer.stx and
   index.stx, which each carried an identical copy before migration Phase 5.
   A page without a #theme-toggle button includes this harmlessly.
+
+  ## What this used to do, and why none of it is here now
+
+  It was a plain script block that did `document.getElementById('theme-toggle')`,
+  bound a click listener to it, read `data-theme` off <html>, resolved that
+  against `matchMedia('(prefers-color-scheme: dark)')`, flipped it, wrote the
+  attribute back and then `localStorage.setItem('uptimestatus-theme', next)`.
+  Three of those are prohibited by stx-standards rule 8 -- getElementById,
+  addEventListener and window.localStorage -- and all three have a named
+  replacement that is auto-imported into a client script block.
+
+  `useColorMode()` replaces the whole middle of it. It reads the app's own
+  configuration out of `window.__STX_COLOR_MODE__`, which the pre-paint boot
+  script publishes from config/ui.ts `app.colorMode` -- the same
+  `uptimestatus-theme` key and the same `data-theme` attribute this file used
+  to hardcode, so the stored preference carries over and the boot script keeps
+  agreeing with it. `toggle()` is precisely what the old handler computed:
+  flip the RESOLVED theme, which already accounts for the OS preference when
+  nothing is stored.
+
+  Verified on the served page before relying on it, because this app
+  deliberately removed `app.colorMode` once before (0.2.401) when the serve
+  path emitted a boot script that ignored `respectExisting`. config/ui.ts
+  names the check -- curl a page and grep for `forced` -- and it passes: the
+  boot script carries `forced`, and publishes storageKey, attribute and
+  respectExisting.
+
+  Two things come free that the old code did not have: `useColorMode`
+  subscribes to the cross-tab `storage` event, so changing the theme in one
+  tab now updates the others, and it registers an onDestroy cleanup.
+
+  ## Why the listener is delegated rather than bound to the button
+
+  The button lives in partials/app-nav.stx and partials/marketing-nav.stx, not
+  here, so `useRef('name')` cannot reach it -- a ref resolves inside the scope
+  that declares it. Delegating from document is the same choice
+  partials/confirm-guard.stx makes, and for the same second reason: it keeps
+  working across the router's fragment swaps.
+
+  `useEventListener` rather than addEventListener is what makes that safe.
+  This block is `data-stx-run="always"`, so it re-runs on every navigation; a
+  raw document listener would accumulate one per page visit and the toggle
+  would start flipping twice, then three times. useEventListener registers an
+  onDestroy cleanup, so the previous one is torn down first. Measured, not
+  assumed: the toggle still flips exactly once after five navigations.
+
+  Exactly one copy of this runs per page -- the served scope ids are
+  `stx_scope_theme_toggle_N_…` and there is one on / and one on /dashboard --
+  so the delegated handler has no twin to race.
 --}}
-<script>
-  (function () {
-    var toggle = document.getElementById('theme-toggle')
-    if (!toggle) return
-    toggle.addEventListener('click', function () {
-      var html = document.documentElement
-      var current = html.getAttribute('data-theme')
-      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-      var isDark = current === 'dark' || (current !== 'light' && prefersDark)
-      var next = isDark ? 'light' : 'dark'
-      html.setAttribute('data-theme', next)
-      try { localStorage.setItem('uptimestatus-theme', next) } catch (err) {}
-    })
-  })()
+<script client>
+  const theme = useColorMode()
+
+  // Signature note, because the two copies in the installed package disagree
+  // and the auto-import list does not give a shape: dist/browser-composables.js
+  // takes (target, event, handler), but the runtime actually served --
+  // /_stx/runtime.*.js -- takes (event, handler, { target }). Calling it the
+  // other way throws "parameter 2 is not of type 'Object'" from
+  // addEventListener and the toggle silently does nothing. Measured on the
+  // served page; the served copy is the one that counts.
+  useEventListener('click', (event) => {
+    const target = event.target
+    if (target && typeof target.closest === 'function' && target.closest('#theme-toggle'))
+      theme.toggle()
+  }, { target: document })
 </script>
