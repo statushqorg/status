@@ -322,25 +322,9 @@ useHead({
 @include('../partials/app-nav.stx')
 
 <main class="app-shell">
-{{-- Inside <main>, which is the router's container, so these rules are part of
-    the swapped fragment and live exactly as long as the page does. Outside it
-    they were never removed: the dashboard is one layout group, so entering on
-    any of these pages kept its CSS applied to every other one for the session. --}}
-<style>
-  /* Page-specific, on app-head tokens: the metrics chart and its legend.
-     sites/[slug].stx carries its own variant of these, so they stay per page. */
-  .mon-chart { display: block; width: 100%; height: auto; }
-  .mon-legend {
-    display: flex;
-    gap: 1rem;
-    margin-top: 0.6rem;
-    color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-</style>
+{{-- No <style> block: rule 3 / §11.1. Its two rules were `.mon-chart` and
+     `.mon-legend`, byte-identical to monitors/[id].stx's, and they are
+     declared once in `dashboardPagesCss()` now. --}}
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

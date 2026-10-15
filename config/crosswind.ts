@@ -2619,6 +2619,422 @@ html:has(meta[name="stx-layout-group"][content="status"])[data-theme="dark"] bod
     `
 }
 
+/**
+ * The last nine blocks: 118 rules from partials/app-nav.stx,
+ * invite/[uuid].stx and seven dashboard pages. All one layout group,
+ * `default`, so the scope cannot separate them -- which is the whole of the
+ * work here.
+ *
+ * ## The six names two of these files both declared
+ *
+ * While each block shipped only on its own page, two pages could give one
+ * name two meanings and nothing collided. In one sheet they do. Checked rule
+ * by rule rather than by name:
+ *
+ *   .chan-ico, .chan-ico svg   byte-identical in monitors/[id] and
+ *                              settings/notifications -> declared once
+ *   .mon-chart                 identical in monitors/[id], servers/[id] and
+ *                              sites/[slug], the last writing the same three
+ *                              declarations in another order -> declared once
+ *   .mon-legend                identical in monitors/[id] and servers/[id];
+ *                              sites/[slug] had its own, at a wider gap and
+ *                              without the uppercase -> shared one declared
+ *                              once, sites/[slug]'s renamed `.site-legend`
+ *   .help, .ok, .is-active     never in conflict: every use is qualified by
+ *                              an ancestor or compounded (.alert-foot .help,
+ *                              .cloud-status.ok, .range-tool.is-active)
+ *
+ * ## invite/[uuid].stx, which never had this sheet before
+ *
+ * It is a fragment with no @include at all, so it never shipped app-head's
+ * CSS -- and it is in the `default` group, so `appCss()` now reaches it.
+ * Everything it declares is under `.invite-card`, so it outranks that sheet
+ * wherever both set a property; what leaked was the three places appCss sets
+ * one it does not. Diffed property by property:
+ *
+ *   .button:hover   gained `border-color: var(--fg)`, which would have turned
+ *                   the accent CTA's border grey on hover. The invite rule
+ *                   restates `var(--accent)`.
+ *   .brand-name     gained letter-spacing and line-height
+ *   .help           gained line-height
+ *
+ * All three are restated as `inherit` rather than left to the shared sheet,
+ * so the page looks exactly as it did. Deleting those three declarations is
+ * how someone would opt it into the app's brand metrics on purpose.
+ */
+function dashboardPagesCss(): string {
+  return `@keyframes rt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+html:has(meta[name="stx-layout-group"][content="default"]) {
+  /* ---- components/app-nav.stx ---- */
+  .team-switch { position: relative; }
+  .team-switch > summary {
+    display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; list-style: none;
+    padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600; color: var(--fg); background: var(--surface, transparent);
+    max-width: 220px;
+  }
+  .team-switch > summary::-webkit-details-marker { display: none; }
+  .team-switch > summary:hover { border-color: var(--border-strong); }
+  .team-switch > summary svg { width: 14px; height: 14px; color: var(--muted); flex: none; }
+  .team-switch-cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .team-switch[open] > summary svg { transform: rotate(180deg); }
+  .team-switch-menu {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 240px; max-width: 320px;
+    padding: 0.35rem; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); box-shadow: 0 18px 40px -14px rgba(11,15,13,0.28);
+  }
+  .team-switch-head { margin: 0.25rem 0.5rem 0.35rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  .team-switch-menu form { margin: 0; }
+  .team-switch-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;
+    padding: 0.5rem 0.55rem; border: 0; border-radius: 8px; cursor: pointer;
+    font: inherit; font-size: 0.9rem; text-align: left; color: var(--fg); background: transparent;
+  }
+  .team-switch-item:hover { background: var(--surface-2); }
+  .team-switch-item.is-active { color: var(--accent); font-weight: 600; }
+  .team-switch-chk { color: var(--accent); flex: none; }
+
+
+  /* ---- shared ---- */
+
+  /* Shared by more than one page, so declared once.
+
+     \`.chan-ico\` was byte-identical in monitors/[id].stx and
+     settings/notifications.stx; \`.mon-chart\` in monitors/[id].stx,
+     servers/[id].stx and sites/[slug].stx, the last writing the same three
+     declarations in a different order. \`.mon-legend\` is the monitor and server
+     version -- sites/[slug].stx had its own, at a wider gap and without the
+     uppercase, and that one is \`.site-legend\` now rather than a fourth thing
+     called \`.mon-legend\`. While each block shipped only on its own page the
+     duplication cost nothing; in one sheet it is a collision. */
+  .chan-ico { display: inline-flex; vertical-align: middle; margin-right: 0.4rem; color: var(--muted); }
+  .chan-ico svg { width: 18px; height: 18px; }
+  .mon-chart { display: block; width: 100%; height: auto; }
+  .mon-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.6rem;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+
+  /* ---- dashboard/monitors/[id].stx ---- */
+
+    /* Page-specific, on app-head tokens: chart sizing, chart legends, the
+       channel icons and the alert-routing states. The readout grid, .subhead,
+       .code-block and the dialog shell and chrome moved to app-head once the
+       server pages started using them too. */
+
+    /* Inline brand mark next to each channel type label. Monochrome,
+       inherits currentColor so it reads in light + dark. */
+
+
+    /* Alert routing: the card's two empty states. */
+    .alert-empty {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+      padding: 0.9rem 1rem; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+      background: var(--surface-2);
+    }
+    .alert-empty p { margin: 0; font-size: 0.88rem; color: var(--muted); flex: 1 1 18rem; }
+    .alert-empty strong { color: var(--fg); font-weight: 600; }
+    .alert-empty.is-danger { border-color: var(--danger); background: var(--danger-soft, transparent); }
+    .alert-empty.is-danger strong { color: var(--danger); }
+
+
+    /* The note-and-button footer. The rule divides it from the channel rows
+       above, which .trow:last-child otherwise leaves borderless. */
+    .alert-foot {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+    }
+    .alert-foot .help { margin: 0; flex: 1 1 20rem; }
+
+
+    /* ---- Reporting-period picker (Fathom-style presets + calendar) ---- */
+  .range-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding: 0 0.72rem;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--muted);
+    font: 600 0.8125rem/1 var(--font-display, ui-sans-serif);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+  }
+  .range-tool:hover { color: var(--fg); border-color: var(--accent); }
+  .range-tool:active { transform: scale(0.98); }
+  .range-tool:focus-visible,
+  .range-link:focus-visible,
+  .chrome-btn:focus-visible,
+  .icon-btn:focus-visible,
+  select.panel:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .range-tool.is-active { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+  .range-tool i { width: 1rem; height: 1rem; }
+  .date-menu { position: relative; }
+  .date-menu > summary { list-style: none; }
+  .date-menu > summary::-webkit-details-marker { display: none; }
+  .date-popover {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 40;
+    width: min(44rem, calc(100vw - 2.5rem));
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 18px 50px color-mix(in srgb, var(--fg) 10%, transparent);
+  }
+
+  /* Period picker: presets down the left, two months on the right. The range is
+     drawn flat with rounded ends, the way Fathom's is, on the --bar wash the KPI
+     bars already use so it reads as the same accent at the same strength. */
+  .drp-backdrop { position: fixed; inset: 0; z-index: 39; background: transparent; cursor: default; }
+  .drp { display: grid; grid-template-columns: 10.5rem minmax(0, 1fr); gap: 0.75rem; }
+  .drp-presets { display: flex; flex-direction: column; gap: 0.15rem; padding-right: 0.75rem; border-right: 1px solid var(--border); }
+  .drp-preset {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font: 500 0.8125rem/1.2 var(--font-display, ui-sans-serif);
+    text-align: left;
+    cursor: pointer;
+  }
+  .drp-preset:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+  .drp-preset.is-active { color: var(--accent-fg); background: var(--accent); }
+  .drp-cals { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .drp-head { display: grid; grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr) 2rem; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem; }
+  .drp-nav {
+    display: inline-grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .drp-nav:hover { color: var(--fg); border-color: var(--border); }
+  .drp-nav svg { width: 1rem; height: 1rem; }
+  .drp-nav.is-hidden { visibility: hidden; }
+  .drp-sel {
+    min-width: 0;
+    height: 2rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 600 0.8125rem/1 var(--font-display, ui-sans-serif);
+  }
+  .drp-dow, .drp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .drp-dow span { padding: 0.25rem 0; color: var(--muted); font: 600 0.7rem/1.2 var(--font-display, ui-sans-serif); text-align: center; }
+  .drp-day {
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--fg);
+    font: 500 0.8125rem/1 var(--font-mono, ui-monospace);
+    cursor: pointer;
+  }
+  .drp-day:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .drp-day.is-out { color: var(--muted); }
+  .drp-day.is-today { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+  .drp-day.is-range { background: var(--accent-soft); }
+  .drp-day.is-edge { background: var(--accent); color: var(--accent-fg); border-radius: 8px; }
+  .drp-day.is-disabled { color: var(--muted); opacity: 0.45; cursor: default; }
+  .drp-day.is-disabled:hover { background: transparent; }
+  .drp-day:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
+  @media (max-width: 640px) {
+    .date-menu { position: static; }
+    .date-popover { left: 0; right: auto; width: calc(100vw - 2rem); max-height: calc(100dvh - 6rem); overflow-y: auto; overscroll-behavior: contain; }
+    .drp { grid-template-columns: minmax(0, 1fr); }
+    .drp-presets { flex-direction: row; flex-wrap: wrap; gap: 0.35rem; padding: 0 0 0.6rem; border-right: 0; border-bottom: 1px solid var(--border); }
+    .drp-preset { width: auto; padding: 0.45rem 0.65rem; border: 1px solid var(--border); border-radius: 999px; }
+    .drp-cals { grid-template-columns: minmax(0, 1fr); }
+    .drp-cal.is-right { display: none; }
+    .drp-cal.is-left .drp-nav.is-hidden { visibility: visible; }
+    .drp-day { height: 2.5rem; }
+  }
+
+
+  /* ---- dashboard/monitors/index.stx ---- */
+  .rt-live { color: var(--success); font-weight: 600; }
+  .rt-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: var(--success); margin-right: 0.3rem; vertical-align: baseline; animation: rt-pulse 2s ease-in-out infinite; }
+
+
+  /* ---- dashboard/servers/[id].stx ---- */
+
+  /* Page-specific, on app-head tokens: the metrics chart and its legend.
+     sites/[slug].stx carries its own variant of these, so they stay per page. */
+
+
+  /* ---- dashboard/sites/[slug].stx ---- */
+  .chart-hit:hover { fill: var(--accent-soft); }
+  .site-legend { display: flex; gap: 1.25rem; margin-top: 0.6rem; font-size: 0.8rem; font-weight: 600; }
+
+
+  /* ---- dashboard/settings/cloud.stx ---- */
+  .cloud-form { display: grid; gap: 1.1rem; max-width: 560px; }
+  .cloud-form label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 600; }
+  .cloud-form input {
+    width: 100%; min-height: 44px; padding: 0 0.85rem; box-sizing: border-box;
+    border: 1px solid var(--border-strong); border-radius: 10px;
+    color: var(--fg); font: inherit; font-size: 0.93rem; background: var(--bg);
+    font-family: var(--font-mono);
+  }
+  .cloud-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .cloud-form .help { margin-top: 0.35rem; color: var(--muted); font-size: 0.8rem; }
+  .cloud-status { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; }
+  .cloud-status.ok { color: var(--status, #10b981); }
+  .cloud-status.none { color: var(--muted); }
+  .iam-policy { margin: 0; padding: 1rem; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; }
+  .perm-list { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
+  .perm-list code { font-family: var(--font-mono); color: var(--fg); }
+
+
+  /* ---- dashboard/settings/notifications.stx ---- */
+
+  /* Inline brand mark next to each channel type label. Monochrome,
+     inherits currentColor so it reads in light + dark. */
+
+
+  /* Explicit, because a display rule on the field wrapper would otherwise
+     win over the hidden attribute's UA default. */
+  [data-types][hidden] { display: none; }
+
+
+  /* Where to find the value the fields below are asking for. */
+  .setup-note {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+  .opt {
+    margin-left: 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+
+  /* ---- dashboard/settings/security.stx ---- */
+  .pk-msg { margin-top: 0.85rem; font-size: 0.85rem; display: none; }
+  .pk-msg.show { display: block; }
+  .pk-msg.ok { color: var(--success); }
+  .pk-msg.err { color: var(--danger); }
+
+
+  /* ---- invite/[uuid].stx ---- */
+
+  /* The design tokens were here -- a fourth copy of the one palette, after
+     partials/app-head.stx, partials/marketing-head.stx and layouts/auth.stx.
+     They are one \`paletteCss()\` preflight in config/crosswind.ts now:
+     rule 3 / §11.2 puts a custom property in that file and nowhere else.
+     This copy carried auth's drift -- light --danger-soft at 0.08 against
+     the other two at 0.09 -- and lacked --success, --amber, --shadow and
+     --font-mono. A preflight also reaches further than this block did:
+     the comment above explains that the block only applies while the page
+     is on screen, which was true of the tokens too. */
+  /* The dashboard sheet's own \`body\` rule reaches this page too -- same
+     layout group -- and it sets a 15px base this page never had, because this
+     view ships no @include at all and used the browser default. Restated at
+     16px rather than let the move resize every line on it. Everything else
+     that rule sets (margin, colour, background, family) is identical here, so
+     only the size needs saying.
+
+     And qualified by the page's own container, like the rule below it. A bare
+     \`body\` here is later in the sheet than the dashboard's, so it won on
+     order and resized every dashboard page to 16px -- the third thing this
+     one page leaked into the group it shares, and the third the browser
+     caught rather than the reading. */
+  body:has(main.invite-shell) { font-size: 16px; }
+
+  /* \`main.invite-shell\`, not \`main\`. The comment this rule used to carry
+     explained that the page's layout belongs on its own container rather than
+     on body, because min-height, display:grid, place-items and padding are
+     four properties the dashboard's body rule does not set and would have
+     grid-centred the whole app. Moving them to \`main\` fixed that only while
+     this block shipped on this page alone -- in one shared sheet it is the
+     same bug one element down, and it did grid-centre every dashboard page's
+     main until the class was added. Caught in the browser, not by reading. */
+  main.invite-shell {
+    min-height: 100vh; display: grid; place-items: center; padding: 2rem;
+  }
+  .invite-card a { color: inherit; text-decoration: none; }
+  .invite-card {
+    width: min(420px, 100%); padding: clamp(1.75rem, 5vw, 2.5rem);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); box-shadow: 0 20px 50px -18px rgba(11,15,13,0.22);
+  }
+  .invite-card .brand { display: inline-flex; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; }
+  .invite-card .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--accent-fg); background: var(--accent); }
+  .invite-card .brand-mark svg { width: 16px; height: 16px; }
+  .invite-card .brand-name { font-family: var(--font-display); font-size: 1.12rem; font-weight: 600; letter-spacing: inherit; line-height: inherit; }
+  .invite-card h1 { margin: 0 0 0.4rem; font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; }
+  .invite-card .sub { margin: 0 0 1.5rem; color: var(--muted); font-size: 0.95rem; line-height: 1.55; }
+  .invite-card .sub strong { color: var(--fg); }
+  .invite-card .role-pill { display: inline-block; margin-left: 0.35rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.78rem; font-weight: 600; }
+  .invite-card label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 600; }
+  .invite-card .field { margin-bottom: 1.1rem; }
+  .invite-card input {
+    width: 100%; min-height: 46px; padding: 0 0.9rem; box-sizing: border-box;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    color: var(--fg); font: inherit; font-size: 0.95rem; background: var(--bg);
+  }
+  .invite-card input:disabled { color: var(--muted); background: var(--surface-2); }
+  .invite-card input::placeholder { color: var(--muted); opacity: 0.75; }
+  .invite-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .invite-card .help { margin-top: 0.35rem; color: var(--muted); font-size: 0.8rem;  line-height: inherit; }
+  .invite-card .button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    width: 100%; min-height: 46px; padding: 0 1.2rem; margin-top: 0.35rem; box-sizing: border-box;
+    border: 1px solid var(--accent); border-radius: var(--radius-sm);
+    color: var(--accent-fg); font: inherit; font-size: 0.95rem; font-weight: 600;
+    background: var(--accent); cursor: pointer;
+  }
+  .invite-card .button:hover { filter: brightness(1.05); border-color: var(--accent); }
+  .invite-card .error {
+    margin-bottom: 1.1rem; padding: 0.75rem 0.9rem;
+    border: 1px solid var(--danger); border-radius: var(--radius-sm);
+    color: var(--danger); font-size: 0.88rem; background: var(--danger-soft);
+  }
+  .invite-card .alt { margin-top: 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+  .invite-card .alt a { color: var(--accent); font-weight: 600; }
+}`
+}
+
 export default {
   content: [
     './resources/views/**/*.{stx,html}',
@@ -2639,6 +3055,7 @@ export default {
     { getCSS: homeCss },
     { getCSS: authCss },
     { getCSS: statusPageCss },
+    { getCSS: dashboardPagesCss },
   ],
   theme: {
     extend: {

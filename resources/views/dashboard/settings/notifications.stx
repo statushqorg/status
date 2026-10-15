@@ -92,39 +92,9 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
 @include('../partials/app-nav.stx')
 
 <main class="app-shell">
-{{-- Inside <main>, which is the router's container, so these rules are part of
-    the swapped fragment and live exactly as long as the page does. Outside it
-    they were never removed: the dashboard is one layout group, so entering on
-    any of these pages kept its CSS applied to every other one for the session. --}}
-<style>
-  /* Inline brand mark next to each channel type label. Monochrome,
-     inherits currentColor so it reads in light + dark. */
-  .chan-ico { display: inline-flex; vertical-align: middle; margin-right: 0.4rem; color: var(--muted); }
-  .chan-ico svg { width: 18px; height: 18px; }
-
-  /* Explicit, because a display rule on the field wrapper would otherwise
-     win over the hidden attribute's UA default. */
-  [data-types][hidden] { display: none; }
-
-  /* Where to find the value the fields below are asking for. */
-  .setup-note {
-    margin: 0 0 1rem;
-    padding: 0.6rem 0.75rem;
-    border-radius: var(--radius-sm);
-    background: var(--surface-2);
-    color: var(--muted);
-    font-size: 0.85rem;
-    line-height: 1.55;
-  }
-  .opt {
-    margin-left: 0.4rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-</style>
+{{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
+     config/crosswind.ts. Its `.chan-ico` pair was byte-identical to
+     monitors/[id].stx's and is declared once there. --}}
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

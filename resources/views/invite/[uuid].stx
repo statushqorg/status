@@ -79,84 +79,25 @@ useHead({
 
 {{-- <main> is the router's container, and this page is the one view in the
     app that had no element to be it. It has no layout, so it falls into the
-    layout group 'default' alongside the whole dashboard, and an entry here
-    followed by a fragment swap would have left this block's `body { display:
-    grid; place-items: center; padding: 2rem }` applied to the dashboard --
-    three properties the dashboard's own body rule never sets, so source order
-    would not have saved it.
+    layout group 'default' alongside the whole dashboard.
 
-    Not reachable today: both StxLinks here cross a layout group, so the router
-    does a full document load and discards this. It is the trap that a single
-    in-app link would spring, closed before anyone adds one.
+    It carries a class, and that is not decoration. The layout rules below --
+    min-height, display:grid, place-items, padding -- were moved off `body`
+    onto `main` precisely because they are four properties the dashboard's own
+    body rule never sets, so nothing would have stopped them applying to the
+    whole app. In one shared sheet a bare `main` is that same bug one element
+    down: it grid-centred every dashboard page's <main> until this class went
+    on. The rules are `main.invite-shell` in config/crosswind.ts. --}}
+<main class="invite-shell">
+{{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
+     config/crosswind.ts.
 
-    The style sits inside <main> for the same reason, which is also why the
-    :root and body rules are safe to keep as they are -- they apply for exactly
-    as long as this page is on screen. --}}
-<main>
-<style>
-  /* The design tokens were here -- a fourth copy of the one palette, after
-     partials/app-head.stx, partials/marketing-head.stx and layouts/auth.stx.
-     They are one `paletteCss()` preflight in config/crosswind.ts now:
-     rule 3 / §11.2 puts a custom property in that file and nowhere else.
-     This copy carried auth's drift -- light --danger-soft at 0.08 against
-     the other two at 0.09 -- and lacked --success, --amber, --shadow and
-     --font-mono. A preflight also reaches further than this block did:
-     the comment above explains that the block only applies while the page
-     is on screen, which was true of the tokens too. */
-  body {
-    margin: 0;
-    font-family: var(--font-body); color: var(--fg); background: var(--bg);
-  }
-  /* The page's own layout belongs on the page's own container, not on body.
-     It used to sit on `body` -- min-height, display:grid, place-items and
-     padding -- which are four properties the dashboard's body rule does not
-     set, so leaking them would have grid-centred and padded the whole app.
-     On <main> it also survives this view gaining a router container: <main>
-     is the grid now, and .invite-card is its item exactly as before. */
-  main {
-    min-height: 100vh; display: grid; place-items: center; padding: 2rem;
-  }
-  .invite-card a { color: inherit; text-decoration: none; }
-  .invite-card {
-    width: min(420px, 100%); padding: clamp(1.75rem, 5vw, 2.5rem);
-    border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--surface); box-shadow: 0 20px 50px -18px rgba(11,15,13,0.22);
-  }
-  .invite-card .brand { display: inline-flex; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; }
-  .invite-card .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--accent-fg); background: var(--accent); }
-  .invite-card .brand-mark svg { width: 16px; height: 16px; }
-  .invite-card .brand-name { font-family: var(--font-display); font-size: 1.12rem; font-weight: 600; }
-  .invite-card h1 { margin: 0 0 0.4rem; font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; }
-  .invite-card .sub { margin: 0 0 1.5rem; color: var(--muted); font-size: 0.95rem; line-height: 1.55; }
-  .invite-card .sub strong { color: var(--fg); }
-  .invite-card .role-pill { display: inline-block; margin-left: 0.35rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.78rem; font-weight: 600; }
-  .invite-card label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 600; }
-  .invite-card .field { margin-bottom: 1.1rem; }
-  .invite-card input {
-    width: 100%; min-height: 46px; padding: 0 0.9rem; box-sizing: border-box;
-    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    color: var(--fg); font: inherit; font-size: 0.95rem; background: var(--bg);
-  }
-  .invite-card input:disabled { color: var(--muted); background: var(--surface-2); }
-  .invite-card input::placeholder { color: var(--muted); opacity: 0.75; }
-  .invite-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .invite-card .help { margin-top: 0.35rem; color: var(--muted); font-size: 0.8rem; }
-  .invite-card .button {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-    width: 100%; min-height: 46px; padding: 0 1.2rem; margin-top: 0.35rem; box-sizing: border-box;
-    border: 1px solid var(--accent); border-radius: var(--radius-sm);
-    color: var(--accent-fg); font: inherit; font-size: 0.95rem; font-weight: 600;
-    background: var(--accent); cursor: pointer;
-  }
-  .invite-card .button:hover { filter: brightness(1.05); }
-  .invite-card .error {
-    margin-bottom: 1.1rem; padding: 0.75rem 0.9rem;
-    border: 1px solid var(--danger); border-radius: var(--radius-sm);
-    color: var(--danger); font-size: 0.88rem; background: var(--danger-soft);
-  }
-  .invite-card .alt { margin-top: 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
-  .invite-card .alt a { color: var(--accent); font-weight: 600; }
-</style>
+     This page is a fragment with no @include, so it never shipped the
+     dashboard sheet; being in the `default` layout group, it gets it now.
+     Everything it declares is under `.invite-card` and so outranks that
+     sheet, and the three places the sheet set a property this page did not
+     -- the CTA's hover border, and line-height on .brand-name and .help --
+     are restated there so the page looks exactly as it did. --}}
 
 <div class="invite-card">
   <StxLink class="brand" to="/">

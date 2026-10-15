@@ -95,28 +95,8 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
 @include('../partials/app-nav.stx')
 
 <main class="app-shell">
-{{-- Inside <main>, which is the router's container, so these rules are part of
-    the swapped fragment and live exactly as long as the page does. Outside it
-    they were never removed: the dashboard is one layout group, so entering on
-    any of these pages kept its CSS applied to every other one for the session. --}}
-<style>
-  .cloud-form { display: grid; gap: 1.1rem; max-width: 560px; }
-  .cloud-form label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 600; }
-  .cloud-form input {
-    width: 100%; min-height: 44px; padding: 0 0.85rem; box-sizing: border-box;
-    border: 1px solid var(--border-strong); border-radius: 10px;
-    color: var(--fg); font: inherit; font-size: 0.93rem; background: var(--bg);
-    font-family: var(--font-mono);
-  }
-  .cloud-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .cloud-form .help { margin-top: 0.35rem; color: var(--muted); font-size: 0.8rem; }
-  .cloud-status { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; }
-  .cloud-status.ok { color: var(--status, #10b981); }
-  .cloud-status.none { color: var(--muted); }
-  .iam-policy { margin: 0; padding: 1rem; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); overflow-x: auto; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.5; }
-  .perm-list { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
-  .perm-list code { font-family: var(--font-mono); color: var(--fg); }
-</style>
+{{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
+     config/crosswind.ts. --}}
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

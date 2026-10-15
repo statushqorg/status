@@ -196,15 +196,10 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
 @include('../partials/app-nav.stx')
 
 <main class="app-shell">
-{{-- Inside <main>, which is the router's container, so these rules are part of
-    the swapped fragment and live exactly as long as the page does. Outside it
-    they were never removed: the dashboard is one layout group, so entering on
-    any of these pages kept its CSS applied to every other one for the session. --}}
-<style>
-  .mon-chart { width: 100%; height: auto; display: block; }
-  .chart-hit:hover { fill: var(--accent-soft); }
-  .mon-legend { display: flex; gap: 1.25rem; margin-top: 0.6rem; font-size: 0.8rem; font-weight: 600; }
-</style>
+{{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
+     config/crosswind.ts. This page's legend is `.site-legend` there: it was
+     a third `.mon-legend`, at a wider gap and without the uppercase, which
+     only worked while each page's CSS shipped alone. --}}
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"
@@ -288,7 +283,7 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
               <rect class="chart-hit" x="{{ hit.x }}" y="{{ PLOT.top }}" width="{{ hit.w }}" height="{{ PLOT.bottom - PLOT.top }}" fill="transparent" data-tip="{{ hit.tip }}"></rect>
             @endforeach
           </svg>
-          <div class="mon-legend">
+          <div class="site-legend">
             <span style="color: var(--accent);">&#9632; CPU</span>
             <span style="color: var(--muted);">&#9632; Memory</span>
             @if (chart.hasDisk)
