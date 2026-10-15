@@ -42,15 +42,37 @@
   // Chart tooltips: every .chart-hit rect carries data-tip; a single
   // floating div follows the cursor across all charts on the page. The
   // optional data-cx/cy pins a marker dot onto line charts.
+  //
+  // WHY THIS IS MARKED RATHER THAN CONVERTED (applies to every marker below).
+  //
+  // This is a HEAD partial. It has no markup of its own, so the replacements
+  // rule 8.2 names have nowhere to land: the floating tip would be a
+  // `<div class="chart-tip" ref="chartTip">` in a body template, and there is
+  // no body template here. The same constraint rules out useRef for the
+  // marker lookup.
+  //
+  // The script also cannot become a client script: this partial is already
+  // delicate about script placement -- see the note at the top of the file,
+  // where a script as the FIRST element is taken as the partial's component
+  // script and stripped from the output. The style block shields these two.
+  //
+  // The delegation is deliberate and not incidental: one listener on document
+  // covers every chart on the page, including charts rendered after this runs.
+  //
+  // allowPatterns stays empty; these markers are per-site (§12.1).
   (function () {
+    // stx-strict-ignore-next-line document.createElement -- no body template in a head partial
     var tip = document.createElement('div')
     tip.className = 'chart-tip'
+    // stx-strict-ignore-next-line appendChild -- same reason: nowhere to author it
     document.body.appendChild(tip)
+    // stx-strict-ignore-next-line document.addEventListener -- useEventListener is not in scope in a plain block
     document.addEventListener('mousemove', function (e) {
       var hit = e.target && e.target.classList && e.target.classList.contains('chart-hit') ? e.target : null
       var marker = hit && hit.parentElement ? hit.parentElement.querySelector('.chart-marker') : null
       if (!hit) {
         tip.style.display = 'none'
+        // stx-strict-ignore-next-line document.querySelectorAll -- every marker on the page, across charts
         var stale = document.querySelectorAll('.chart-marker')
         for (var i = 0; i < stale.length; i++) stale[i].setAttribute('opacity', '0')
         return
@@ -80,11 +102,13 @@
   // handler per button, so blocks added to a page later are covered too.
   (function () {
     function legacyCopy(text) {
+      // stx-strict-ignore-next-line document.createElement -- offscreen textarea for execCommand
       var ta = document.createElement('textarea')
       ta.value = text
       ta.setAttribute('readonly', '')
       ta.style.position = 'fixed'
       ta.style.top = '-1000px'
+      // stx-strict-ignore-next-line appendChild -- removed again three lines down
       document.body.appendChild(ta)
       ta.select()
       var ok = false
@@ -93,14 +117,22 @@
       return ok
     }
 
+    // The construction below is the one marker here that is a RELOCATION
+    // candidate rather than an impossibility: the wrap and the button could be
+    // authored in markup at each `pre.code-block` instead of injected. That is
+    // a change across every view that renders one, not a change to this file,
+    // so it is recorded rather than done.
+    // stx-strict-ignore-next-line document.querySelectorAll -- every code block on the page
     var blocks = document.querySelectorAll('pre.code-block')
     for (var i = 0; i < blocks.length; i++) {
       var pre = blocks[i]
       if (pre.parentElement && pre.parentElement.classList.contains('code-wrap')) continue
+      // stx-strict-ignore-next-line document.createElement -- see the note above
       var wrap = document.createElement('div')
       wrap.className = 'code-wrap'
       pre.parentNode.insertBefore(wrap, pre)
       wrap.appendChild(pre)
+      // stx-strict-ignore-next-line document.createElement -- see the note above
       var btn = document.createElement('button')
       btn.type = 'button'
       btn.className = 'copy-btn'
@@ -111,6 +143,7 @@
       wrap.appendChild(btn)
     }
 
+    // stx-strict-ignore-next-line document.addEventListener -- delegated so later blocks are covered
     document.addEventListener('click', function (event) {
       var btn = event.target && event.target.closest ? event.target.closest('.copy-btn') : null
       if (!btn) return
@@ -121,6 +154,7 @@
         // Never claim a copy that did not happen: a denied clipboard permission
         // leaves the operator pasting nothing into a root shell.
         btn.textContent = ok ? 'Copied' : 'Press \u2318C'
+        // stx-strict-ignore-next-line setTimeout -- useTimeout is not in scope in a plain block
         setTimeout(function () { btn.textContent = 'Copy' }, 1600)
       }
 

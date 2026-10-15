@@ -25,6 +25,14 @@
 --}}
 <script>
   (function () {
+    // Both markers here point at the reason already given above rather than
+    // restating it. In short: this is deliberately a plain block so it runs
+    // whether or not the signals runtime loaded, because an unguarded delete
+    // is a worse outcome than an unstyled prompt -- which also rules out
+    // useEventListener, and the delegation is required because the passkey
+    // rows are rendered in a loop and have no stable id to bind to.
+    // Per-site markers; allowPatterns stays empty (§12.1).
+    // stx-strict-ignore-next-line document.addEventListener -- delegated, and must run without the runtime
     document.addEventListener('submit', function (event) {
       var form = event.target
       if (!form || typeof form.matches !== 'function' || !form.matches('form[data-confirm]'))
@@ -42,6 +50,7 @@
             cancelText: form.getAttribute('data-confirm-cancel') || 'Cancel',
             type: form.getAttribute('data-confirm-type') || 'error',
           })
+        // stx-strict-ignore-next-line window.confirm -- the documented fallback when stxConfirm is absent
         : Promise.resolve(window.confirm(heading + ' ' + body))
 
       Promise.resolve(ask).then(function (ok) {
