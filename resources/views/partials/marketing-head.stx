@@ -21,78 +21,12 @@
      via the document shell, so pages including this partial must not
      re-add them. --}}
 <style>
-  :root {
-    color-scheme: light;
-    --bg: #fbfbfa;
-    --surface: #ffffff;
-    --surface-2: #f2f3f1;
-    --fg: #0b0f0d;
-    --muted: #5c6864;
-    --border: rgba(11, 15, 13, 0.1);
-    --border-strong: rgba(11, 15, 13, 0.18);
-    --accent: #2563eb;
-    --accent-fg: #ffffff;
-    --accent-soft: rgba(37, 99, 235, 0.09);
-    --success: #059669;
-    --success-soft: rgba(5, 150, 105, 0.12);
-    --violet: #6d5efc;
-    --amber: #d97706;
-    --amber-soft: rgba(217, 119, 6, 0.12);
-    --danger: #dc2626;
-    --danger-soft: rgba(220, 38, 38, 0.09);
-    --shadow: 0 20px 50px -18px rgba(11, 15, 13, 0.22);
-    --radius: 16px;
-    --radius-sm: 10px;
-    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-    --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    html:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #080b0a;
-      --surface: #101413;
-      --surface-2: #161b19;
-      --fg: #f2f5f3;
-      --muted: #97a39d;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-strong: rgba(255, 255, 255, 0.15);
-      --accent: #60a5fa;
-      --accent-fg: #071630;
-      --accent-soft: rgba(96, 165, 250, 0.14);
-      --success: #2fe6a6;
-      --success-soft: rgba(47, 230, 166, 0.14);
-      --violet: #a196ff;
-      --amber: #fbbf24;
-      --amber-soft: rgba(251, 191, 36, 0.13);
-      --danger: #f87171;
-      --danger-soft: rgba(248, 113, 113, 0.12);
-      --shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.55);
-    }
-  }
-
-  html[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #080b0a;
-    --surface: #101413;
-    --surface-2: #161b19;
-    --fg: #f2f5f3;
-    --muted: #97a39d;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.15);
-    --accent: #60a5fa;
-    --accent-fg: #071630;
-    --accent-soft: rgba(96, 165, 250, 0.14);
-    --success: #2fe6a6;
-    --success-soft: rgba(47, 230, 166, 0.14);
-    --violet: #a196ff;
-    --amber: #fbbf24;
-    --amber-soft: rgba(251, 191, 36, 0.13);
-    --danger: #f87171;
-    --danger-soft: rgba(248, 113, 113, 0.12);
-    --shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.55);
-  }
+  /* The design tokens were here, and in partials/app-head.stx,
+     layouts/auth.stx and invite/[uuid].stx as well -- four copies of one
+     palette. This was the superset: the only token the other three lacked
+     was --violet. They are one `paletteCss()` preflight in
+     config/crosswind.ts now: rule 3 / §11.2 puts a custom property in that
+     file and nowhere else. */
 
   * { box-sizing: border-box; }
 

@@ -4,11 +4,110 @@
  *
  * `theme.extend` is deep-merged onto Crosswind's defaults, so the standard
  * palette (red-500, etc.) stays intact — these just add the app's design-system
- * tokens as named utilities, mapped to the CSS variables defined in
- * resources/views/partials/app-head.stx. Prefer these over `[var(--…)]`
- * arbitrary values: `bg-surface`, `border-subtle`, `text-muted`, `text-success`,
- * `font-display`, `rounded-card`, and so on.
+ * tokens as named utilities, mapped to the CSS variables `paletteCss()` below
+ * declares. Prefer these over `[var(--…)]` arbitrary values: `bg-surface`,
+ * `border-subtle`, `text-muted`, `text-success`, `font-display`,
+ * `rounded-card`, and so on.
  */
+
+/**
+ * The design tokens, declared once.
+ *
+ * stx-standards rule 3 / §11.2: a custom property belongs in this file and
+ * nowhere else. They were in THREE `<style>` blocks --
+ * partials/app-head.stx, partials/marketing-head.stx and layouts/auth.stx --
+ * each with its own copy of the same palette, and app-head's comment said in
+ * so many words that they "must stay in sync if the brand changes".
+ *
+ * They had not quite stayed in sync. Diffed value by value rather than read:
+ * app and marketing were byte-identical but for `--violet`, which only
+ * marketing declared; auth matched on every colour except that its light
+ * `--danger-soft` was `0.08` where the other two said `0.09`, and it was
+ * missing --success, --success-soft, --amber, --amber-soft, --shadow and
+ * --font-mono entirely. The rest of auth's apparent drift was whitespace --
+ * `rgba(11,15,13,0.1)` against `rgba(11, 15, 13, 0.1)`.
+ *
+ * So this is the marketing copy, which is the superset, and the one real
+ * change is auth's `--danger-soft` moving by 0.01 of alpha.
+ *
+ * Unscoped, unlike the chrome that reads it: there is one palette and the
+ * three copies were never meant to differ.
+ */
+function paletteCss(): string {
+  return `:root {
+  color-scheme: light;
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --surface-2: #f2f3f1;
+  --fg: #0b0f0d;
+  --muted: #5c6864;
+  --border: rgba(11, 15, 13, 0.1);
+  --border-strong: rgba(11, 15, 13, 0.18);
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(37, 99, 235, 0.09);
+  --success: #059669;
+  --success-soft: rgba(5, 150, 105, 0.12);
+  --violet: #6d5efc;
+  --amber: #d97706;
+  --amber-soft: rgba(217, 119, 6, 0.12);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.09);
+  --shadow: 0 20px 50px -18px rgba(11, 15, 13, 0.22);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #080b0a;
+    --surface: #101413;
+    --surface-2: #161b19;
+    --fg: #f2f5f3;
+    --muted: #97a39d;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.15);
+    --accent: #60a5fa;
+    --accent-fg: #071630;
+    --accent-soft: rgba(96, 165, 250, 0.14);
+    --success: #2fe6a6;
+    --success-soft: rgba(47, 230, 166, 0.14);
+    --violet: #a196ff;
+    --amber: #fbbf24;
+    --amber-soft: rgba(251, 191, 36, 0.13);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.12);
+    --shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.55);
+  }
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #080b0a;
+  --surface: #101413;
+  --surface-2: #161b19;
+  --fg: #f2f5f3;
+  --muted: #97a39d;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --accent: #60a5fa;
+  --accent-fg: #071630;
+  --accent-soft: rgba(96, 165, 250, 0.14);
+  --success: #2fe6a6;
+  --success-soft: rgba(47, 230, 166, 0.14);
+  --violet: #a196ff;
+  --amber: #fbbf24;
+  --amber-soft: rgba(251, 191, 36, 0.13);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.55);
+}`
+}
+
 export default {
   content: [
     './resources/views/**/*.{stx,html}',
@@ -22,6 +121,9 @@ export default {
   ],
   preflight: true,
   minify: false,
+  preflights: [
+    { getCSS: paletteCss },
+  ],
   theme: {
     extend: {
       colors: {

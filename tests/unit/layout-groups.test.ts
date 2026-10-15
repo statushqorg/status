@@ -132,7 +132,16 @@ describe('layout groups', () => {
     expect(errors).toEqual([])
     expect(dependencies.has(join(VIEWS, 'partials/app-head.stx'))).toBe(true)
     expect(dependencies.has(join(VIEWS, 'partials/app-nav.stx'))).toBe(true)
-    expect(html).toContain('--accent:')
+    /*
+     * The palette used to be asserted here, because app-head.stx declared it.
+     * It is config/crosswind.ts's `paletteCss()` preflight now -- rule 3 /
+     * §11.2 -- so it reaches the page through the generated sheet rather than
+     * through this include, and asserting it here would be asserting the
+     * wrong mechanism. tests/unit/design-tokens.test.ts covers it instead.
+     * What this test is really about is that the two partials resolve and
+     * render, which the assertions around this line already check.
+     */
+    expect(html).toContain('.app-shell')
     expect(/<nav\b[^>]*\bclass="app-nav"/.test(html)).toBe(true)
     expect(html).toContain(user ? 'Sign out' : 'Sign in')
     expect(html).not.toContain('Could not resolve path for include')
