@@ -1,10 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import theme from '../../config/crosswind'
 
 const PARTIALS = join(import.meta.dir, '../../resources/views/partials')
 const nav = readFileSync(join(PARTIALS, 'marketing-nav.stx'), 'utf8')
-const head = readFileSync(join(PARTIALS, 'marketing-head.stx'), 'utf8')
+
+/*
+ * The marketing stylesheet was partials/marketing-head.stx's <style> block;
+ * it is config/crosswind.ts's `marketingCss()` preflight now (rule 3 /
+ * §11.1), scoped to the `home` and `marketing` layout groups. Read from
+ * there, so these assertions follow the rules rather than their old address.
+ */
+const head = ((theme as { preflights?: { getCSS: () => string }[] }).preflights ?? [])
+  .map(entry => entry.getCSS()).join('\n')
 
 // Below 900px the desktop links are hidden. Without a phone menu that left
 // Features, Use cases, Compare, Pricing, Docs and Sign in unreachable from
