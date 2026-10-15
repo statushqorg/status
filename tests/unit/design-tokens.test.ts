@@ -40,9 +40,14 @@ function stxFiles(dir: string): string[] {
   })
 }
 
-/** Preflight text as the config hands it to the engine. */
-const PREFLIGHT = ((theme as { preflights?: { getCSS: () => string }[] }).preflights ?? [])
-  .map(entry => entry.getCSS()).join('\n')
+/**
+ * The preflight entries, in order. The first is the palette; the rest are the
+ * per-layout-group stylesheets, which ARE scoped and are not this file's
+ * subject.
+ */
+const ENTRIES = ((theme as { preflights?: { getCSS: () => string }[] }).preflights ?? [])
+  .map(entry => entry.getCSS())
+const PREFLIGHT = ENTRIES[0]
 
 /** The whole sheet, merged the way the render path merges it. */
 async function generate(): Promise<string> {
@@ -128,9 +133,12 @@ describe('the tokens reach every layout group', () => {
      * but the palette is not, and should not be. Four copies that were meant
      * to be identical is the evidence for that, not an argument against it.
      */
-    const css = await generate()
-    expect(css).not.toContain('stx-layout-group')
-    expect(css).toMatch(/(^|\n):root\s*\{/)
+    expect(PREFLIGHT).not.toContain('stx-layout-group')
+    expect(PREFLIGHT).toMatch(/(^|\n):root\s*\{/)
+    // And the entries that follow it are all scoped, which is the other half
+    // of the arrangement.
+    for (const [i, entry] of ENTRIES.slice(1).entries())
+      expect({ entry: i + 1, scoped: entry.includes('stx-layout-group') }).toEqual({ entry: i + 1, scoped: true })
   })
 
   test('the fonts are custom properties, which this engine never rewrites', async () => {
@@ -151,5 +159,48 @@ describe('the tokens reach every layout group', () => {
         expect({ file: path.slice(VIEWS.length + 1), value: match[1].trim().startsWith('var(--font-') })
           .toEqual({ file: path.slice(VIEWS.length + 1), value: true })
     }
+  })
+})
+
+describe('the scoped stylesheets', () => {
+  /*
+   * A preflight reaches every page, and this app gives the same class name
+   * different meanings on different surfaces: forty names are declared in more
+   * than one of its fourteen <style> blocks -- `.button`, `.brand`, `.panel`,
+   * `.field`, `.pill`, `.dot`, `.section` among them. So each sheet carries
+   * the layout group it belongs to, which stx emits into <head> from the
+   * layout's filename and the router keeps fresh across navigations.
+   */
+  test('the prefix is written once, with nesting, not pasted onto every rule', () => {
+    const app = ENTRIES.find(entry => entry.includes('content="default"')) ?? ''
+    expect(app).not.toBe('')
+    const prefixes = [...app.matchAll(/html:has\(meta/g)].length
+    const rules = [...app.matchAll(/\{/g)].length
+    expect({ prefixes: prefixes < 12, rules: rules > 100 }).toEqual({ prefixes: true, rules: true })
+  })
+
+  test('the rules rooted at or above <html> are spelled out, not nested', () => {
+    /*
+     * Three kinds cannot be nested under an `html` prefix because nesting
+     * would make them `html:has(…) html`, which matches nothing: the
+     * `html { background }` rule itself, the [data-theme] theme-toggle rules,
+     * and `*`, which matched html and body where a nested one would not.
+     */
+    const app = ENTRIES.find(entry => entry.includes('content="default"')) ?? ''
+    expect(app).toMatch(/^html:has\(meta\[name="stx-layout-group"\]\[content="default"\]\), html:has\([^)]*\) \* \{ box-sizing: border-box; \}/m)
+    expect(app).toContain('[content="default"]) { background: var(--bg); }')
+    expect(app).toContain('[content="default"])[data-theme="dark"] .theme-toggle .icon-moon')
+    expect(app).toContain('[content="default"]):not([data-theme="light"]) .theme-toggle .icon-sun')
+    expect(app).not.toMatch(/\{\s*html\s*\{/)
+  })
+
+  test('nested CSS survives the engine verbatim', async () => {
+    // The whole scheme rests on this. Checked against the installed engine
+    // rather than assumed, because a preflight that got flattened would
+    // silently drop every rule in the block.
+    const css = await generate()
+    expect(css).toContain('html:has(meta[name="stx-layout-group"][content="default"]) {')
+    expect(css).toContain('.app-shell')
+    expect(css).toContain('.app-nav')
   })
 })

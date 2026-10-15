@@ -1,6 +1,18 @@
 import { describe, expect, test } from 'bun:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import theme from '../../config/crosswind'
+
+/*
+ * The shared dashboard chrome used to be a <style> block in
+ * partials/app-head.stx. It is config/crosswind.ts's `appCss()` preflight now
+ * (rule 3 / §11.1), scoped to the `default` layout group, so "shared" is read
+ * from there. What this file guards is unchanged and still worth guarding:
+ * a per-page block is emitted only on the page that declares it, so a view
+ * that borrows markup without its CSS renders unstyled and nothing complains.
+ */
+const PREFLIGHT = ((theme as { preflights?: { getCSS: () => string }[] }).preflights ?? [])
+  .map(entry => entry.getCSS()).join('\n')
 
 const VIEWS = join(import.meta.dir, '../../resources/views')
 
@@ -39,11 +51,11 @@ function usedIn(source: string): Set<string> {
 // shared between views. When markup is copied from one page to another
 // without its CSS the classes render unstyled and nothing complains, which
 // is how the server pages shipped with bare dialogs and a clipped install
-// command. Anything two pages use has to live in the app-head partial.
+// command. Anything two pages use has to live in the config's preflight.
 describe('dashboard styles', () => {
   const dashboardAndPartials = walk(VIEWS).filter(file => file.includes('/dashboard/') || file.includes('/partials/'))
   const shared = new Set([
-    ...definedIn(readFileSync(join(VIEWS, 'partials/app-head.stx'), 'utf8')),
+    ...[...PREFLIGHT.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(match => match[1]),
     ...definedIn(readFileSync(join(VIEWS, 'partials/app-nav.stx'), 'utf8')),
   ])
   // Utility classes and script hooks are declared in no stylesheet at all and
@@ -67,8 +79,7 @@ describe('dashboard styles', () => {
   // it zoomed and scrolled sideways. The dashboard takes the floor only at
   // phone width; the sign-in form is a single column and takes it outright.
   test('phone-width inputs are at least 16px so iOS does not zoom on focus', () => {
-    const head = readFileSync(join(VIEWS, 'partials/app-head.stx'), 'utf8')
-    const phone = head.slice(head.indexOf('@media (max-width: 860px)'))
+    const phone = PREFLIGHT.slice(PREFLIGHT.indexOf('@media (max-width: 860px)'))
     expect(phone).toContain('.input, .select, .textarea { min-height: 44px; font-size: 16px; }')
     const auth = readFileSync(join(VIEWS, 'layouts/auth.stx'), 'utf8')
     const field = auth.match(/\.field input\s*\{[^}]*\}/)?.[0] ?? ''

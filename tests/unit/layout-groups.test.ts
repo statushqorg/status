@@ -141,7 +141,7 @@ describe('layout groups', () => {
      * What this test is really about is that the two partials resolve and
      * render, which the assertions around this line already check.
      */
-    expect(html).toContain('.app-shell')
+    expect(html).toContain('class="app-shell')
     expect(/<nav\b[^>]*\bclass="app-nav"/.test(html)).toBe(true)
     expect(html).toContain(user ? 'Sign out' : 'Sign in')
     expect(html).not.toContain('Could not resolve path for include')
