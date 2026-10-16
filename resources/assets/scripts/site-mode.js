@@ -15,6 +15,7 @@
 // validator reporting it anywhere in the app.
 
 (() => {
+  // stx-strict-ignore-next-line document.body
   const body = document.body
   if (!body || body.dataset.siteMode !== 'coming-soon')
     return

@@ -499,16 +499,22 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
       backoff = Math.min(backoff * 2, 15000) // capped exponential backoff
     }
 
-    window.addEventListener('beforeunload', function () { closedByUs = true; if (ws) try { ws.close() } catch (e) {} })
+    // useEventListener rather than window.addEventListener (rule 8), called as
+    // (event, handler, { target }) -- the served runtime's signature, which
+    // dist/browser-composables.js disagrees with. It also registers an
+    // onDestroy cleanup, which is the right shape for teardown handlers: these
+    // two exist to stop a socket and an interval leaking, and a listener that
+    // itself leaked would be a poor way to do it.
+    useEventListener('beforeunload', function () { closedByUs = true; if (ws) try { ws.close() } catch (e) {} }, { target: window })
     // With StxLink opt-in navigation (Phase 4), leaving this page can be a
     // fragment swap instead of an unload — tear the socket and the label
     // refresher down on the router's navigation event or they leak.
-    window.addEventListener('stx:navigate', function () {
+    useEventListener('stx:navigate', function () {
       closedByUs = true
       clearInterval(agoTimer)
       setLive(false)
       if (ws) try { ws.close() } catch (e) {}
-    })
+    }, { target: window })
     connect()
   })()
 </script>
