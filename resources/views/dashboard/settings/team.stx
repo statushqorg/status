@@ -269,9 +269,11 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
   // The original's warning still applies, and applies harder now: this file's
   // server bindings are word-matched against the script text to build the
   // client data bridge, and a `<script client>` block is precisely what that
-  // bridge scans. A stray mention of a binding would serialise the team
-  // roster into the page source. Nothing below names one, and nothing added
-  // later should.
+  // bridge scans. A stray mention of a binding would serialise the roster
+  // into the page source -- and a comment counts, because the match is over
+  // the block's text and not over its code, which is why neither binding is
+  // named anywhere above. tests/unit/bridge-hygiene.test.ts fails the build
+  // if one ever is.
   function submitRole(event: Event): void {
     const picker = event.target
     if (picker instanceof HTMLSelectElement && picker.form)

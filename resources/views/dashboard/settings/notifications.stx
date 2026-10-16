@@ -244,13 +244,15 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
   // stx-standards rule 8. The original carried a warning that matters MORE
   // now, not less: this file's server bindings are word-matched against the
   // script text to build the client data bridge, and a bare mention of one
-  // would serialise it into the page source. `channels` holds every stored
-  // webhook URL and API key for the team.
+  // would serialise it into the page source. The binding holding this team's
+  // configured destinations carries every stored webhook URL and API key.
   //
-  // A `<script client>` block is exactly what that bridge scans, so naming
-  // `channels` here -- even in a comment that looked like code, even
-  // accidentally -- would publish those secrets to anyone who views source.
-  // Nothing below names it, and nothing added later should.
+  // A `<script client>` block is exactly what that bridge scans, so writing
+  // that binding's name here would publish those secrets to anyone who views
+  // source -- a comment counts, because the match is over the block's text
+  // and not over its code. It is deliberately not spelled out anywhere in
+  // this block, and nothing added later should spell it out either.
+  // tests/unit/bridge-hygiene.test.ts fails the build if it ever is.
   //
   // Measured rather than trusted, with a canary channel whose config held a
   // recognisable URL and key: that canary appears nowhere in the rendered
