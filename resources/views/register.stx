@@ -32,6 +32,121 @@ useHead({
 })
 </script>
 
+
+<script client>
+// Creating an account, as stx client code rather than the DOM-walking script
+// this used to be (stx-standards rule 8). The same conversion as login.stx,
+// which carries the longer note on why each replacement is the one it is;
+// this page is the simpler half -- one form, no second step, no passkey.
+//
+// `error` owns the banner and the three aria-invalid attributes, `loading`
+// owns the button. Nothing is found by id.
+//
+// useCookie('X-CSRF-Token') replaces the hand-rolled readCookie plus
+// document.cookie serialiser. It is the same cookie this app's login page
+// mints, with the same attributes -- path=/, SameSite=Lax, and Secure only on
+// https -- because the composable's defaults are exactly what both pages used
+// to spell out.
+//
+// navigate(REDIRECT, { reload: true }) replaces `window.location.href =`: a
+// bare navigate() hands the call to the client router, which swaps a fragment
+// and keeps the surrounding document, and a new account should land in the
+// onboarding shell rather than inside the auth one.
+const REDIRECT = '/dashboard/onboarding'
+
+const error = state('')
+const loading = state(false)
+
+const csrf = useCookie('X-CSRF-Token')
+
+/**
+ * Double-submit CSRF token, self-seeded when the view server did not set one.
+ * See resources/views/login.stx for the full rationale.
+ */
+function ensureCsrf(): string {
+  const existing = csrf()
+  if (existing)
+    return existing
+
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  const token = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+  csrf.set(token)
+  return token
+}
+
+/** What POST /register answers with. */
+interface RegisterResponse {
+  token?: string
+  message?: string
+  error?: string
+  errors?: Record<string, string | string[]>
+}
+
+// Reading an uncontrolled field is two narrowings: `e.target` is an EventTarget
+// and `form.elements` hands back Elements, and neither carries a `.value`.
+function fieldValue(form: HTMLFormElement, name: string): string {
+  const el = form.elements.namedItem(name)
+  return el instanceof HTMLInputElement ? el.value : ''
+}
+
+/** The first message out of a validation error map, if there is one. */
+function firstValidationMessage(errors: Record<string, string | string[]> | undefined): string {
+  if (!errors)
+    return ''
+  const firstKey = Object.keys(errors)[0]
+  if (!firstKey)
+    return ''
+  const value = errors[firstKey]
+  return Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '')
+}
+
+async function handleSubmit(event: SubmitEvent): Promise<void> {
+  event.preventDefault()
+  if (loading())
+    return
+  const form = event.target
+  if (!(form instanceof HTMLFormElement))
+    return
+
+  loading.set(true)
+  error.set('')
+
+  try {
+    const res = await fetch('/register', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': ensureCsrf() },
+      body: JSON.stringify({
+        name: fieldValue(form, 'name').trim(),
+        email: fieldValue(form, 'email').trim(),
+        password: fieldValue(form, 'password'),
+      }),
+    })
+
+    let data: RegisterResponse = {}
+    try {
+      data = await res.json() as RegisterResponse
+    }
+    catch {
+      data = {}
+    }
+
+    if (res.ok && data.token) {
+      navigate(REDIRECT, { reload: true })
+      return
+    }
+    error.set(data.message || data.error || firstValidationMessage(data.errors) || 'Could not create your account. Please try again.')
+  }
+  catch {
+    error.set('Something went wrong. Please try again.')
+  }
+  finally {
+    loading.set(false)
+  }
+}
+</script>
+
 @extends('layouts/auth')
 
 @section('content')
@@ -41,25 +156,25 @@ useHead({
         <span class="brand-name">{{ appName }}</span>
       </StxLink>
 
-      <div id="error" class="error" role="alert"></div>
+      <div id="error" :class="error() ? 'error show' : 'error'" role="alert">{{ error() }}</div>
 
-      <form id="register-form">
+      <form @submit="handleSubmit">
         <h1>Create your account</h1>
         <p class="sub">Start monitoring in under two minutes. No credit card required.</p>
         <div class="field">
           <label for="name">Name</label>
-          <input id="name" name="name" type="text" autocomplete="name" placeholder="Ada Lovelace" required aria-describedby="error">
+          <input id="name" name="name" :aria-invalid="error() ? 'true' : 'false'" type="text" autocomplete="name" placeholder="Ada Lovelace" required aria-describedby="error">
         </div>
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required aria-describedby="error">
+          <input id="email" name="email" :aria-invalid="error() ? 'true' : 'false'" type="email" autocomplete="email" placeholder="you@yourcompany.com" required aria-describedby="error">
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Create a password" minlength="6" required aria-describedby="error">
+          <input id="password" name="password" :aria-invalid="error() ? 'true' : 'false'" type="password" autocomplete="new-password" placeholder="Create a password" minlength="6" required aria-describedby="error">
           <p class="hint">At least 6 characters.</p>
         </div>
-        <button id="register-btn" class="button" type="submit">Create account</button>
+        <button class="button" type="submit" :disabled="loading()">{{ loading() ? 'Creating account…' : 'Create account' }}</button>
 
         @if (hasSso)
           <div class="sso-divider">or</div>
@@ -74,80 +189,4 @@ useHead({
       <p class="alt">Already have an account? <StxLink to="/login">Sign in</StxLink></p>
     </div>
 
-    <script>
-      (function () {
-        var REDIRECT = '/dashboard/onboarding'
-        var errorEl = document.getElementById('error')
-        var form = document.getElementById('register-form')
-        var btn = document.getElementById('register-btn')
-
-        function readCookie(name) {
-          var m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()\[\]\\\/+^]/g, '\\$&') + '=([^;]*)'))
-          return m ? decodeURIComponent(m[1]) : null
-        }
-        // Double-submit CSRF token, self-seeded when the view server didn't
-        // set one — see resources/views/login.stx for the full rationale.
-        function ensureCsrf() {
-          var existing = readCookie('X-CSRF-Token')
-          if (existing) return existing
-          var arr = new Uint8Array(32)
-          window.crypto.getRandomValues(arr)
-          var tok = Array.prototype.map.call(arr, function (b) { return ('0' + b.toString(16)).slice(-2) }).join('')
-          document.cookie = 'X-CSRF-Token=' + tok + '; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '')
-          return tok
-        }
-        // The banner is an alert region, so writing to it announces the
-        // message. The fields need marking separately: without aria-invalid and
-        // a link to the text, the control itself still looks untouched.
-        function markFields(invalid) {
-          ['name', 'email', 'password'].forEach(function (id) {
-            var el = document.getElementById(id)
-            if (!el)
-              return
-            el.setAttribute('aria-invalid', invalid ? 'true' : 'false')
-          })
-        }
-
-        function showError(msg) { errorEl.textContent = msg; errorEl.classList.add('show'); markFields(true) }
-        function clearError() { errorEl.textContent = ''; errorEl.classList.remove('show'); markFields(false) }
-
-        form.addEventListener('submit', async function (e) {
-          e.preventDefault()
-          clearError()
-          btn.disabled = true
-          btn.textContent = 'Creating account…'
-          try {
-            var headers = { 'Content-Type': 'application/json', 'x-csrf-token': ensureCsrf() }
-            var res = await fetch('/register', {
-              method: 'POST',
-              headers: headers,
-              credentials: 'same-origin',
-              body: JSON.stringify({
-                name: document.getElementById('name').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                password: document.getElementById('password').value,
-              }),
-            })
-            var data = {}
-            try { data = await res.json() } catch (e) {}
-            if (res.ok && data.token) {
-              window.location.href = REDIRECT
-              return
-            }
-            var msg = data.message || data.error
-            if (!msg && data.errors) {
-              // validation error map → first message
-              var firstKey = Object.keys(data.errors)[0]
-              if (firstKey) { var v = data.errors[firstKey]; msg = Array.isArray(v) ? v[0] : v }
-            }
-            showError(msg || 'Could not create your account. Please try again.')
-          } catch (err) {
-            showError('Something went wrong. Please try again.')
-          } finally {
-            btn.disabled = false
-            btn.textContent = 'Create account'
-          }
-        })
-      })()
-    </script>
 @endsection
