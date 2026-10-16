@@ -125,7 +125,7 @@ const __typeCopy = Object.fromEntries(monitorTypes.map(t => [
     hint: t.hint,
     example: t.example,
     help: t.value === 'cron'
-      ? 'Reference only — where the job runs. Nothing is dialled; your job pings the URL we issue after you save.'
+      ? 'Reference only, and where the job runs. Nothing is dialled; your job pings the URL we issue after you save.'
       : (acceptsBareHost(t.value)
           ? 'A hostname or IP. No http:// needed.'
           : 'A full http(s) URL, including the scheme.'),
@@ -207,8 +207,8 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
             <div class="field">
               <label for="enabled">Status</label>
               <select id="enabled" name="enabled" class="select">
-                <option value="true">Enabled — start checking now</option>
-                <option value="false">Disabled — create it, check later</option>
+                <option value="true">Enabled, start checking now</option>
+                <option value="false">Disabled, create it and check later</option>
               </select>
             </div>
           </div>
@@ -349,7 +349,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
             <label for="alert_on_fingerprint_change">
               <input id="alert_on_fingerprint_change" type="checkbox" name="alert_on_fingerprint_change" value="on" /> Alert when the TLS fingerprint changes
             </label>
-            <p class="help">Off by default — a renewal changes the fingerprint routinely.</p>
+            <p class="help">Off by default, because a renewal changes the fingerprint routinely.</p>
           </div>
         </div>
       </section>

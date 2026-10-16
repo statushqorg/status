@@ -74,7 +74,7 @@ useHead({
         <div class="page-hero">
           <h1 class="page-title">Documentation.</h1>
           <p class="page-lead">
-            Everything {{ appName }} monitors, and how to wire it up. New here? Start with the four steps below — most teams have their first alert routed in a few minutes.
+            Everything {{ appName }} monitors, and how to wire it up. New here? Start with the four steps below. Most teams have their first alert routed in a few minutes.
           </p>
           <div class="page-actions">
             <StxLink class="button primary" to="/register">Start free</StxLink>
@@ -122,7 +122,7 @@ useHead({
         <div class="feature-grid">
           <a class="feature-card" href="https://github.com/stacksjs/status" target="_blank" rel="noopener">
             <h3>Self-host</h3>
-            <p>Run the whole stack yourself — it is open source and built on the Stacks framework. Setup and deploy instructions live in the repo README.</p>
+            <p>Run the whole stack yourself. It is open source and built on the Stacks framework. Setup and deploy instructions live in the repo README.</p>
             <span class="card-more">Open the repo</span>
           </a>
           <StxLink class="feature-card" to="/compare">

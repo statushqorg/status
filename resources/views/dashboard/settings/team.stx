@@ -212,7 +212,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
           </div>
           <button type="submit" class="button primary">Invite</button>
           <div class="field" style="margin: 0.75rem 0 0;">
-            <p class="help">We email a link to <span class="mono">/invite/&hellip;</span>. Opening it lets them accept and sign in — creating an account first if they don't have one. Nothing here needs the API.</p>
+            <p class="help">We email a link to <span class="mono">/invite/&hellip;</span>. Opening it lets them accept and sign in, creating an account first if they don't have one. Nothing here needs the API.</p>
           </div>
         </form>
       </div>

@@ -267,7 +267,7 @@ const comingSoonBypassToken = process.env.APP_COMING_SOON_SECRET || ''
 const monitorTypes = [
   {
     title: 'Uptime monitoring',
-    text: 'HTTP, TCP, and ping checks as often as every 30 seconds, from multiple regions — know the second something goes down.',
+    text: 'HTTP, TCP, and ping checks as often as every 30 seconds, from multiple regions, so you know the second something goes down.',
     icon: 'pulse',
     href: '/features/uptime-monitoring',
   },
@@ -291,7 +291,7 @@ const monitorTypes = [
   },
   {
     title: 'Status pages',
-    text: 'A branded, public status page on your own domain — no "powered by" watermark, ever.',
+    text: 'A branded, public status page on your own domain, with no "powered by" watermark, ever.',
     icon: 'flag',
     href: '/features/status-pages',
   },
@@ -304,7 +304,7 @@ const monitorTypes = [
 ]
 
 const howItWorks = [
-  { label: '01', title: 'Add a monitor', text: 'Point it at a URL, TCP port, or domain — it takes about ten seconds to set up.' },
+  { label: '01', title: 'Add a monitor', text: 'Point it at a URL, TCP port, or domain. It takes about ten seconds to set up.' },
   { label: '02', title: 'We keep watch', text: 'Checks run from multiple regions on the schedule you choose, day and night.' },
   { label: '03', title: 'Get notified, share status', text: 'Email, Slack, webhooks, and a public status page your users can check for themselves.' },
 ]
@@ -335,11 +335,11 @@ const pricingTiers = [
 ]
 
 const faqs = [
-  { q: 'Is it really free to self-host?', a: 'Yes — the entire codebase is MIT licensed. Clone it, deploy it on your own server, and use every feature with no limits.' },
+  { q: 'Is it really free to self-host?', a: 'Yes, the entire codebase is MIT licensed. Clone it, deploy it on your own server, and use every feature with no limits.' },
   { q: 'What is the difference between Self-hosted and Pro?', a: 'Self-hosted runs on your own infrastructure and you manage upgrades yourself. Pro is the same software, fully hosted and managed by us, with checks from more regions.' },
-  { q: 'Can I move from Pro to Self-hosted later?', a: 'Yes. Your data is yours — export it any time and run the open-source version on your own infrastructure.' },
+  { q: 'Can I move from Pro to Self-hosted later?', a: 'Yes. Your data is yours, so export it any time and run the open-source version on your own infrastructure.' },
   { q: 'What happens when I hit the 100-monitor limit on Pro?', a: 'Self-host. StatusHQ is MIT licensed, and your own install has no plan limits, so a large client roster costs you a server instead of a tier. If you would rather stay on hosted, talk to us and we will raise your limit.' },
-  { q: 'What can I monitor?', a: 'HTTP(S) endpoints, TCP ports, SSL certificates, domain expiration, DNS records, and broken links — all from one dashboard.' },
+  { q: 'What can I monitor?', a: 'HTTP(S) endpoints, TCP ports, SSL certificates, domain expiration, DNS records, and broken links, all from one dashboard.' },
 ]
 
 // SEO via the framework head (stx-standards 04). The custom-domain
@@ -424,7 +424,7 @@ if (!statusPageForHost && faqs && faqs.length)
                 <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <p class="font-medium text-gray-900">{{ mw.title }}</p>
                   <p class="mt-1 text-sm text-gray-600">{{ mw.description }}</p>
-                  <p class="mt-1 text-xs text-gray-400">{{ hostFormatDate(mw.starts_at) }} — {{ hostFormatDate(mw.ends_at) }}</p>
+                  <p class="mt-1 text-xs text-gray-400">{{ hostFormatDate(mw.starts_at) }} to {{ hostFormatDate(mw.ends_at) }}</p>
                 </div>
               @endforeach
             </div>
@@ -535,7 +535,7 @@ if (!statusPageForHost && faqs && faqs.length)
           <h1 id="coming-soon-heading" class="mode-title">{{ appName }}</h1>
           <p class="mode-lead">We're almost ready.</p>
           <p class="mode-copy">
-            Uptime, SSL, DNS, and status-page monitoring — leave your email and we'll let you know the moment we open the doors.
+            Uptime, SSL, DNS, and status-page monitoring. Leave your email and we'll let you know the moment we open the doors.
           </p>
           <form class="mode-subscribe" action="/api/email/subscribe" method="POST">
             <input type="email" name="email" placeholder="you@yourcompany.com" autocomplete="email" aria-label="Email address" required>
@@ -557,7 +557,7 @@ if (!statusPageForHost && faqs && faqs.length)
             <span class="badge"><span class="dot"></span> Open source &middot; MIT licensed</span>
             <h1 class="hero-title">Know the moment <span class="accent-word">something breaks.</span></h1>
             <p class="hero-copy">
-              {{ appName }} watches your uptime, SSL certificates, domains, and DNS around the clock — then keeps your users in the loop with a status page on your own domain.
+              {{ appName }} watches your uptime, SSL certificates, domains, and DNS around the clock, then keeps your users in the loop with a status page on your own domain.
             </p>
             <div class="hero-actions">
               <StxLink class="button primary" to="/register">
@@ -747,7 +747,7 @@ if (!statusPageForHost && faqs && faqs.length)
           <div class="oss-band">
             <div>
               <h2 id="oss-heading">Free to self-host. Forever.</h2>
-              <p>The entire codebase is MIT licensed. Clone it, run it on your own infrastructure, and use every feature with no limits — or let us host it for you.</p>
+              <p>The entire codebase is MIT licensed. Clone it, run it on your own infrastructure, and use every feature with no limits, or let us host it for you.</p>
             </div>
             <div class="oss-code">git clone github.com/stacksjs/status</div>
           </div>
@@ -822,7 +822,7 @@ if (!statusPageForHost && faqs && faqs.length)
               </span>
               <span class="brand-name">{{ appName }}</span>
             </StxLink>
-            <p>Open-source uptime, SSL, DNS, and status-page monitoring — self-hosted or fully managed by us.</p>
+            <p>Open-source uptime, SSL, DNS, and status-page monitoring, self-hosted or fully managed by us.</p>
           </div>
           <div class="footer-col">
             <h4>Product</h4>

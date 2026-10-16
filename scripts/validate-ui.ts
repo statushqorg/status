@@ -5,10 +5,10 @@ const root = process.cwd()
 const resources = resolve(root, 'resources')
 const issues = new Set<string>()
 
-function filesIn(directory: string): string[] {
+function filesIn(directory: string, pattern = /\.(?:stx|html|css)$/): string[] {
   return readdirSync(directory).flatMap((name) => {
     const path = join(directory, name)
-    return statSync(path).isDirectory() ? filesIn(path) : /\.(?:stx|html|css)$/.test(path) ? [path] : []
+    return statSync(path).isDirectory() ? filesIn(path, pattern) : pattern.test(path) ? [path] : []
   })
 }
 
@@ -93,6 +93,44 @@ for (const file of markupFiles) {
   for (const match of source.matchAll(/<(?:div|span)\b([^>]*\bonclick=[^>]*)>/gi)) {
     if (!/\brole=["'](?:button|link)["']/i.test(match[1]) || !/\btabindex=["']0["']/i.test(match[1]))
       report(file, source, match.index, 'clickable non-interactive element is not keyboard accessible')
+  }
+}
+
+/*
+ * Em-dashes in copy a user can read.
+ *
+ * The house rule is in AGENTS.md: never an em-dash or a separator en-dash in a
+ * headline, a body string, a label, a button, alt text, a tooltip or a
+ * placeholder. It is named there as the most common AI design tell and listed as
+ * a pre-flight item, and nothing enforced it -- 98 live ones across the six apps
+ * when this check was written, every one shipped past a green CI.
+ *
+ * Over a wider corpus than the markup checks above, because copy is not only in
+ * templates: resources/data/*.ts holds marketing tables and resources/emails/
+ * holds mail bodies, and both reach a reader. filesIn() takes the pattern for
+ * that reason; `combined` deliberately keeps the narrow one, since widening the
+ * corpus of a check that looks for a treatment can only add ways for it to pass.
+ *
+ * Two shapes are not separators and are exempt:
+ *
+ *   '—'    a lone dash standing in for a value that does not exist (a field the
+ *          SDK never sent, a count we never measured). A typographic placeholder
+ *          rather than punctuation between clauses, and no hyphen reads as
+ *          "no value".
+ *   1–10   an en-dash between digits, which is a numeric range and the correct
+ *          character for one. The rule bans the SEPARATOR en-dash, the one
+ *          standing in for a comma or a full stop.
+ */
+for (const file of filesIn(resources, /\.(?:stx|html|ts)$/)) {
+  const source = withoutComments(readFileSync(file, 'utf8'))
+  for (const match of source.matchAll(/[\u2014\u2013]/g)) {
+    const before = source.slice(Math.max(0, match.index - 1), match.index)
+    const after = source.slice(match.index + 1, match.index + 2)
+    if (/['"`>]/.test(before) && /['"`<]/.test(after))
+      continue
+    if (match[0] === '\u2013' && /\d/.test(before) && /\d/.test(after))
+      continue
+    report(file, source, match.index, 'em-dash in user-visible copy: use a hyphen, a comma, or two sentences')
   }
 }
 

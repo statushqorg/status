@@ -110,7 +110,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
   @if (AUTH_USER && credsError)
     <EmptyState
       title="Credentials could not be read"
-      description="You are signed in — this is a storage error, not an authentication one: {{ credsError }}"
+      description="You are signed in, so this is a storage error rather than an authentication one: {{ credsError }}"
       className="my-8"
     />
   @endif
@@ -160,7 +160,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
           </div>
           <div>
             <label for="secret_access_key">Secret access key</label>
-            <input id="secret_access_key" name="secret_access_key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ hasSecret ? 'Stored — leave blank to keep' : 'Enter secret access key' }}" aria-invalid="{{ invalidFields.includes('secret_access_key') ? 'true' : 'false' }}"@if (invalidFields.includes('secret_access_key')) aria-describedby="aws-form-error"@endif>
+            <input id="secret_access_key" name="secret_access_key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ hasSecret ? 'Stored, leave blank to keep' : 'Enter secret access key' }}" aria-invalid="{{ invalidFields.includes('secret_access_key') ? 'true' : 'false' }}"@if (invalidFields.includes('secret_access_key')) aria-describedby="aws-form-error"@endif>
             <p class="help">Stored encrypted (AES-256-GCM). It is never shown again after saving.</p>
           </div>
           <div>
@@ -180,10 +180,10 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
         <span class="sub">least privilege</span>
       </div>
       <div class="card-body">
-        <p class="subhead">Create an IAM user with programmatic access and attach exactly this inline policy — nothing more is needed:</p>
+        <p class="subhead">Create an IAM user with programmatic access and attach exactly this inline policy. Nothing more is needed:</p>
         <ul class="perm-list">
-          <li><code>ec2:DescribeInstances</code> — locate the monitored instance by id or tag.</li>
-          <li><code>ec2-instance-connect:SendSSHPublicKey</code> — push a one-time SSH key so the installer can connect (no long-lived key pair).</li>
+          <li><code>ec2:DescribeInstances</code>, to locate the monitored instance by id or tag.</li>
+          <li><code>ec2-instance-connect:SendSSHPublicKey</code>, to push a one-time SSH key so the installer can connect (no long-lived key pair).</li>
         </ul>
         <pre class="iam-policy">{{ IAM_POLICY }}</pre>
         <p class="help">Scope <code>Resource</code> to specific instance ARNs if you want to restrict provisioning to particular boxes.</p>

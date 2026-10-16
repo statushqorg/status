@@ -190,7 +190,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
             <div class="field">
               <label for="chan-name">Name</label>
               <input id="chan-name" type="text" name="name" required class="input" placeholder="#ops-alerts" />
-              <p class="help">Yours to recognise later — this is what you'll pick when routing a monitor's alerts.</p>
+              <p class="help">Yours to recognise later: this is what you'll pick when routing a monitor's alerts.</p>
             </div>
             <div class="field">
               <label for="chan-type">Type</label>

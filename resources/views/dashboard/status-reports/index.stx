@@ -182,7 +182,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
           </div>
           <button type="submit" class="button primary">Create announcement</button>
           <div class="field" style="margin: 0.75rem 0 0;">
-            <p class="help">Next you'll attach the affected monitors and post an update — posting an update is what emails your status page subscribers.</p>
+            <p class="help">Next you'll attach the affected monitors and post an update. Posting an update is what emails your status page subscribers.</p>
           </div>
         </form>
       </div>

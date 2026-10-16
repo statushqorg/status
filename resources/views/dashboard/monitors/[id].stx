@@ -1420,7 +1420,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
                 <label for="edit-enabled">Status</label>
                 <select id="edit-enabled" name="enabled" class="select">
                   <option value="true" {{ monitor.enabled ? 'selected' : '' }}>Enabled</option>
-                  <option value="false" {{ monitor.enabled ? '' : 'selected' }}>Disabled — stop checking</option>
+                  <option value="false" {{ monitor.enabled ? '' : 'selected' }}>Disabled, stop checking</option>
                 </select>
               </div>
             </div>

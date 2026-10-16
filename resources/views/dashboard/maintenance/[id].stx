@@ -73,7 +73,7 @@ const errorCode = query.get('error') || ''
 const justSaved = query.get('saved') === '1'
 
 function errorLabel(code) {
-  if (code === 'title_required') return 'Give the window a title — subscribers see it.'
+  if (code === 'title_required') return 'Give the window a title. Subscribers see it.'
   if (code === 'title_too_long') return 'That title is longer than 150 characters.'
   if (code === 'description_too_long') return 'That description is longer than 2000 characters.'
   if (code === 'starts_at_invalid') return 'Enter when the window starts.'
@@ -326,7 +326,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         <h3>Delete</h3>
       </div>
       <div class="card-body">
-        <p class="help">Prefer <b>Cancelled</b> above for anything already announced — it keeps the record and resumes alerting. Deleting removes the window and its monitor links for good.</p>
+        <p class="help">Prefer <b>Cancelled</b> above for anything already announced: it keeps the record and resumes alerting. Deleting removes the window and its monitor links for good.</p>
         <form method="POST" action="/api/maintenance-forms/{{ win.id }}/delete" style="margin-top: 0.75rem;">
           <button type="submit" class="button">Delete window</button>
         </form>

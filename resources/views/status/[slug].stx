@@ -434,7 +434,7 @@ function bannerDotClass(tone) {
               <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <p class="font-medium text-gray-900">{{ mw.title }}</p>
                 <p class="mt-1 text-sm text-gray-600">{{ mw.description }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ formatDate(mw.starts_at) }} — {{ formatDate(mw.ends_at) }}</p>
+                <p class="mt-1 text-xs text-gray-400">{{ formatDate(mw.starts_at) }} to {{ formatDate(mw.ends_at) }}</p>
               </div>
             @endforeach
           </div>
@@ -548,7 +548,7 @@ function bannerDotClass(tone) {
                   <span class="text-xs font-medium uppercase tracking-wide text-emerald-600">{{ t('resolved') }}</span>
                 </div>
                 <p class="mt-1 text-sm text-gray-600">{{ incident.cause }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ formatDate(incident.started_at) }} — {{ formatDate(incident.resolved_at) }}</p>
+                <p class="mt-1 text-xs text-gray-400">{{ formatDate(incident.started_at) }} to {{ formatDate(incident.resolved_at) }}</p>
               </StxLink>
             @endforeach
           </div>

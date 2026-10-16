@@ -58,7 +58,7 @@ const justDeleted = query.get('deleted') === '1'
 // One banner per code the action redirects with; wording lives here with
 // the rest of the page copy, matching monitors/new.stx's convention.
 function errorLabel(code) {
-  if (code === 'title_required') return 'Give the window a title — subscribers see it.'
+  if (code === 'title_required') return 'Give the window a title. Subscribers see it.'
   if (code === 'title_too_long') return 'That title is longer than 150 characters.'
   if (code === 'description_too_long') return 'That description is longer than 2000 characters.'
   if (code === 'starts_at_invalid') return 'Enter when the window starts.'
@@ -193,7 +193,7 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
 
     @if (uncoveredCount > 0)
       <div class="flash error" role="alert">
-        {{ uncoveredCount }} open window{{ uncoveredCount === 1 ? '' : 's' }} cover{{ uncoveredCount === 1 ? 's' : '' }} no monitors. A window with nothing attached still announces itself to subscribers but suppresses no alerts — open it and add the monitors going down.
+        {{ uncoveredCount }} open window{{ uncoveredCount === 1 ? '' : 's' }} cover{{ uncoveredCount === 1 ? 's' : '' }} no monitors. A window with nothing attached still announces itself to subscribers but suppresses no alerts. Open it and add the monitors going down.
       </div>
     @endif
 
@@ -261,7 +261,7 @@ useHead({ title: 'Maintenance · StatusHQ', meta: [{ name: 'robots', content: 'n
           <div class="field">
             <label for="mw-cron">Repeat (optional)</label>
             <input id="mw-cron" type="text" name="recurrence_cron" maxlength="120" class="input" placeholder="0 2 * * 0" aria-invalid="{{ invalidFields.includes('mw-cron') ? 'true' : 'false' }}"@if (invalidFields.includes('mw-cron')) aria-describedby="mw-form-error"@endif />
-            <p class="help">A 5-field cron expression, or a nickname like @weekly, giving the start of each occurrence — each one lasts as long as the window above. Leave blank for a one-off.</p>
+            <p class="help">A 5-field cron expression, or a nickname like @weekly, giving the start of each occurrence, each one lasting as long as the window above. Leave blank for a one-off.</p>
           </div>
 
           <button type="submit" class="button primary">Schedule window</button>
