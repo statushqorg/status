@@ -160,7 +160,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
               <span class="tcell" role="cell">
                 <form method="POST" action="/api/team-forms/{{ member.id }}/role" data-role-form>
                   <input type="hidden" name="id" value="{{ member.id }}" />
-                  <select name="role" class="select sm" style="width: auto;" aria-label="Role for {{ member.invited_email }}">
+                  <select name="role" class="select sm" style="width: auto;" @change="submitRole" aria-label="Role for {{ member.invited_email }}">
                     <option value="member" {{ member.role === 'member' ? 'selected' : '' }}>Member</option>
                     <option value="admin" {{ member.role === 'admin' ? 'selected' : '' }}>Admin</option>
                     <option value="owner" {{ member.role === 'owner' ? 'selected' : '' }}>Owner</option>
@@ -254,21 +254,27 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
     </footer>
   @endif
 </main>
-<script>
-  (function () {
-    // Submit a role picker as soon as it changes, so the row has no Save
-    // button sitting a keystroke away from its Remove button. The noscript
-    // fallback in each row supplies that button when this does not run.
-    //
-    // Scoped through the data attribute and nothing else: this file's server
-    // bindings are word-matched against plain script text to build the
-    // client data bridge, so a stray mention of one would serialize the
-    // roster into the page source. Nothing below names one.
-    document.querySelectorAll('form[data-role-form] select').forEach(function (picker) {
-      picker.addEventListener('change', function () {
-        var owner = picker.form
-        if (owner) owner.submit()
-      })
-    })
-  })();
+<script client>
+  // Submit a role picker as soon as it changes, so the row has no Save button
+  // sitting a keystroke away from its Remove button. The noscript fallback in
+  // each row supplies that button when this does not run.
+  //
+  // Converted for stx-standards rule 8: this was a document.querySelectorAll
+  // over every role form plus an addEventListener on each picker. The handler
+  // is bound per row in the markup with @change instead, and reads the owning
+  // form off the event, so there is no document-wide query, no listener to
+  // register, and no ref -- which matters because these rows are a loop, and
+  // one ref name cannot address N of them.
+  //
+  // The original's warning still applies, and applies harder now: this file's
+  // server bindings are word-matched against the script text to build the
+  // client data bridge, and a `<script client>` block is precisely what that
+  // bridge scans. A stray mention of a binding would serialise the team
+  // roster into the page source. Nothing below names one, and nothing added
+  // later should.
+  function submitRole(event: Event): void {
+    const picker = event.target
+    if (picker instanceof HTMLSelectElement && picker.form)
+      picker.form.submit()
+  }
 </script>
