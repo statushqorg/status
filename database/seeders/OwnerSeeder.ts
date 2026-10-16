@@ -61,8 +61,18 @@ const DEV_PASSWORD = 'stacks-dev-only'
 const DEV_NAME = 'Status Owner'
 const WORKSPACE = 'Status'
 
-/** APP_ENV values that may use the fallback credentials above. */
-const LOCAL_ENVS = new Set(['development', 'local', 'test', 'testing'])
+/**
+ * APP_ENV values that may use the fallback credentials above.
+ *
+ * `dev` is in here deliberately: config/env.ts types APP_ENV as the enum
+ * local|dev|stage|prod, so `dev` is a value this app really takes even though
+ * the committed .env says `development`. Without it the seeder would silently
+ * skip on a correctly-configured machine and report success while writing
+ * nothing. `stage` is deliberately NOT here -- it falls through to the
+ * "supply the password" branch, which is the point of listing the local
+ * values explicitly instead of testing for "not production".
+ */
+const LOCAL_ENVS = new Set(['development', 'dev', 'local', 'test', 'testing'])
 const PRODUCTION_ENVS = new Set(['prod', 'production'])
 
 interface IdentifiedRow {
