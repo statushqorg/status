@@ -31,6 +31,244 @@ useHead({
 })
 </script>
 
+
+<script client>
+// Signing in, as stx client code rather than the DOM-walking script this used
+// to be (stx-standards rule 8): thirteen getElementById handles, two
+// document.cookie accesses and four window.location uses.
+//
+// `step` owns which form is on screen, `error` owns the banner, `loading` owns
+// both buttons, `passkeyReady` owns the passkey controls. The markup reads
+// those, so there is no element to find and nothing to keep in sync by hand.
+//
+// ## The three replacements worth explaining
+//
+// useCookie('X-CSRF-Token') is a straight swap for the hand-rolled
+// readCookie/document.cookie pair, and not only in spirit: the composable
+// writes `path=/`, `SameSite=Lax`, and `Secure` when and only when
+// location.protocol is https -- which is exactly, attribute for attribute,
+// what the old serialiser spelled out. Read from the served runtime before
+// relying on it.
+//
+// useRoute().query is the validator's own suggested replacement for reading
+// window.location.search, and the SSO callback has no other error channel: it
+// is a full-page navigation, so it can only report failure as /login?error=…
+//
+// navigate(REDIRECT, { reload: true }) rather than a bare navigate(). The old
+// code assigned window.location.href, which loads a document; a plain
+// navigate() hands the call to the client router, which swaps a fragment and
+// keeps the surrounding one. Signing in should not carry the auth shell into
+// the dashboard, so `reload` takes navigate()'s location.href branch -- the
+// same call the old line made. Not `replace`, because the old code did not
+// replace either.
+//
+// ## Why the forms toggle a class rather than the hidden attribute
+//
+// config/crosswind.ts declares `.hide { display: none !important }`, and the
+// !important is the point: a display utility on the element cannot outrank it.
+// The plain `hidden` attribute can be outranked, and is -- that exact mistake
+// was shipped in reportshq, where a form with a display class stayed on screen
+// with `hidden` set. Keeping this file's own mechanism avoids repeating it.
+const REDIRECT = '/dashboard'
+
+const error = state('')
+const loading = state(false)
+const step = state('credentials')
+const challengeToken = state('')
+const passkeyBusy = state(false)
+const passkeyReady = state(false)
+// Captured at step one so the 2FA step -- a separate request -- issues the same
+// session tier the person chose, rather than silently downgrading it.
+const rememberChoice = state('0')
+
+const csrf = useCookie('X-CSRF-Token')
+
+// The code field does not exist until `step` re-renders, so a focus issued in
+// the same tick reads a null ref. Debounced so the composable owns the timer.
+const codeField = useRef('code')
+const focusCode = useDebounce(() => codeField.current?.focus(), 20)
+
+/**
+ * Double-submit CSRF: the view server does not seed the token cookie (only the
+ * API router does, on its own GET responses), so a page rendered by
+ * `buddy serve` has none. The token is not a server secret -- the middleware
+ * only checks that the cookie value equals the echoed header -- so the client
+ * can safely mint one when absent. Same-origin plus SameSite keep a cross-site
+ * attacker from forging a matching pair.
+ */
+function ensureCsrf(): string {
+  const existing = csrf()
+  if (existing)
+    return existing
+
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  const token = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+  csrf.set(token)
+  return token
+}
+
+/** What /login and /verify-two-factor-login answer with. */
+interface LoginResponse {
+  message?: string
+  error?: string
+  token?: string
+  access_token?: string
+  requires_two_factor?: boolean
+  challenge_token?: string
+}
+
+async function post(url: string, body: Record<string, unknown>): Promise<{ ok: boolean, data: LoginResponse }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'x-csrf-token': ensureCsrf() },
+    body: JSON.stringify(body),
+  })
+
+  let data: LoginResponse = {}
+  try {
+    data = await res.json() as LoginResponse
+  }
+  catch {
+    data = {}
+  }
+  return { ok: res.ok, data }
+}
+
+// Reading an uncontrolled field is two narrowings: `e.target` is an EventTarget
+// and `form.elements` hands back Elements, and neither carries a `.value`.
+function fieldValue(form: HTMLFormElement, name: string): string {
+  const el = form.elements.namedItem(name)
+  return el instanceof HTMLInputElement ? el.value : ''
+}
+
+/** A checkbox reads by `.checked`, not `.value` (the constant 'on'). */
+function fieldChecked(form: HTMLFormElement, name: string): boolean {
+  const el = form.elements.namedItem(name)
+  return el instanceof HTMLInputElement ? el.checked : false
+}
+
+// SSO callback failures arrive as /login?error=sso_*.
+const SSO_MESSAGES: Record<string, string> = {
+  sso_denied: 'Single sign-on was cancelled.',
+  sso_email_unverified: 'Your identity provider reports this email as unverified, so it cannot be linked to an existing account.',
+  sso_no_email: 'Your identity provider did not share an email address. Ask your admin to allow the email scope.',
+  sso_misconfigured: 'This sign-in method is not fully configured yet. Please use your password or contact support.',
+}
+
+const ssoError = useRoute().query.error
+if (typeof ssoError === 'string' && ssoError.startsWith('sso_'))
+  error.set(SSO_MESSAGES[ssoError] || 'Single sign-on failed. Please try again or use your password.')
+
+// Passwordless passkey sign-in, progressive enhancement: the controls stay
+// hidden until the browser is confirmed to support WebAuthn, so a browser
+// without it simply sees the password form. window.stacksPasskey is published
+// by layouts/auth.stx -- a script in here would be stripped by the router on a
+// fragment swap, which is why it is loaded out there and read in here.
+const passkey = (window as any).stacksPasskey
+if (passkey && typeof passkey.isSupported === 'function' && passkey.isSupported())
+  passkeyReady.set(true)
+
+async function handleSubmit(event: SubmitEvent): Promise<void> {
+  event.preventDefault()
+  if (loading())
+    return
+  const form = event.target
+  if (!(form instanceof HTMLFormElement))
+    return
+
+  loading.set(true)
+  error.set('')
+  const remember = fieldChecked(form, 'remember') ? '1' : '0'
+  rememberChoice.set(remember)
+
+  try {
+    const { ok, data } = await post('/login', {
+      email: fieldValue(form, 'email').trim(),
+      password: fieldValue(form, 'password'),
+      remember,
+    })
+
+    if (data.requires_two_factor) {
+      challengeToken.set(data.challenge_token || '')
+      step.set('twofa')
+      focusCode()
+      return
+    }
+    if (ok && (data.token || data.access_token)) {
+      navigate(REDIRECT, { reload: true })
+      return
+    }
+    error.set(data.message || data.error || 'Incorrect email or password.')
+  }
+  catch {
+    error.set('Something went wrong. Please try again.')
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+async function handleTwoFactor(event: SubmitEvent): Promise<void> {
+  event.preventDefault()
+  if (loading())
+    return
+  const form = event.target
+  if (!(form instanceof HTMLFormElement))
+    return
+
+  loading.set(true)
+  error.set('')
+
+  try {
+    const { ok, data } = await post('/verify-two-factor-login', {
+      challenge_token: challengeToken(),
+      code: fieldValue(form, 'code').trim(),
+      remember: rememberChoice(),
+    })
+
+    if (ok && (data.token || data.access_token)) {
+      navigate(REDIRECT, { reload: true })
+      return
+    }
+    error.set(data.message || data.error || 'Invalid code - please sign in again.')
+    // Challenge tokens are single-use, so a bad code goes back to step one
+    // rather than retrying a spent challenge.
+    step.set('credentials')
+    challengeToken.set('')
+  }
+  catch {
+    error.set('Something went wrong. Please try again.')
+  }
+  finally {
+    loading.set(false)
+  }
+}
+
+async function handlePasskey(): Promise<void> {
+  if (passkeyBusy())
+    return
+  passkeyBusy.set(true)
+  error.set('')
+
+  try {
+    const result = await passkey.login('/api/passkeys/login/options', '/api/passkeys/login/verify', ensureCsrf())
+    if (result?.ok) {
+      navigate(REDIRECT, { reload: true })
+      return
+    }
+    error.set(result?.error || 'Could not sign in with a passkey.')
+  }
+  catch {
+    error.set('Something went wrong. Please try again.')
+  }
+  finally {
+    passkeyBusy.set(false)
+  }
+}
+</script>
+
 @extends('layouts/auth')
 
 @section('content')
@@ -40,31 +278,32 @@ useHead({
         <span class="brand-name">{{ appName }}</span>
       </StxLink>
 
-      <div id="error" class="error" role="alert"></div>
+      <div id="error" :class="error() ? 'error show' : 'error'" role="alert">{{ error() }}</div>
 
       <!-- Step 1: credentials -->
-      <form id="login-form">
+      <form :class="step() === 'credentials' ? '' : 'hide'" @submit="handleSubmit">
         <h1>Welcome back</h1>
         <p class="sub">Sign in to your {{ appName }} account.</p>
         <div class="field">
           <label for="email">Email</label>
-          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@yourcompany.com" required aria-describedby="error">
+          <input id="email" name="email" :aria-invalid="error() ? 'true' : 'false'" type="email" autocomplete="email" placeholder="you@yourcompany.com" required aria-describedby="error">
         </div>
         <div class="field">
           <div class="row-between">
             <label for="password">Password</label>
           </div>
-          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required aria-describedby="error">
+          <input id="password" name="password" :aria-invalid="error() ? 'true' : 'false'" type="password" autocomplete="current-password" placeholder="Your password" required aria-describedby="error">
         </div>
         <label for="remember" style="display:flex;align-items:center;gap:.5rem;margin:-.25rem 0 .85rem;font-size:.85rem;color:var(--muted,#6b7280);cursor:pointer;user-select:none">
           <input id="remember" name="remember" type="checkbox" style="width:16px;height:16px;margin:0;accent-color:var(--accent,#4f46e5);cursor:pointer">
           <span>Keep me signed in for 30 days</span>
         </label>
-        <button id="login-btn" class="button" type="submit">Sign in</button>
+        <button class="button" type="submit" :disabled="loading()">{{ loading() ? 'Signing in…' : 'Sign in' }}</button>
 
-        <div class="sso-divider passkey-divider hide" id="passkey-divider">or</div>
+        <div :class="passkeyReady() ? 'sso-divider passkey-divider' : 'sso-divider passkey-divider hide'">or</div>
         <div class="sso-buttons">
-          <button type="button" id="passkey-btn" class="button sso hide"><span class="sso-icon sso-icon-passkey"></span>Sign in with a passkey</button>
+          <button type="button" @click="handlePasskey" :disabled="passkeyBusy()"
+            :class="passkeyReady() ? 'button sso' : 'button sso hide'"><span class="sso-icon sso-icon-passkey"></span>{{ passkeyBusy() ? 'Waiting for your device…' : 'Sign in with a passkey' }}</button>
         </div>
 
         @if (hasSso)
@@ -78,14 +317,14 @@ useHead({
       </form>
 
       <!-- Step 2: TOTP (shown only when the account has 2FA enabled) -->
-      <form id="twofa-form" class="hide">
+      <form :class="step() === 'twofa' ? '' : 'hide'" @submit="handleTwoFactor">
         <h1>Two-factor code</h1>
         <p class="sub">Enter the 6-digit code from your authenticator app.</p>
         <div class="field">
           <label for="code">Authentication code</label>
-          <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required aria-describedby="error">
+          <input ref="code" id="code" name="code" :aria-invalid="error() ? 'true' : 'false'" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required aria-describedby="error">
         </div>
-        <button id="twofa-btn" class="button" type="submit">Verify &amp; sign in</button>
+        <button class="button" type="submit" :disabled="loading()">{{ loading() ? 'Verifying…' : 'Verify &amp; sign in' }}</button>
       </form>
 
       <p class="alt">Don't have an account? <StxLink to="/register">Create one</StxLink></p>
@@ -94,181 +333,4 @@ useHead({
     {{-- webauthn-client.js (window.stacksPasskey) is loaded by
          layouts/auth.stx, outside the routed <main> — a <script src> in
          here is stripped by the router on a fragment swap. --}}
-    <script>
-      (function () {
-        var REDIRECT = '/dashboard'
-        var errorEl = document.getElementById('error')
-        var loginForm = document.getElementById('login-form')
-        var twofaForm = document.getElementById('twofa-form')
-        var loginBtn = document.getElementById('login-btn')
-        var twofaBtn = document.getElementById('twofa-btn')
-        var challengeToken = null
-        // The "remember me" choice, captured at step 1 so the 2FA step (a
-        // separate request) issues the same session tier the user picked.
-        var rememberChoice = '0'
-
-        function readCookie(name) {
-          var m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()\[\]\\\/+^]/g, '\\$&') + '=([^;]*)'))
-          return m ? decodeURIComponent(m[1]) : null
-        }
-
-        // Double-submit CSRF: the view server doesn't seed the token cookie
-        // (only the API router does, on its own GET responses), so a page
-        // rendered by `buddy serve` has none. The token isn't a server
-        // secret — the middleware just checks that the cookie value equals
-        // the echoed header — so the client can safely mint one when absent.
-        // Same-origin + SameSite keep a cross-site attacker from forging a
-        // matching pair.
-        function ensureCsrf() {
-          var existing = readCookie('X-CSRF-Token')
-          if (existing) return existing
-          var arr = new Uint8Array(32)
-          window.crypto.getRandomValues(arr)
-          var tok = Array.prototype.map.call(arr, function (b) { return ('0' + b.toString(16)).slice(-2) }).join('')
-          document.cookie = 'X-CSRF-Token=' + tok + '; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '')
-          return tok
-        }
-
-        // The banner is role="alert", so writing to it announces the message.
-        // The fields it refers to need marking too: without aria-invalid and a
-        // link to the text, a failed sign-in leaves the control itself looking
-        // untouched to assistive technology.
-        var errorFields = ['email', 'password', 'code']
-
-        function markFields(invalid) {
-          errorFields.forEach(function (id) {
-            var el = document.getElementById(id)
-            if (!el)
-              return
-            el.setAttribute('aria-invalid', invalid ? 'true' : 'false')
-          })
-        }
-
-        function showError(msg) {
-          errorEl.textContent = msg
-          errorEl.classList.add('show')
-          markFields(true)
-        }
-
-        // SSO callback failures land here as /login?error=sso_* (the
-        // callback is a full-page navigation, so redirect + query param
-        // is its only error channel).
-        var ssoError = new URLSearchParams(window.location.search).get('error')
-        if (ssoError && ssoError.indexOf('sso_') === 0) {
-          var ssoMessages = {
-            sso_denied: 'Single sign-on was cancelled.',
-            sso_email_unverified: 'Your identity provider reports this email as unverified, so it cannot be linked to an existing account.',
-            sso_no_email: 'Your identity provider did not share an email address. Ask your admin to allow the email scope.',
-            sso_misconfigured: 'This sign-in method is not fully configured yet. Please use your password or contact support.',
-          }
-          showError(ssoMessages[ssoError] || 'Single sign-on failed. Please try again or use your password.')
-        }
-        function clearError() {
-          errorEl.textContent = ''
-          errorEl.classList.remove('show')
-          markFields(false)
-        }
-
-        async function post(url, body) {
-          var headers = { 'Content-Type': 'application/json', 'x-csrf-token': ensureCsrf() }
-          var res = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            credentials: 'same-origin',
-            body: JSON.stringify(body),
-          })
-          var data = {}
-          try { data = await res.json() } catch (e) {}
-          return { ok: res.ok, status: res.status, data: data }
-        }
-
-        loginForm.addEventListener('submit', async function (e) {
-          e.preventDefault()
-          clearError()
-          loginBtn.disabled = true
-          loginBtn.textContent = 'Signing in…'
-          try {
-            var rememberEl = document.getElementById('remember')
-            rememberChoice = (rememberEl && rememberEl.checked) ? '1' : '0'
-            var r = await post('/login', {
-              email: document.getElementById('email').value.trim(),
-              password: document.getElementById('password').value,
-              remember: rememberChoice,
-            })
-            if (r.data && r.data.requires_two_factor) {
-              challengeToken = r.data.challenge_token
-              loginForm.classList.add('hide')
-              twofaForm.classList.remove('hide')
-              document.getElementById('code').focus()
-              return
-            }
-            if (r.ok && (r.data.token || r.data.access_token)) {
-              window.location.href = REDIRECT
-              return
-            }
-            showError((r.data && (r.data.message || r.data.error)) || 'Incorrect email or password.')
-          } catch (err) {
-            showError('Something went wrong. Please try again.')
-          } finally {
-            loginBtn.disabled = false
-            loginBtn.textContent = 'Sign in'
-          }
-        })
-
-        twofaForm.addEventListener('submit', async function (e) {
-          e.preventDefault()
-          clearError()
-          twofaBtn.disabled = true
-          twofaBtn.textContent = 'Verifying…'
-          try {
-            var r = await post('/verify-two-factor-login', {
-              challenge_token: challengeToken,
-              code: document.getElementById('code').value.trim(),
-              remember: rememberChoice,
-            })
-            if (r.ok && (r.data.token || r.data.access_token)) {
-              window.location.href = REDIRECT
-              return
-            }
-            showError((r.data && (r.data.message || r.data.error)) || 'Invalid code - please sign in again.')
-            // Challenge tokens are single-use; send them back to step 1.
-            twofaForm.classList.add('hide')
-            loginForm.classList.remove('hide')
-          } catch (err) {
-            showError('Something went wrong. Please try again.')
-          } finally {
-            twofaBtn.disabled = false
-            twofaBtn.textContent = 'Verify & sign in'
-          }
-        })
-
-        // Passwordless passkey sign-in. Progressive enhancement: the button
-        // is hidden until we confirm the browser supports WebAuthn, so a
-        // non-supporting browser just sees the password form.
-        var passkeyBtn = document.getElementById('passkey-btn')
-        if (passkeyBtn && window.stacksPasskey && window.stacksPasskey.isSupported()) {
-          document.getElementById('passkey-divider').classList.remove('hide')
-          passkeyBtn.classList.remove('hide')
-          passkeyBtn.addEventListener('click', async function () {
-            clearError()
-            passkeyBtn.disabled = true
-            var original = passkeyBtn.textContent
-            passkeyBtn.textContent = 'Waiting for your device…'
-            try {
-              var r = await window.stacksPasskey.login('/api/passkeys/login/options', '/api/passkeys/login/verify', ensureCsrf())
-              if (r.ok) {
-                window.location.href = REDIRECT
-                return
-              }
-              showError(r.error || 'Could not sign in with a passkey.')
-            } catch (err) {
-              showError('Something went wrong. Please try again.')
-            } finally {
-              passkeyBtn.disabled = false
-              passkeyBtn.textContent = original
-            }
-          })
-        }
-      })()
-    </script>
 @endsection
