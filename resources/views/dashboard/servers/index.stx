@@ -150,7 +150,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
         <p class="meta">{{ serverCount }} server{{ serverCount === 1 ? '' : 's' }} pushing metrics</p>
       </div>
       <div class="actions">
-        <button type="button" class="button primary" id="server-create-open">Add a server</button>
+        <button type="button" class="button primary" @click="openCreate">Add a server</button>
       </div>
     </header>
 
@@ -167,7 +167,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
         title="No servers yet"
         description="A server is a box that pushes CPU, memory and disk to StatusHQ. Add one, install its agent, then attach the monitors that run on it."
       >
-        <button type="button" class="button primary" id="server-create-open-empty">Add a server</button>
+        <button type="button" class="button primary" @click="openCreate">Add a server</button>
       </EmptyState>
     @endif
 
@@ -199,14 +199,14 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
       <p class="sub" style="margin-top: 0.75rem;">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
     @endif
 
-    <dialog id="server-create-dialog" class="dlg" aria-labelledby="server-create-title">
+    <dialog ref="createDialog" class="dlg" aria-labelledby="server-create-title" @click="backdropCreate">
       <form method="POST" action="/api/server-forms/create">
         <header class="dlg-head">
           <div>
             <h3 id="server-create-title">Add a server</h3>
             <p class="sub">Name the box. The agent install snippet appears on its page once it exists.</p>
           </div>
-          <button type="button" class="dlg-x" id="server-create-close" aria-label="Close">
+          <button type="button" class="dlg-x" @click="closeCreate" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </header>
@@ -243,7 +243,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
         </div>
 
         <footer class="dlg-foot">
-          <button type="button" class="button" id="server-create-cancel">Cancel</button>
+          <button type="button" class="button" @click="closeCreate">Cancel</button>
           <button type="submit" class="button primary">Add server</button>
         </footer>
       </form>
@@ -251,39 +251,48 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
   @endif
 </main>
 
-<script>
-  (function () {
-    // Every element is reached by id, and this prose deliberately avoids the
-    // page's binding names: the server-to-client bridge serialises any
-    // binding whose name word-matches a plain script's TEXT, comments
-    // included, and this page's scope holds rows carrying an agent token.
-    var dlg = document.getElementById('server-create-dialog')
-    if (!dlg) return
+<script client>
+  // The create dialog, converted for stx-standards rule 8: this reached four
+  // elements by id and bound five listeners by hand.
+  //
+  // This prose deliberately avoids the page's binding names, as the original's
+  // did, and the reason is sharper now: the server-to-client bridge serialises
+  // any binding whose name word-matches this block's TEXT, comments included,
+  // and a <script client> block is exactly what that bridge scans. This page's
+  // scope holds rows carrying an agent token. tests/unit/bridge-hygiene.test.ts
+  // fails the build if a name slips in.
+  //
+  // The openers, the close control and the cancel control bind @click in the
+  // markup, so no listener is registered here. The dialog itself still needs a
+  // ref, because showModal() and close() are element methods and there is no
+  // composable that drives a native <dialog>.
+  const createDialog = useRef('createDialog')
 
-    function show() {
-      if (dlg.showModal) dlg.showModal()
-      else dlg.setAttribute('open', '')
-    }
+  function openCreate(): void {
+    const el = createDialog.current as HTMLDialogElement | null
+    if (!el)
+      return
+    // showModal() where it exists, the open attribute where it does not --
+    // unchanged from the code this replaces.
+    if (typeof el.showModal === 'function')
+      el.showModal()
+    else
+      el.setAttribute('open', '')
+  }
 
-    function hide() {
-      if (dlg.close) dlg.close()
-      else dlg.removeAttribute('open')
-    }
+  function closeCreate(): void {
+    const el = createDialog.current as HTMLDialogElement | null
+    if (!el)
+      return
+    if (typeof el.close === 'function')
+      el.close()
+    else
+      el.removeAttribute('open')
+  }
 
-    var ids = ['server-create-open', 'server-create-open-empty']
-    for (var i = 0; i < ids.length; i++) {
-      var opener = document.getElementById(ids[i])
-      if (opener) opener.addEventListener('click', show)
-    }
-
-    var closer = document.getElementById('server-create-close')
-    if (closer) closer.addEventListener('click', hide)
-
-    var canceller = document.getElementById('server-create-cancel')
-    if (canceller) canceller.addEventListener('click', hide)
-
-    dlg.addEventListener('click', function (event) {
-      if (event.target === dlg) hide()
-    })
-  })()
+  /** A click on the backdrop closes; a click inside the card does not. */
+  function backdropCreate(event: Event): void {
+    if (event.target === createDialog.current)
+      closeCreate()
+  }
 </script>
