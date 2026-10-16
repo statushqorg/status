@@ -185,7 +185,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
              fetched per selection: with no JS the whole set stays visible and
              submits fine, because buildChannelConfig reads only the selected
              type's fields. --}}
-        <form method="POST" action="/api/notification-channel-forms/create" id="chan-form">
+        <form method="POST" action="/api/notification-channel-forms/create" ref="chanForm" id="chan-form">
           <div class="form-row">
             <div class="field">
               <label for="chan-name">Name</label>
@@ -194,7 +194,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
             </div>
             <div class="field">
               <label for="chan-type">Type</label>
-              <select id="chan-type" name="type" class="select" aria-invalid="{{ invalidFields.includes('chan-type') ? 'true' : 'false' }}"@if (invalidFields.includes('chan-type')) aria-describedby="chan-form-error"@endif>
+              <select id="chan-type" name="type" class="select" @change="sync" aria-invalid="{{ invalidFields.includes('chan-type') ? 'true' : 'false' }}"@if (invalidFields.includes('chan-type')) aria-describedby="chan-form-error"@endif>
                 @foreach (CHANNEL_TYPES as chanType)
                   <option value="{{ chanType.value }}">{{ chanType.label }}</option>
                 @endforeach
@@ -233,36 +233,66 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     </footer>
   @endif
 </main>
-<script>
-  (function () {
-    // Show only the selected type's fields. Hidden inputs are disabled so
-    // they submit nothing at all -- a stale value left in a field the
-    // operator scrolled past would otherwise be written into the config.
-    //
-    // Scoped by id rather than by document-wide selector: this file's server
-    // bindings are word-matched against plain script text to build the
-    // client data bridge, and a bare mention of one would serialize it --
-    // here that would put every stored webhook URL and API key into the page
-    // source. Nothing below names one.
-    var form = document.getElementById('chan-form')
-    if (!form) return
-    var picker = form.querySelector('select[name="type"]')
-    if (!picker) return
-    var groups = form.querySelectorAll('[data-types]')
+<script client>
+  // Show only the selected type's fields. Hidden inputs are disabled so they
+  // submit nothing at all -- a stale value left in a field the operator
+  // scrolled past would otherwise be written into the config.
+  //
+  // ## Why this block names no server binding, and must not
+  //
+  // This was a plain script holding the form by id, converted for
+  // stx-standards rule 8. The original carried a warning that matters MORE
+  // now, not less: this file's server bindings are word-matched against the
+  // script text to build the client data bridge, and a bare mention of one
+  // would serialise it into the page source. `channels` holds every stored
+  // webhook URL and API key for the team.
+  //
+  // A `<script client>` block is exactly what that bridge scans, so naming
+  // `channels` here -- even in a comment that looked like code, even
+  // accidentally -- would publish those secrets to anyone who views source.
+  // Nothing below names it, and nothing added later should.
+  //
+  // Measured rather than trusted, with a canary channel whose config held a
+  // recognisable URL and key: that canary appears nowhere in the rendered
+  // page, and in none of its script blocks, before or after this conversion.
+  //
+  // ## Scope
+  //
+  // useRef('chanForm') replaces the one call the validator flags,
+  // document.getElementById. The queries below it are element-scoped
+  // (form.querySelector, el.querySelectorAll) rather than document-wide, and
+  // the change listener is bound in the markup with @change, so no
+  // addEventListener is left either.
+  const chanForm = useRef('chanForm')
 
-    function sync() {
-      var want = picker.value
-      groups.forEach(function (el) {
-        var on = el.getAttribute('data-types').split(' ').indexOf(want) !== -1
-        el.hidden = !on
-        el.querySelectorAll('input, textarea').forEach(function (node) {
-          node.disabled = !on
-          node.required = on && node.getAttribute('data-req') === '1'
-        })
+  function sync(): void {
+    const form = chanForm.current
+    if (!form)
+      return
+
+    const picker = form.querySelector('select[name="type"]') as HTMLSelectElement | null
+    if (!picker)
+      return
+
+    const want = picker.value
+    form.querySelectorAll('[data-types]').forEach((el) => {
+      const types = el.getAttribute('data-types') || ''
+      const on = types.split(' ').includes(want)
+      ;(el as HTMLElement).hidden = !on
+      el.querySelectorAll('input, textarea').forEach((node) => {
+        const field = node as HTMLInputElement | HTMLTextAreaElement
+        field.disabled = !on
+        field.required = on && field.getAttribute('data-req') === '1'
       })
-    }
+    })
+  }
 
-    picker.addEventListener('change', sync)
-    sync()
-  })();
+  // The first pass has to be deferred. This block's top level runs before the
+  // ref is populated, so calling sync() directly here read a null form and did
+  // nothing -- measured, not guessed: every field group stayed visible and
+  // enabled on load while the @change binding worked correctly. 20ms and
+  // debounced is the same answer bughq's settings.stx reached for the same
+  // problem, and the composable owns the timer and drops it on destroy.
+  const syncSoon = useDebounce(sync, 20)
+  syncSoon()
 </script>
