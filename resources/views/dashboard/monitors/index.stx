@@ -249,7 +249,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     <header class="page-head">
       <div>
         <h1>Monitors</h1>
-        <p class="meta">{{ fleetCount }} monitor{{ fleetCount === 1 ? '' : 's' }} &middot; {{ checksInRange }} checks in the last {{ idxRange }}<span id="rt-live" class="rt-live" hidden> &middot; <span class="rt-live-dot"></span>Live</span></p>
+        <p class="meta">{{ fleetCount }} monitor{{ fleetCount === 1 ? '' : 's' }} &middot; {{ checksInRange }} checks in the last {{ idxRange }}<span ref="liveDot" id="rt-live" class="rt-live" hidden> &middot; <span class="rt-live-dot"></span>Live</span></p>
       </div>
       <div class="actions">
         <StxLink to="/dashboard/monitors/new" class="button primary">New monitor</StxLink>
@@ -317,7 +317,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 
     @if (__monitorRows.length > 0)
       <section class="card scroll-x" aria-label="Monitor list">
-        <div class="rows" role="table" aria-label="Monitor list">
+        <div ref="rowsTable" class="rows" role="table" aria-label="Monitor list">
           <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>
@@ -361,8 +361,20 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
   @endif
 </main>
 
-<script>
+<script client>
   ;(function () {
+    // Converted for stx-standards rule 8. Only the two document-level lookups
+    // changed -- the live-update rewriting below is element-scoped and stays as
+    // it was, because this block repaints cells the server rendered and there
+    // is no reactive source for a WebSocket push to drive.
+    //
+    // The row lookup now goes through a ref on the rows container rather than
+    // document.querySelector, which is the validator's own suggestion and is
+    // also more correct: it cannot reach a row belonging to some other table.
+    //
+    // Ref names here are deliberately neutral and match no binding on this
+    // page: the bridge word-matches this block's text, comments included.
+    //
     // stx `{{ }}` in a script block emits JSON.stringify(value), so these
     // land as proper JS literals (a "uuid" string, a bare number/boolean)
     // — do not add surrounding quotes.
@@ -370,6 +382,9 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     var RT = { enabled: {{ REALTIME.enabled }}, port: {{ REALTIME.port }}, scheme: {{ REALTIME.scheme }} }
     if (!RT.enabled || !TEAM_UUID || typeof WebSocket === 'undefined') return
     var TEAM_CHANNEL = 'team.' + TEAM_UUID + '.monitors'
+
+    var rowsTable = useRef('rowsTable')
+    var liveDot = useRef('liveDot')
 
     function stClass(status) {
       if (status === 'up') return 'pill pill-up'
@@ -407,7 +422,9 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     }
 
     function applyUpdate(data) {
-      var row = document.querySelector('[data-monitor-id="' + data.id + '"]')
+      var container = rowsTable.current
+      if (!container) return
+      var row = container.querySelector('[data-monitor-id="' + data.id + '"]')
       if (!row) return
 
       var cell = row.querySelector('[data-monitor-status]')
@@ -430,7 +447,9 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     // Keep the relative "last checked" labels fresh between checks (they'd
     // otherwise freeze at whatever a new event last set them to).
     var agoTimer = setInterval(function () {
-      var nodes = document.querySelectorAll('[data-monitor-checked]')
+      var container = rowsTable.current
+      if (!container) return
+      var nodes = container.querySelectorAll('[data-monitor-checked]')
       for (var i = 0; i < nodes.length; i++) {
         var iso = nodes[i].getAttribute('datetime')
         if (iso) nodes[i].textContent = agoLabel(iso)
@@ -441,12 +460,17 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     // over TLS it's expected to be reverse-proxied as wss on the page host.
     var scheme = (location.protocol === 'https:') ? 'wss' : RT.scheme
     var url = scheme + '://' + location.hostname + ':' + RT.port + '/ws'
-    var indicator = document.getElementById('rt-live')
     var ws = null
     var backoff = 1000
     var closedByUs = false
 
-    function setLive(on) { if (indicator) indicator.hidden = !on }
+    // Read through the ref on every call, not once at setup: this block's
+    // top level runs before refs are populated, so capturing `.current` here
+    // would have pinned a null and the live dot would never have appeared.
+    function setLive(on) {
+      var el = liveDot.current
+      if (el) el.hidden = !on
+    }
 
     function connect() {
       try { ws = new WebSocket(url) }
