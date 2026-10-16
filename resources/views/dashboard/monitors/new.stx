@@ -169,7 +169,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
       <div id="form-error" class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
     @endif
 
-    <form method="POST" action="/api/monitor-forms/create">
+    <form method="POST" action="/api/monitor-forms/create" ref="formRoot">
       <section class="card" aria-label="Monitor basics">
         <div class="card-head">
           <h2>What to monitor</h2>
@@ -183,19 +183,19 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
             </div>
             <div class="field">
               <label for="type">Type</label>
-              <select id="type" name="type" class="select" aria-invalid="{{ invalidField === 'type' ? 'true' : 'false' }}"@if (invalidField === 'type') aria-describedby="form-error"@endif>
+              <select ref="typeSelect" @change="sync" id="type" name="type" class="select" aria-invalid="{{ invalidField === 'type' ? 'true' : 'false' }}"@if (invalidField === 'type') aria-describedby="form-error"@endif>
                 @foreach (monitorTypes as t)
                   <option value="{{ t.value }}">{{ t.label }}</option>
                 @endforeach
               </select>
-              <p class="help" id="type-hint">{{ defaultType.hint }}</p>
+              <p ref="typeHint" class="help" id="type-hint">{{ defaultType.hint }}</p>
             </div>
           </div>
 
           <div class="field">
             <label for="url">URL or host</label>
-            <input id="url" type="text" name="url" required maxlength="2048" class="input" placeholder="{{ defaultType.example }}" aria-invalid="{{ invalidField === 'url' ? 'true' : 'false' }}"@if (invalidField === 'url') aria-describedby="form-error"@endif />
-            <p class="help" id="url-help">A full http(s) URL, including the scheme.</p>
+            <input ref="urlInput" id="url" type="text" name="url" required maxlength="2048" class="input" placeholder="{{ defaultType.example }}" aria-invalid="{{ invalidField === 'url' ? 'true' : 'false' }}"@if (invalidField === 'url') aria-describedby="form-error"@endif />
+            <p ref="urlHelp" class="help" id="url-help">A full http(s) URL, including the scheme.</p>
           </div>
 
           <div class="form-row">
@@ -236,7 +236,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
       <section class="card" aria-label="Type-specific options" style="margin-top: 1.25rem;" data-optional-card>
         <div class="card-head">
           <h2>Options for this type</h2>
-          <span class="sub" id="options-sub">Only the ones matching your type are used</span>
+          <span ref="optionsSub" class="sub" id="options-sub">Only the ones matching your type are used</span>
         </div>
         <div class="card-body">
           <div class="form-row">
@@ -394,80 +394,97 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
   @endif
 </main>
 
-<script>
-  ;(function () {
-    // Progressive enhancement: the form is complete and submittable before
-    // this runs. All it does is hide the fields that do not apply to the
-    // chosen type, which is otherwise every field on the page — fourteen
-    // types share one form, so an operator picking "Uptime" was being shown
-    // ping packet counts, cron expressions and port-scan ranges and left to
-    // guess. `parseMonitorForm()` already ignores the keys that do not
-    // belong to the submitted type, so hiding them changes nothing about
-    // what gets saved.
-    //
-    // stx `{{ }}` inside a script emits JSON.stringify(value), so this lands
-    // as an object literal. The `__` prefix keeps it out of stx's
-    // server->client bridge collection (see monitors/index.stx) — it is
-    // already being written here verbatim, and a second copy in the page
-    // would just be dead weight.
-    var COPY = {{ __typeCopy }}
+<script client>
+  // Top level, not wrapped in an IIFE: the markup binds @change="sync", and
+  // stx can only resolve a name the block declares at its own top level.
+  // Progressive enhancement: the form is complete and submittable before
+  // this runs. All it does is hide the fields that do not apply to the
+  // chosen type, which is otherwise every field on the page — fourteen
+  // types share one form, so an operator picking "Uptime" was being shown
+  // ping packet counts, cron expressions and port-scan ranges and left to
+  // guess. `parseMonitorForm()` already ignores the keys that do not
+  // belong to the submitted type, so hiding them changes nothing about
+  // what gets saved.
+  //
+  // stx `{{ }}` inside a script emits JSON.stringify(value), so this lands
+  // as an object literal. The `__` prefix keeps it out of stx's
+  // server->client bridge collection (see monitors/index.stx) — it is
+  // already being written here verbatim, and a second copy in the page
+  // would just be dead weight.
+  var COPY = {{ __typeCopy }}
 
-    var typeSelect = document.getElementById('type')
-    var urlInput = document.getElementById('url')
-    var urlHelp = document.getElementById('url-help')
-    var typeHint = document.getElementById('type-hint')
-    var optionsSub = document.getElementById('options-sub')
-    if (!typeSelect || !urlInput) return
+  // Converted for stx-standards rule 8. Every element is reached through a
+  // ref now, and the three document-wide queries below are scoped to the
+  // form's own ref -- the validator's suggested replacement, and narrower
+  // besides: they can no longer reach a field outside this form.
+  //
+  // Each ref is read inside sync(), never captured here. This block's top
+  // level runs before refs are populated, so a captured `.current` would be
+  // null forever and the whole progressive enhancement would silently do
+  // nothing.
+  var formRoot = useRef('formRoot')
+  var typeSelect = useRef('typeSelect')
+  var urlInput = useRef('urlInput')
+  var urlHelp = useRef('urlHelp')
+  var typeHint = useRef('typeHint')
+  var optionsSub = useRef('optionsSub')
 
-    function applies(el, type) {
-      var want = el.getAttribute('data-types')
-      // No data-types means "every type" (e.g. the server-metrics card).
-      return !want || want.split(' ').indexOf(type) !== -1
+  function applies(el, type) {
+    var want = el.getAttribute('data-types')
+    // No data-types means "every type" (e.g. the server-metrics card).
+    return !want || want.split(' ').indexOf(type) !== -1
+  }
+
+  function show(el, on) {
+    el.hidden = !on
+  }
+
+  function sync() {
+    var picker = typeSelect.current
+    var url = urlInput.current
+    var root = formRoot.current
+    if (!picker || !url || !root) return
+
+    var type = picker.value
+    var copy = COPY[type]
+
+    if (copy) {
+      url.placeholder = copy.example
+      if (urlHelp.current) urlHelp.current.textContent = copy.help
+      if (typeHint.current) typeHint.current.textContent = copy.hint
     }
 
-    function show(el, on) {
-      el.hidden = !on
+    var fields = root.querySelectorAll('[data-types]')
+    for (var i = 0; i < fields.length; i++) show(fields[i], applies(fields[i], type))
+
+    // A .form-row is a two-up flex container; with both children hidden it
+    // would still occupy its own gap, so collapse the row itself.
+    var rows = root.querySelectorAll('.form-row')
+    for (var r = 0; r < rows.length; r++) {
+      var kids = rows[r].querySelectorAll('.field')
+      var anyVisible = false
+      for (var k = 0; k < kids.length; k++) if (!kids[k].hidden) anyVisible = true
+      show(rows[r], anyVisible || kids.length === 0)
     }
 
-    function sync() {
-      var type = typeSelect.value
-      var copy = COPY[type]
-
-      if (copy) {
-        urlInput.placeholder = copy.example
-        if (urlHelp) urlHelp.textContent = copy.help
-        if (typeHint) typeHint.textContent = copy.hint
-      }
-
-      var fields = document.querySelectorAll('[data-types]')
-      for (var i = 0; i < fields.length; i++) show(fields[i], applies(fields[i], type))
-
-      // A .form-row is a two-up flex container; with both children hidden it
-      // would still occupy its own gap, so collapse the row itself.
-      var rows = document.querySelectorAll('.form-row')
-      for (var r = 0; r < rows.length; r++) {
-        var kids = rows[r].querySelectorAll('.field')
-        var anyVisible = false
-        for (var k = 0; k < kids.length; k++) if (!kids[k].hidden) anyVisible = true
-        show(rows[r], anyVisible || kids.length === 0)
-      }
-
-      // Same for a whole card: "Options for this type" is empty for types
-      // like DNS or domain expiry, and an empty card reads as a bug.
-      var cards = document.querySelectorAll('[data-optional-card]')
-      for (var c = 0; c < cards.length; c++) {
-        if (!applies(cards[c], type)) { show(cards[c], false); continue }
-        var body = cards[c].querySelector('.card-body')
-        var visible = body ? body.querySelectorAll('.field:not([hidden])').length : 0
-        show(cards[c], visible > 0)
-      }
-
-      if (optionsSub) {
-        optionsSub.textContent = 'Applies to ' + (COPY[type] ? typeSelect.options[typeSelect.selectedIndex].text : type)
-      }
+    // Same for a whole card: "Options for this type" is empty for types
+    // like DNS or domain expiry, and an empty card reads as a bug.
+    var cards = root.querySelectorAll('[data-optional-card]')
+    for (var c = 0; c < cards.length; c++) {
+      if (!applies(cards[c], type)) { show(cards[c], false); continue }
+      var body = cards[c].querySelector('.card-body')
+      var visible = body ? body.querySelectorAll('.field:not([hidden])').length : 0
+      show(cards[c], visible > 0)
     }
 
-    typeSelect.addEventListener('change', sync)
-    sync()
-  })()
+    if (optionsSub.current) {
+      optionsSub.current.textContent = 'Applies to ' + (COPY[type] ? picker.options[picker.selectedIndex].text : type)
+    }
+  }
+
+  // The change handler binds in the markup (@change), so no listener is
+  // registered here. The first pass is deferred for the reason given above:
+  // the refs are not populated when this line runs.
+  var syncSoon = useDebounce(sync, 20)
+  syncSoon()
 </script>
