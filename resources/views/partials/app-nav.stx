@@ -7,7 +7,7 @@
   server script. The
   logout form is stamped by csrf-forms.js, loaded in app-head.stx.
 -->
-<nav class="app-nav">
+<nav ref="navRoot" class="app-nav">
   <div class="app-shell app-nav-inner">
     {{-- Points at /dashboard, not /. This nav only ever renders on
          post-login dashboard pages, where the logo is the way back to the
@@ -89,15 +89,39 @@
 {{-- No <style> block: rule 3 / §11.1. These 14 rules are in
      config/crosswind.ts's `dashboardPagesCss()` preflight, scoped to the
      `default` layout group with the other eight page blocks. --}}
-<script>
-  (function () {
-    // Close the workspace switcher when clicking outside it.
-    document.addEventListener('click', function (e) {
-      document.querySelectorAll('details.team-switch[open]').forEach(function (d) {
-        if (!d.contains(e.target)) d.removeAttribute('open')
-      })
+<script client>
+  // Close the workspace switcher when clicking outside it.
+  //
+  // Converted for stx-standards rule 8: this was document.addEventListener
+  // plus a document-wide querySelectorAll. The listener is delegated from
+  // document deliberately and still is -- the whole point is to notice clicks
+  // that land outside the switcher, so there is no element to bind to -- but
+  // it now goes through useEventListener, which registers an onDestroy
+  // cleanup. That matters here: this partial is on every dashboard page, so a
+  // raw document listener would accumulate one per navigation and the
+  // switcher would start closing on clicks it should ignore.
+  //
+  // The sweep for open switchers is scoped to this nav's own ref rather than
+  // the document, so it cannot reach a <details> elsewhere on the page.
+  //
+  // Signature note, because the two copies in the installed package disagree:
+  // dist/browser-composables.js takes (target, event, handler), but the
+  // runtime actually served takes (event, handler, { target }). Calling it the
+  // other way throws from addEventListener and the handler silently never
+  // binds. The served copy is the one that counts -- same note as
+  // partials/theme-toggle.stx, which was measured on the served page.
+  const navRoot = useRef('navRoot')
+
+  useEventListener('click', (event: Event) => {
+    const root = navRoot.current
+    if (!root)
+      return
+
+    root.querySelectorAll('details.team-switch[open]').forEach((panel) => {
+      if (!panel.contains(event.target as Node))
+        panel.removeAttribute('open')
     })
-  })();
+  }, { target: document })
 </script>
 @include('./theme-toggle.stx')
 
