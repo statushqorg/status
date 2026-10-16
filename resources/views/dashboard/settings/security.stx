@@ -50,8 +50,14 @@ const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? ne
 let TWO_FA_ENABLED = false
 let __SETUP = null
 if (AUTH_USER) {
-  const state = await getTwoFactorState(AUTH_USER.id)
-  TWO_FA_ENABLED = !!state.enabled
+  // `__` prefixed so extractBridgeData skips it (see the note above). Named
+  // plainly `state` before, which collided head-on with the `state()`
+  // composable the moment this view grew a <script client>: the bridge
+  // word-matched it, emitted `var state = {"secret":…}` into the scope, and
+  // the block died with "Identifier 'state' has already been declared" -- and
+  // put a two-factor secret in the page source on the way.
+  const __twoFactorState = await getTwoFactorState(AUTH_USER.id)
+  TWO_FA_ENABLED = !!__twoFactorState.enabled
 
   if (!TWO_FA_ENABLED && query.get('setup') === '1') {
     const appName = config.app?.name || 'StatusHQ'
@@ -232,8 +238,9 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       </div>
       <div class="card-body" style="border-bottom: 1px solid var(--border);">
         <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6;">Passkeys let you sign in with your device's screen lock or a hardware key instead of a password. They're phishing-resistant and never leave your device.</p>
-        <button type="button" id="pk-add" class="button primary">Add a passkey</button>
-        <div id="pk-msg" class="pk-msg" role="status"></div>
+        <button type="button" id="pk-add" class="button primary" @click="addPasskey"
+          :disabled="pkBusy() || pkUnsupported()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
+        <div id="pk-msg" :class="pkMessage() ? ('pk-msg show ' + pkKind()) : 'pk-msg'" role="status">{{ pkMessage() }}</div>
       </div>
       @if (__passkeys.length === 0)
         <div class="card-body">
@@ -278,59 +285,87 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
 </main>
 
 <script src="/assets/scripts/webauthn-client.js" defer></script>
-<script>
-  ;(function () {
-    var btn = document.getElementById('pk-add')
-    if (!btn) return
-    var msg = document.getElementById('pk-msg')
+<script client>
+  // Adding a passkey, converted for stx-standards rule 8: this held the button
+  // and the message by id, read and wrote document.cookie by hand, and left
+  // with window.location.href.
+  //
+  // `pkMessage` and `pkKind` own the status line, `pkBusy` owns the button,
+  // `pkUnsupported` owns the one-time "this browser cannot" state.
+  //
+  // useCookie('X-CSRF-Token') replaces the hand-rolled cookie read and write.
+  // The comment the old code carried still holds and is the reason this exists
+  // at all: fetch() calls are not auto-stamped the way forms are, so the token
+  // has to be echoed as a header, and csrf-forms.js may not have minted it
+  // yet. The composable's defaults are what the old serialiser spelled out --
+  // path=/, SameSite=Lax, Secure only on https.
+  //
+  // navigate(url, { reload: true }) replaces `window.location.href =`, taking
+  // navigate()'s document-load branch rather than handing the call to the
+  // client router: the page is re-read so the new passkey appears in the list
+  // the server renders.
+  const pkMessage = state('')
+  const pkKind = state('')
+  const pkBusy = state(false)
+  const pkUnsupported = state(false)
 
-    function say(text, kind) {
-      msg.textContent = text
-      msg.className = 'pk-msg show ' + (kind || '')
-    }
+  const csrf = useCookie('X-CSRF-Token')
 
-    // Double-submit CSRF: mint the cookie if csrf-forms.js hasn't yet, and
-    // echo it as a header — fetch() calls aren't auto-stamped, only forms.
-    function ensureCsrf() {
-      var m = document.cookie.match(/(?:^|; )X-CSRF-Token=([^;]+)/)
-      if (m) return decodeURIComponent(m[1])
-      var arr = new Uint8Array(32)
-      window.crypto.getRandomValues(arr)
-      var tok = Array.prototype.map.call(arr, function (b) { return ('0' + b.toString(16)).slice(-2) }).join('')
-      document.cookie = 'X-CSRF-Token=' + tok + '; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '')
-      return tok
-    }
+  function say(text: string, kind: string = ''): void {
+    pkMessage.set(text)
+    pkKind.set(kind)
+  }
 
-    if (!window.stacksPasskey || !window.stacksPasskey.isSupported()) {
-      btn.disabled = true
-      say('This browser does not support passkeys.', 'err')
+  function ensureCsrf(): string {
+    const existing = csrf()
+    if (existing)
+      return existing
+
+    const bytes = new Uint8Array(32)
+    crypto.getRandomValues(bytes)
+    const token = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+    csrf.set(token)
+    return token
+  }
+
+  // window.stacksPasskey is published by the layout, not from here: a
+  // <script src> inside the routed region is stripped by the router on a
+  // fragment swap.
+  const passkey = (window as any).stacksPasskey
+
+  if (!passkey || typeof passkey.isSupported !== 'function' || !passkey.isSupported()) {
+    pkUnsupported.set(true)
+    say('This browser does not support passkeys.', 'err')
+  }
+
+  // The reload is deferred so the confirmation is readable before the page is
+  // re-read. Debounced rather than a bare setTimeout so the composable owns
+  // the timer and drops it if this block is torn down first.
+  const reloadSoon = useDebounce(() => navigate('/dashboard/settings/security?passkey=added', { reload: true }), 600)
+
+  async function addPasskey(): Promise<void> {
+    if (pkBusy() || pkUnsupported())
       return
-    }
 
-    btn.addEventListener('click', async function () {
-      btn.disabled = true
-      var original = btn.textContent
-      btn.textContent = 'Waiting for your device…'
-      say('', '')
-      msg.className = 'pk-msg'
-      try {
-        var r = await window.stacksPasskey.register('/api/passkeys/register/options', '/api/passkeys/register/verify', ensureCsrf())
-        if (r.ok) {
-          say('Passkey added.', 'ok')
-          setTimeout(function () { window.location.href = '/dashboard/settings/security?passkey=added' }, 600)
-          return
-        }
-        say(r.error || 'Could not add the passkey.', 'err')
+    pkBusy.set(true)
+    say('', '')
+
+    try {
+      const result = await passkey.register('/api/passkeys/register/options', '/api/passkeys/register/verify', ensureCsrf())
+      if (result?.ok) {
+        say('Passkey added.', 'ok')
+        reloadSoon()
+        return
       }
-      catch (e) {
-        say('Something went wrong adding the passkey.', 'err')
-      }
-      finally {
-        btn.disabled = false
-        btn.textContent = original
-      }
-    })
-  })()
+      say(result?.error || 'Could not add the passkey.', 'err')
+    }
+    catch {
+      say('Something went wrong adding the passkey.', 'err')
+    }
+    finally {
+      pkBusy.set(false)
+    }
+  }
 </script>
 
 @include('../partials/confirm-guard.stx')
