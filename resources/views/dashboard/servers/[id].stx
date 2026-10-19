@@ -416,7 +416,7 @@ useHead({
         @endif
       </div>
       <footer class="card-foot">
-        <button type="button" class="button" id="monitors-open">Manage monitors</button>
+        <button type="button" class="button" @click="openMonitors">Manage monitors</button>
       </footer>
     </section>
 
@@ -501,7 +501,7 @@ useHead({
         <p class="card-copy">CPU alerts at {{ thresholdLabel(serverView.cpuThreshold) }} &middot; Memory at {{ thresholdLabel(serverView.ramThreshold) }} &middot; Disk at {{ thresholdLabel(serverView.diskThreshold) }} &middot; Missed-push window {{ serverView.windowSeconds }}s</p>
       </div>
       <footer class="card-foot">
-        <button type="button" class="button" id="thresholds-open">Edit thresholds</button>
+        <button type="button" class="button" @click="openThresholds">Edit thresholds</button>
       </footer>
     </section>
 
@@ -530,7 +530,29 @@ useHead({
           </details>
         </div>
         <footer class="card-foot">
-          <form method="POST" action="/api/server-forms/{{ serverView.id }}/rotate-token" id="rotate-form">
+          {{-- Guarded by partials/confirm-guard.stx, included at the foot of this
+               file, rather than by a script of its own. The guard used to be two
+               bespoke handlers here; the partial already did the same job for
+               every other destructive form in the app, and its own comment named
+               these two as the outliers that bound directly. The wording, the
+               button labels and the severity are carried over unchanged.
+
+               Keeping it in the partial also keeps the pre-runtime guarantee the
+               old comment insisted on: that block is a plain script, so it binds
+               whether or not the signals runtime loaded. A client script block
+               would be absent until hydration, and an unguarded rotate is
+               exactly what it exists to prevent.
+
+               The angle brackets are left off "client script block" on purpose:
+               tests/unit/bridge-hygiene.test.ts finds script spans with a regex
+               that does not know about stx comments, so a literal tag written in
+               prose here opens a span that swallows the markup below it and
+               reports bindings this file never puts in a script. --}}
+          <form method="POST" action="/api/server-forms/{{ serverView.id }}/rotate-token"
+                data-confirm="The agent already installed on this box stops reporting until you re-run the install command."
+                data-confirm-title="Rotate the token?"
+                data-confirm-action="Rotate token"
+                data-confirm-type="warning">
             <button type="submit" class="button" id="rotate-submit">Rotate token</button>
           </form>
           <p class="sub">Rotating breaks the installed agent immediately. Re-run the command above on the box afterwards.</p>
@@ -570,20 +592,25 @@ useHead({
         <p class="card-copy">Deleting this server detaches {{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }}, deletes its stored samples and closes its open incidents. The monitors and the incident history are kept.</p>
       </div>
       <footer class="card-foot">
-        <form method="POST" action="/api/server-forms/{{ serverView.id }}/delete" id="delete-form">
+        {{-- Guarded by partials/confirm-guard.stx; see the note on the rotate
+             form above. type defaults to error, which is what this is. --}}
+        <form method="POST" action="/api/server-forms/{{ serverView.id }}/delete"
+              data-confirm="Its monitors are detached and kept, its samples are deleted, and its open incidents are closed."
+              data-confirm-title="Delete this server?"
+              data-confirm-action="Delete server">
           <button type="submit" class="button danger" id="delete-submit">Delete this server</button>
         </form>
       </footer>
     </section>
 
-    <dialog id="monitors-dialog" class="dlg" aria-labelledby="monitors-dialog-title">
+    <dialog ref="monitorsDialog" class="dlg" aria-labelledby="monitors-dialog-title" @click="backdropMonitors">
       <form method="POST" action="/api/server-forms/{{ serverView.id }}/monitors">
         <header class="dlg-head">
           <div>
             <h3 id="monitors-dialog-title">Manage monitors</h3>
             <p class="sub">Tick the checks that run on this box. Unticking one detaches it; it keeps running.</p>
           </div>
-          <button type="button" class="dlg-x" id="monitors-close" aria-label="Close">
+          <button type="button" class="dlg-x" @click="closeMonitors" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </header>
@@ -606,20 +633,20 @@ useHead({
         </div>
 
         <footer class="dlg-foot">
-          <button type="button" class="button" id="monitors-cancel">Cancel</button>
+          <button type="button" class="button" @click="closeMonitors">Cancel</button>
           <button type="submit" class="button primary">Save monitors</button>
         </footer>
       </form>
     </dialog>
 
-    <dialog id="thresholds-dialog" class="dlg" aria-labelledby="thresholds-dialog-title">
+    <dialog ref="thresholdsDialog" class="dlg" aria-labelledby="thresholds-dialog-title" @click="backdropThresholds">
       <form method="POST" action="/api/server-forms/{{ serverView.id }}/update">
         <header class="dlg-head">
           <div>
             <h3 id="thresholds-dialog-title">Edit thresholds</h3>
             <p class="sub">What makes this box hot, and how long it may go quiet.</p>
           </div>
-          <button type="button" class="dlg-x" id="thresholds-close" aria-label="Close">
+          <button type="button" class="dlg-x" @click="closeThresholds" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </header>
@@ -654,7 +681,7 @@ useHead({
         </div>
 
         <footer class="dlg-foot">
-          <button type="button" class="button" id="thresholds-cancel">Cancel</button>
+          <button type="button" class="button" @click="closeThresholds">Cancel</button>
           <button type="submit" class="button primary">Save</button>
         </footer>
       </form>
@@ -662,80 +689,63 @@ useHead({
   @endif
 </main>
 
-<script>
-  (function () {
-    // Elements are reached by id, and this prose deliberately avoids the
-    // page's binding names: the server-to-client bridge serialises any
-    // binding whose name word-matches a plain script's TEXT, comments
-    // included, and this page's scope holds a row carrying an agent token.
-    function wire(dialogId, openerId, closerId, cancelId) {
-      var dlg = document.getElementById(dialogId)
-      if (!dlg) return
+<script client>
+  // The two dialogs. Converted for stx-standards rule 8: this reached a
+  // dialog, its opener, its close control and its cancel control by id, for
+  // each of the two, and bound four listeners apiece.
+  //
+  // The openers, close and cancel controls bind @click in the markup, so no
+  // listener is registered here. Each dialog keeps a ref, because showModal()
+  // and close() are element methods and no composable drives a native
+  // <dialog>; the showModal-where-available, open-attribute-otherwise
+  // fallback is unchanged.
+  //
+  // This prose deliberately avoids the page's binding names, as the original's
+  // did: the bridge word-matches a block's TEXT, comments included, and a
+  // <script client> block is exactly what it scans. This page's scope holds a
+  // row carrying an agent token. tests/unit/bridge-hygiene.test.ts fails the
+  // build if a name slips in.
+  //
+  // The two destructive-form guards that used to live here are gone, not
+  // converted -- see the note where those forms are declared.
+  const monitorsDialog = useRef('monitorsDialog')
+  const thresholdsDialog = useRef('thresholdsDialog')
 
-      function show() {
-        if (dlg.showModal) dlg.showModal()
-        else dlg.setAttribute('open', '')
-      }
-      function hide() {
-        if (dlg.close) dlg.close()
-        else dlg.removeAttribute('open')
-      }
+  function openDialog(ref: { current: unknown }): void {
+    const el = ref.current as HTMLDialogElement | null
+    if (!el)
+      return
+    if (typeof el.showModal === 'function')
+      el.showModal()
+    else
+      el.setAttribute('open', '')
+  }
 
-      var opener = document.getElementById(openerId)
-      if (opener) opener.addEventListener('click', show)
-      var closer = document.getElementById(closerId)
-      if (closer) closer.addEventListener('click', hide)
-      var canceller = document.getElementById(cancelId)
-      if (canceller) canceller.addEventListener('click', hide)
+  function closeDialog(ref: { current: unknown }): void {
+    const el = ref.current as HTMLDialogElement | null
+    if (!el)
+      return
+    if (typeof el.close === 'function')
+      el.close()
+    else
+      el.removeAttribute('open')
+  }
 
-      dlg.addEventListener('click', function (event) {
-        if (event.target === dlg) hide()
-      })
-    }
+  function openMonitors(): void { openDialog(monitorsDialog) }
+  function closeMonitors(): void { closeDialog(monitorsDialog) }
+  function openThresholds(): void { openDialog(thresholdsDialog) }
+  function closeThresholds(): void { closeDialog(thresholdsDialog) }
 
-    wire('monitors-dialog', 'monitors-open', 'monitors-close', 'monitors-cancel')
-    wire('thresholds-dialog', 'thresholds-open', 'thresholds-close', 'thresholds-cancel')
+  /** A click on the backdrop closes; a click inside the card does not. */
+  function backdropMonitors(event: Event): void {
+    if (event.target === monitorsDialog.current)
+      closeMonitors()
+  }
 
-    // Both of these are one-way. Rotating stops the installed agent reporting
-    // until it is re-run, and deleting cannot be undone.
-    //
-    // stxConfirm is a promise, so the submit is always cancelled first and the
-    // form re-submitted once the operator has answered. form.submit() does not
-    // re-fire this listener, so there is no second pass to guard against.
-    //
-    // window.confirm stays as the fallback rather than assuming the dialog is
-    // there. This is a plain script, not a <script client>, so it runs whether
-    // or not the signals runtime loaded — and an unguarded delete is a worse
-    // outcome than an unstyled prompt.
-    function guardSubmit(formId, message, options, fallback) {
-      var form = document.getElementById(formId)
-      if (!form)
-        return
-
-      form.addEventListener('submit', function (event) {
-        event.preventDefault()
-        var ask = window.stxConfirm
-          ? window.stxConfirm(message, options)
-          : Promise.resolve(window.confirm(fallback))
-        Promise.resolve(ask).then(function (ok) {
-          if (ok)
-            form.submit()
-        })
-      })
-    }
-
-    guardSubmit(
-      'rotate-form',
-      'The agent already installed on this box stops reporting until you re-run the install command.',
-      { title: 'Rotate the token?', confirmText: 'Rotate token', cancelText: 'Cancel', type: 'warning' },
-      'Rotate the token? The agent already installed on this box stops reporting until you re-run the install command.',
-    )
-
-    guardSubmit(
-      'delete-form',
-      'Its monitors are detached and kept, its samples are deleted, and its open incidents are closed.',
-      { title: 'Delete this server?', confirmText: 'Delete server', cancelText: 'Cancel', type: 'error' },
-      'Delete this server? Its monitors are detached and kept, its samples are deleted, and its open incidents are closed.',
-    )
-  })()
+  function backdropThresholds(event: Event): void {
+    if (event.target === thresholdsDialog.current)
+      closeThresholds()
+  }
 </script>
+
+@include('../partials/confirm-guard.stx')
