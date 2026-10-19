@@ -99,7 +99,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                 <div class="uptime-bars" aria-hidden="true">
                   <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="down"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="warn"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
-                <div class="panel-row" style="padding: 1rem 0 0;">
+                <div class="panel-row !pt-[1rem] !px-0 !pb-0">
                   <span class="panel-row-sub">30 days ago</span>
                   <span class="panel-row-sub">99.94% uptime</span>
                   <span class="panel-row-sub">Today</span>

@@ -222,7 +222,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
               <div class="panel-list">
                 <div class="panel-row">
                   <div class="panel-row-main"><span class="dot"></span><div><div class="panel-row-name">Uptime</div><div class="panel-row-sub">200 in 132ms, 6 regions</div></div></div>
-                  <div class="panel-row-meta"><span class="spark" aria-hidden="true"><span style="height:60%"></span><span style="height:80%"></span><span style="height:70%"></span><span style="height:90%"></span><span style="height:75%"></span><span style="height:100%"></span><span style="height:85%"></span></span></div>
+                  <div class="panel-row-meta"><span class="spark" aria-hidden="true"><span class="h-[60%]"></span><span class="h-[80%]"></span><span class="h-[70%]"></span><span class="h-[90%]"></span><span class="h-[75%]"></span><span class="h-[100%]"></span><span class="h-[85%]"></span></span></div>
                 </div>
                 <div class="panel-row">
                   <div class="panel-row-main"><span class="dot"></span><div><div class="panel-row-name">SSL certificate</div><div class="panel-row-sub">expires in 84 days</div></div></div>

@@ -114,8 +114,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                   <div class="panel-row-meta"><span>found on /</span></div>
                 </div>
               </div>
-              <div class="panel-body" style="padding-top: 0.5rem;">
-                <div class="panel-row" style="padding: 0;">
+              <div class="panel-body !pt-[0.5rem]">
+                <div class="panel-row !p-0">
                   <span class="panel-row-sub">184 pages crawled</span>
                   <span class="panel-row-sub">2 broken links</span>
                   <span class="panel-row-sub">1 mixed content</span>

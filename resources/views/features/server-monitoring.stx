@@ -162,7 +162,7 @@ curl -fsS -X POST \
           <div>
             <h2 id="edge-heading">Most uptime tools stop at the network edge.</h2>
             <p>
-              Oh Dear, for one, offers no server metrics at all: the inside of the machine is your problem. {{ appName }} treats the host as part of the same story as the endpoint, in one dashboard, on one incident timeline. <StxLink to="/compare" style="color: var(--fg); font-weight: 600; border-bottom: 1px solid var(--border-strong);">See the full comparison</StxLink> for the feature-by-feature view.
+              Oh Dear, for one, offers no server metrics at all: the inside of the machine is your problem. {{ appName }} treats the host as part of the same story as the endpoint, in one dashboard, on one incident timeline. <StxLink class="text-[var(--fg)] font-semibold border-b border-[var(--border-strong)]" to="/compare">See the full comparison</StxLink> for the feature-by-feature view.
             </p>
           </div>
           <div class="oss-code">POST /api/agent/&lt;token&gt;/metrics</div>

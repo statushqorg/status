@@ -479,7 +479,7 @@ if (!statusPageForHost && faqs && faqs.length)
                       <span class="text-sm text-gray-500">{{ hostMonitorLabel(monitor.status) }}</span>
                     </div>
                   </div>
-                  <div style="display:flex;gap:2px;align-items:stretch;height:30px;margin-top:10px;">
+                  <div class="flex gap-[2px] items-stretch h-[30px] mt-[10px]">
                     @foreach (hostUptimeBars(monitor.id) as bar)
                       <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ hostUptimeBarColor(bar.status) }};"></span>
                     @endforeach
@@ -509,7 +509,7 @@ if (!statusPageForHost && faqs && faqs.length)
                         <span class="text-sm text-gray-500">{{ hostMonitorLabel(monitor.status) }}</span>
                       </div>
                     </div>
-                    <div style="display:flex;gap:2px;align-items:stretch;height:30px;margin-top:10px;">
+                    <div class="flex gap-[2px] items-stretch h-[30px] mt-[10px]">
                       @foreach (hostUptimeBars(monitor.id) as bar)
                         <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ hostUptimeBarColor(bar.status) }};"></span>
                       @endforeach
@@ -593,7 +593,7 @@ if (!statusPageForHost && faqs && faqs.length)
                 <div class="preview-row-meta">
                   <span>132ms</span>
                   <span class="preview-chart" aria-hidden="true">
-                    <span style="height:60%"></span><span style="height:80%"></span><span style="height:70%"></span><span style="height:90%"></span><span style="height:75%"></span><span style="height:100%"></span><span style="height:85%"></span>
+                    <span class="h-[60%]"></span><span class="h-[80%]"></span><span class="h-[70%]"></span><span class="h-[90%]"></span><span class="h-[75%]"></span><span class="h-[100%]"></span><span class="h-[85%]"></span>
                   </span>
                 </div>
               </div>
@@ -608,7 +608,7 @@ if (!statusPageForHost && faqs && faqs.length)
                 <div class="preview-row-meta">
                   <span>89ms</span>
                   <span class="preview-chart" aria-hidden="true">
-                    <span style="height:90%"></span><span style="height:85%"></span><span style="height:95%"></span><span style="height:80%"></span><span style="height:100%"></span><span style="height:88%"></span><span style="height:92%"></span>
+                    <span class="h-[90%]"></span><span class="h-[85%]"></span><span class="h-[95%]"></span><span class="h-[80%]"></span><span class="h-[100%]"></span><span class="h-[88%]"></span><span class="h-[92%]"></span>
                   </span>
                 </div>
               </div>
@@ -655,7 +655,7 @@ if (!statusPageForHost && faqs && faqs.length)
             @endforeach
           </div>
 
-          <div style="display: flex; justify-content: center; margin-top: 2rem;">
+          <div class="flex justify-center mt-[2rem]">
             <StxLink class="button" to="/features">Explore all 18 checks</StxLink>
           </div>
         </section>

@@ -101,10 +101,10 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                 <span class="pill warn"><span class="dot"></span> Degraded</span>
               </div>
               <div class="panel-body">
-                <div class="spark" style="height: 44px;" aria-hidden="true">
-                  <span style="height: 30%;"></span><span style="height: 26%;"></span><span style="height: 32%;"></span><span style="height: 28%;"></span><span style="height: 34%;"></span><span style="height: 27%;"></span><span style="height: 31%;"></span><span style="height: 29%;"></span><span style="height: 33%;"></span><span style="height: 26%;"></span><span style="height: 30%;"></span><span style="height: 35%;"></span><span style="height: 28%;"></span><span style="height: 32%;"></span><span style="height: 27%;"></span><span style="height: 30%;"></span><span style="height: 29%;"></span><span style="height: 34%;"></span><span style="height: 31%;"></span><span style="height: 28%;"></span><span style="height: 33%;"></span><span style="height: 30%;"></span><span style="height: 27%;"></span><span style="height: 46%;"></span><span style="height: 58%;"></span><span style="height: 66%;"></span><span style="height: 74%;"></span><span style="height: 82%;"></span><span style="height: 88%;"></span><span style="height: 95%;"></span>
+                <div class="spark !h-[44px]" aria-hidden="true">
+                  <span class="h-[30%]"></span><span class="h-[26%]"></span><span class="h-[32%]"></span><span class="h-[28%]"></span><span class="h-[34%]"></span><span class="h-[27%]"></span><span class="h-[31%]"></span><span class="h-[29%]"></span><span class="h-[33%]"></span><span class="h-[26%]"></span><span class="h-[30%]"></span><span class="h-[35%]"></span><span class="h-[28%]"></span><span class="h-[32%]"></span><span class="h-[27%]"></span><span class="h-[30%]"></span><span class="h-[29%]"></span><span class="h-[34%]"></span><span class="h-[31%]"></span><span class="h-[28%]"></span><span class="h-[33%]"></span><span class="h-[30%]"></span><span class="h-[27%]"></span><span class="h-[46%]"></span><span class="h-[58%]"></span><span class="h-[66%]"></span><span class="h-[74%]"></span><span class="h-[82%]"></span><span class="h-[88%]"></span><span class="h-[95%]"></span>
                 </div>
-                <div class="panel-row" style="padding: 1rem 0 0;">
+                <div class="panel-row !pt-[1rem] !px-0 !pb-0">
                   <span class="panel-row-sub">7-day p95: 255ms</span>
                   <span class="panel-row-sub">last hour p95: 612ms</span>
                   <span class="panel-row-sub">2.4x</span>
