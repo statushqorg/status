@@ -174,7 +174,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
     @if (serverCount > 0)
       <section class="card scroll-x" aria-label="Server list">
         <div class="rows" role="table" aria-label="Server list">
-          <div class="trow thead" role="row" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
+          <div class="trow thead cols-servers" role="row">
             <span>Name</span>
             <span>Status</span>
             <span>CPU</span>
@@ -184,7 +184,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
             <span>Monitors</span>
           </div>
           @foreach (servers as server)
-            <StxLink class="trow" role="row" to="/dashboard/servers/{{ server.id }}" style="grid-template-columns: minmax(200px, 1.6fr) 132px 76px 76px 76px 120px 92px;">
+            <StxLink class="trow cols-servers" role="row" to="/dashboard/servers/{{ server.id }}">
               <span class="name">{{ server.name }}</span>
               <span><span class="{{ server.pillClass }}"><span class="dot"></span>{{ server.pillLabel }}</span></span>
               <span class="mono">{{ server.cpu }}</span>
@@ -196,7 +196,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
           @endforeach
         </div>
       </section>
-      <p class="sub" style="margin-top: 0.75rem;">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
+      <p class="sub !mt-[0.75rem]">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
     @endif
 
     <dialog ref="createDialog" class="dlg" aria-labelledby="server-create-title" @click="backdropCreate">

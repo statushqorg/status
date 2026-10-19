@@ -137,14 +137,14 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
     @if (reports.length > 0)
       <section class="card scroll-x" aria-label="Announcements">
         <div class="rows" role="table" aria-label="Announcements">
-          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
+          <div class="trow thead cols-status-reports" role="row">
             <span class="tcell" role="columnheader">Title</span>
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell num" role="columnheader">Monitors</span>
             <span class="tcell num" role="columnheader">Started</span>
           </div>
           @foreach (reports as report)
-            <StxLink class="trow" role="row" to="/dashboard/status-reports/{{ report.id }}" style="grid-template-columns: minmax(0, 1.5fr) 140px 100px 160px;">
+            <StxLink class="trow cols-status-reports" role="row" to="/dashboard/status-reports/{{ report.id }}">
               <span class="tcell ellipsis name" role="cell">{{ report.title }}</span>
               <span class="tcell" role="cell"><data class="{{ statusClass(report.status) }}" value="{{ report.status }}"><span class="dot"></span>{{ statusLabel(report.status) }}</data></span>
               <span class="tcell num" role="cell">{{ monitorCount[report.id] || 0 }}</span>
@@ -155,7 +155,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
       </section>
     @endif
 
-    <section class="card" style="margin-top: 1.25rem;" aria-label="Create announcement">
+    <section class="card !mt-[1.25rem]" aria-label="Create announcement">
       <div class="card-head">
         <h3>New announcement</h3>
       </div>
@@ -181,7 +181,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
             </div>
           </div>
           <button type="submit" class="button primary">Create announcement</button>
-          <div class="field" style="margin: 0.75rem 0 0;">
+          <div class="field !mt-[0.75rem] !mx-0 !mb-0">
             <p class="help">Next you'll attach the affected monitors and post an update. Posting an update is what emails your status page subscribers.</p>
           </div>
         </form>

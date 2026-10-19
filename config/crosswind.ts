@@ -3057,6 +3057,69 @@ export default {
     { getCSS: statusPageCss },
     { getCSS: dashboardPagesCss },
   ],
+  /*
+   * One column template per table, named for the table (stx-standards 11.5).
+   *
+   * Every `.trow` table wrote its `grid-template-columns` inline on the header
+   * row AND on each body row, which is the same value written twice with
+   * nothing keeping them equal -- change one and the header stops lining up
+   * with the data under it, silently. `.trow` already supplies `display: grid`,
+   * so a table needs only its own column template, and now there is exactly one
+   * copy of each. Two of them are shared across pages, which inline styles
+   * could not express at all: the incident table on the dashboard and the site
+   * overview, and the attached-monitor table on status pages and reports.
+   */
+  shortcuts: {
+    // Status / Cause / Monitor / Opened -- dashboard and site overview
+    'cols-incidents': 'grid-cols-[150px_minmax(0,1.6fr)_minmax(0,1fr)_110px]',
+    // Status / Monitor / Type / Action -- status pages and reports
+    'cols-attached-monitors': 'grid-cols-[120px_minmax(0,1.4fr)_130px_100px]',
+    // the full incident list, which adds Duration
+    'cols-incident-log': 'grid-cols-[150px_minmax(0,1.5fr)_minmax(0,1fr)_130px_110px]',
+    // Name / Route / Visibility -- the dashboard's short list
+    'cols-status-pages-brief': 'grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_110px]',
+    // Starts / Ends -- a maintenance window's occurrences
+    'cols-occurrences': 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]',
+    // Title / Starts / Length / Repeats / Monitors / Status
+    'cols-maintenance': 'grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_90px_110px_100px_120px]',
+    // Record / Values / Checked
+    'cols-dns-records': 'grid-cols-[110px_minmax(0,1fr)_140px]',
+    // Status / Cause / Started / Resolved -- one monitor's history
+    'cols-monitor-incidents': 'grid-cols-[130px_minmax(0,1.6fr)_140px_140px]',
+    // a two-column label/value strip
+    'cols-label-value': 'grid-cols-[minmax(0,1fr)_auto]',
+    // Alert / Channel / Fires on
+    'cols-alert-rules': 'grid-cols-[44px_minmax(0,1fr)_160px]',
+    // Status / Message / Code / Region / Resp / Checked
+    'cols-check-log': 'grid-cols-[110px_minmax(0,1.6fr)_60px_100px_80px_130px]',
+    // Status / Monitor / Type / Last checks / Resp / Checked
+    'cols-monitors': 'grid-cols-[110px_minmax(220px,1.7fr)_100px_112px_80px_92px]',
+    // the server list
+    'cols-servers': 'grid-cols-[minmax(200px,1.6fr)_132px_76px_76px_76px_120px_92px]',
+    // Type / Name / State / Test -- notification channels
+    'cols-channels': 'grid-cols-[130px_minmax(0,1.6fr)_130px_110px]',
+    // Credential / Device / Added / Last used / Remove
+    'cols-passkeys': 'grid-cols-[minmax(0,1.5fr)_130px_110px_110px_110px]',
+    // Member / Role / Status / Joined / Remove
+    'cols-team': 'grid-cols-[minmax(0,1.4fr)_150px_120px_110px_110px]',
+    // Status / Check / Type / Checked
+    'cols-site-checks': 'grid-cols-[110px_minmax(220px,1.7fr)_120px_92px]',
+    // Window / State / Schedule
+    'cols-maintenance-windows': 'grid-cols-[minmax(0,1.4fr)_130px_minmax(0,1fr)]',
+    // Name / Route / Custom domain / Access / Visibility
+    'cols-status-pages': 'grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_140px_110px]',
+    // Title / Status / Monitors / Started
+    'cols-status-reports': 'grid-cols-[minmax(0,1.5fr)_140px_100px_160px]',
+    // the monitors attached to one window
+    'cols-window-monitors': 'grid-cols-[minmax(0,1.6fr)_140px_120px]',
+    // Code / URL / Found on
+    'cols-broken-links': 'grid-cols-[60px_minmax(0,1.4fr)_minmax(0,1fr)]',
+    // the blocklist zones table: zone / listed-or-clean
+    'cols-blocklist': 'grid-cols-[minmax(0,1fr)_110px]',
+    // URL / Found on, without the status code
+    'cols-link-pages': 'grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]',
+  },
+
   theme: {
     extend: {
       colors: {

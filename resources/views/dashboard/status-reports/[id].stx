@@ -148,7 +148,7 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
     @if (report.body)
       <section class="card" aria-label="Summary">
         <div class="card-body">
-          <p style="margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.6;">{{ report.body }}</p>
+          <p class="m-0 text-[var(--muted)] text-[0.95rem] leading-[1.6]">{{ report.body }}</p>
         </div>
       </section>
     @endif
@@ -160,7 +160,7 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       </div>
       <div class="card-body">
         @if (assignedMonitors.length === 0)
-          <p style="margin: 0 0 1rem; color: var(--amber); font-size: 0.85rem;">Attach at least one monitor below so this announcement appears on your status pages and reaches subscribers.</p>
+          <p class="mt-0 mx-0 mb-[1rem] text-[var(--amber)] text-[0.85rem]">Attach at least one monitor below so this announcement appears on your status pages and reaches subscribers.</p>
         @endif
         <form method="POST" action="/api/status-report-forms/{{ report.id }}/updates">
           <div class="field">
@@ -198,14 +198,14 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       @endif
       @if (updates.length > 0)
         <div class="card-body">
-          <ol style="list-style: none; margin: 0; padding: 0;">
+          <ol class="[list-style:none] m-0 p-0">
             @foreach (updates as update)
-              <li style="padding: 0.9rem 0; border-bottom: 1px solid var(--border);">
-                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
+              <li class="py-[0.9rem] px-0 border-b border-[var(--border)]">
+                <div class="flex items-center gap-[0.6rem] mb-[0.35rem]">
                   <data class="{{ statusClass(update.status) }}" value="{{ update.status }}"><span class="dot"></span>{{ reportStatusLabel(update.status) }}</data>
-                  <time class="sub" style="font-size: 0.8rem;">{{ dateLabel(update.posted_at) }}</time>
+                  <time class="sub !text-[0.8rem]">{{ dateLabel(update.posted_at) }}</time>
                 </div>
-                <p style="margin: 0; font-size: 0.92rem; line-height: 1.55;">{{ update.message }}</p>
+                <p class="m-0 text-[0.92rem] leading-[1.55]">{{ update.message }}</p>
               </li>
             @endforeach
           </ol>
@@ -221,19 +221,19 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
 
       @if (assignedMonitors.length > 0)
         <div class="rows" role="table" aria-label="Affected monitors">
-          <div class="trow thead" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
+          <div class="trow thead cols-attached-monitors" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>
             <span class="tcell" role="columnheader">Type</span>
             <span class="tcell num" role="columnheader">Action</span>
           </div>
           @foreach (assignedMonitors as monitor)
-            <div class="trow" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
+            <div class="trow cols-attached-monitors" role="row">
               <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
               <span class="tcell ellipsis name" role="cell">{{ monitor.name }}</span>
               <span class="tcell sub" role="cell">{{ monitor.type.replace('_', ' ') }}</span>
               <span class="tcell num" role="cell">
-                <form method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/remove" style="display: inline-block;">
+                <form class="inline-block" method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/remove">
                   <input type="hidden" name="monitor_id" value="{{ monitor.monitor_id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
                 </form>
@@ -244,10 +244,10 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       @endif
 
       @if (availableMonitors.length > 0)
-        <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface-2);">
-          <div class="field" style="margin-bottom: 0.5rem;"><span class="label">Attach a monitor</span></div>
-          <form method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/add" style="display: flex; align-items: stretch; gap: 0.6rem;">
-            <select id="sr-add-monitor" name="monitor_id" class="select" style="flex: 1 1 auto; width: auto;" aria-label="Monitor to attach">
+        <div class="py-[1rem] px-[1.25rem] border-t border-[var(--border)] bg-[var(--surface-2)]">
+          <div class="field !mb-[0.5rem]"><span class="label">Attach a monitor</span></div>
+          <form class="flex items-stretch gap-[0.6rem]" method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/add">
+            <select id="sr-add-monitor" name="monitor_id" class="select [flex:1_1_auto] !w-auto" aria-label="Monitor to attach">
               @foreach (availableMonitors as monitor)
                 <option value="{{ monitor.id }}">{{ monitor.name }} ({{ monitor.type.replace('_', ' ') }})</option>
               @endforeach

@@ -193,7 +193,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       </div>
       <div class="card-body">
         @if (TWO_FA_ENABLED)
-          <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6;">Signing in requires your password plus a 6-digit code from your authenticator app. Confirm your password to turn it off.</p>
+          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Signing in requires your password plus a 6-digit code from your authenticator app. Confirm your password to turn it off.</p>
           <form method="POST" action="/api/security-forms/two-factor/disable" data-confirm="Your account falls back to password-only sign-in." data-confirm-title="Turn off two-factor authentication?" data-confirm-action="Turn it off" data-confirm-type="warning">
             <div class="form-row">
               <div class="field">
@@ -206,15 +206,15 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
         @endif
 
         @if (!TWO_FA_ENABLED && !__SETUP)
-          <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6;">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
+          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
           <StxLink class="button primary" to="/dashboard/settings/security?setup=1">Set up two-factor auth</StxLink>
         @endif
 
         @if (!TWO_FA_ENABLED && __SETUP)
-          <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6;">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes.</p>
+          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes.</p>
           <div class="field">
             <label>Secret (enter manually)</label>
-            <p class="mono" style="margin: 0; padding: 0.7rem 0.85rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 0.95rem; letter-spacing: 0.08em; word-break: break-all; background: var(--surface-2);">{{ __SETUP.secret }}</p>
+            <p class="mono m-0 py-[0.7rem] px-[0.85rem] border border-[var(--border-strong)] rounded-[var(--radius-sm)] !text-[0.95rem] tracking-[0.08em] break-all bg-[var(--surface-2)]">{{ __SETUP.secret }}</p>
             <p class="help">On this device? <StxLink to="{{ __SETUP.uri }}">Open in your authenticator app</StxLink> instead of typing the secret.</p>
           </div>
           <form method="POST" action="/api/security-forms/two-factor/enable">
@@ -225,7 +225,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
               </div>
             </div>
             <button type="submit" class="button primary">Confirm and enable</button>
-            <StxLink class="button" to="/dashboard/settings/security" style="margin-left: 0.5rem;">Cancel</StxLink>
+            <StxLink class="button ml-[0.5rem]" to="/dashboard/settings/security">Cancel</StxLink>
           </form>
         @endif
       </div>
@@ -236,8 +236,8 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
         <h2>Passkeys</h2>
         <span class="sub">{{ __passkeys.length }} registered</span>
       </div>
-      <div class="card-body" style="border-bottom: 1px solid var(--border);">
-        <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6;">Passkeys let you sign in with your device's screen lock or a hardware key instead of a password. They're phishing-resistant and never leave your device.</p>
+      <div class="card-body border-b border-[var(--border)]">
+        <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Passkeys let you sign in with your device's screen lock or a hardware key instead of a password. They're phishing-resistant and never leave your device.</p>
         <button type="button" id="pk-add" class="button primary" @click="addPasskey"
           :disabled="pkBusy() || pkUnsupported()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
         <div id="pk-msg" :class="pkMessage() ? ('pk-msg show ' + pkKind()) : 'pk-msg'" role="status">{{ pkMessage() }}</div>
@@ -252,7 +252,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       @endif
       @if (__passkeys.length > 0)
         <div class="rows" role="table" aria-label="Passkeys">
-          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
+          <div class="trow thead cols-passkeys" role="row">
             <span class="tcell" role="columnheader">Credential</span>
             <span class="tcell" role="columnheader">Device</span>
             <span class="tcell num" role="columnheader">Added</span>
@@ -260,7 +260,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
             <span class="tcell num" role="columnheader">Remove</span>
           </div>
           @foreach (__passkeys as passkey)
-            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px 110px;">
+            <div class="trow cols-passkeys" role="row">
               <span class="tcell ellipsis mono" role="cell">{{ credentialLabel(passkey.id) }}</span>
               <span class="tcell sub" role="cell">{{ passkey.device_type || 'unknown' }}</span>
               <span class="tcell num" role="cell"><time>{{ dateLabel(passkey.created_at) }}</time></span>

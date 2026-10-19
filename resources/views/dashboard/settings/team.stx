@@ -144,7 +144,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
           <span class="sub">{{ activeCount }} active &middot; {{ pendingCount }} pending</span>
         </div>
         <div class="rows" role="table" aria-label="Team roster">
-          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
+          <div class="trow thead cols-team" role="row">
             <span class="tcell" role="columnheader">Member</span>
             <span class="tcell" role="columnheader">Role</span>
             <span class="tcell" role="columnheader">Status</span>
@@ -152,7 +152,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
             <span class="tcell num" role="columnheader">Remove</span>
           </div>
           @foreach (members as member)
-            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) 150px 120px 110px 110px;">
+            <div class="trow cols-team" role="row">
               <span class="tcell ellipsis name" role="cell">{{ member.invited_email }}</span>
               {{-- Saves on change: a per-row Save button next to a per-row
                    Remove button is two submits a keystroke apart, and the
@@ -160,7 +160,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
               <span class="tcell" role="cell">
                 <form method="POST" action="/api/team-forms/{{ member.id }}/role" data-role-form>
                   <input type="hidden" name="id" value="{{ member.id }}" />
-                  <select name="role" class="select sm" style="width: auto;" @change="submitRole" aria-label="Role for {{ member.invited_email }}">
+                  <select name="role" class="select sm !w-auto" @change="submitRole" aria-label="Role for {{ member.invited_email }}">
                     <option value="member" {{ member.role === 'member' ? 'selected' : '' }}>Member</option>
                     <option value="admin" {{ member.role === 'admin' ? 'selected' : '' }}>Admin</option>
                     <option value="owner" {{ member.role === 'owner' ? 'selected' : '' }}>Owner</option>
@@ -189,7 +189,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
       </section>
     @endif
 
-    <section class="card" aria-label="Invite a teammate" style="margin-top: 1.25rem;">
+    <section class="card !mt-[1.25rem]" aria-label="Invite a teammate">
       <div class="card-head">
         <h2>Invite a teammate</h2>
         <span class="sub">Sent by email</span>
@@ -211,7 +211,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
             </div>
           </div>
           <button type="submit" class="button primary">Invite</button>
-          <div class="field" style="margin: 0.75rem 0 0;">
+          <div class="field !mt-[0.75rem] !mx-0 !mb-0">
             <p class="help">We email a link to <span class="mono">/invite/&hellip;</span>. Opening it lets them accept and sign in, creating an account first if they don't have one. Nothing here needs the API.</p>
           </div>
         </form>
@@ -241,7 +241,7 @@ useHead({ title: 'Team settings \u00b7 StatusHQ', meta: [{ name: 'robots', conte
             </div>
           </div>
           <button type="submit" class="button primary">Save</button>
-          <div class="field" style="margin: 0.75rem 0 0;">
+          <div class="field !mt-[0.75rem] !mx-0 !mb-0">
             <p class="help">A client-ready summary of uptime, response times, incidents, and crawl findings is emailed each period.</p>
           </div>
         </form>

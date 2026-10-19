@@ -221,11 +221,11 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
   @endif
 
   @if (AUTH_USER && siteExists)
-    <p class="crumb" style="margin: 0 0 0.6rem;"><StxLink to="/dashboard" style="color: var(--muted); font-size: 0.85rem;">&larr; Overview</StxLink></p>
+    <p class="crumb !mt-0 !mx-0 !mb-[0.6rem]"><StxLink class="text-[var(--muted)] text-[0.85rem]" to="/dashboard">&larr; Overview</StxLink></p>
 
     <header class="page-head">
       <div>
-        <h1 style="display: flex; align-items: center; gap: 0.6rem;">
+        <h1 class="flex items-center gap-[0.6rem]">
           {{ siteHostName }}
           <data class="{{ stClass(siteStatus) }}" value="{{ siteStatus }}"><span class="dot"></span>{{ stLabel(siteStatus) }}</data>
         </h1>
@@ -242,16 +242,16 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
         <span class="sub">{{ siteMonitors.length }} on this site</span>
       </div>
       <div class="rows" role="table" aria-label="Checks on this site">
-        <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
+        <div class="trow thead cols-site-checks" role="row">
           <span class="tcell" role="columnheader">Status</span>
           <span class="tcell" role="columnheader">Check</span>
           <span class="tcell" role="columnheader">Type</span>
           <span class="tcell num" role="columnheader">Checked</span>
         </div>
         @foreach (siteMonitors as monitor)
-          <StxLink class="trow" role="row" to="/dashboard/monitors/{{ monitor.id }}" style="grid-template-columns: 110px minmax(220px, 1.7fr) 120px 92px;">
+          <StxLink class="trow cols-site-checks" role="row" to="/dashboard/monitors/{{ monitor.id }}">
             <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
-            <span class="tcell" role="cell"><span class="name ellipsis" style="display: block;">{{ monitor.name }}</span></span>
+            <span class="tcell" role="cell"><span class="name ellipsis block">{{ monitor.name }}</span></span>
             <span class="tcell" role="cell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
             <span class="tcell num" role="cell"><time>{{ agoLabel(monitor.last_checked_at) }}</time></span>
           </StxLink>
@@ -284,15 +284,15 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
             @endforeach
           </svg>
           <div class="site-legend">
-            <span style="color: var(--accent);">&#9632; CPU</span>
-            <span style="color: var(--muted);">&#9632; Memory</span>
+            <span class="text-[var(--accent)]">&#9632; CPU</span>
+            <span class="text-[var(--muted)]">&#9632; Memory</span>
             @if (chart.hasDisk)
-              <span style="color: var(--amber);">&#9632; Disk</span>
+              <span class="text-[var(--amber)]">&#9632; Disk</span>
             @endif
             @if (chart.host)
               <span class="sub">showing {{ chart.host }}</span>
             @endif
-            <span style="margin-left: auto; font-weight: 400;"><StxLink to="/dashboard/servers/{{ chart.serverId }}" style="color: var(--accent);">Full telemetry &rarr;</StxLink></span>
+            <span class="ml-auto font-normal"><StxLink class="text-[var(--accent)]" to="/dashboard/servers/{{ chart.serverId }}">Full telemetry &rarr;</StxLink></span>
           </div>
         </div>
       </section>
@@ -313,14 +313,14 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
       @endif
       @if (openIncidents.length > 0)
         <div class="rows" role="table" aria-label="Open incidents on this site">
-          <div class="trow thead" role="row" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
+          <div class="trow thead cols-incidents" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
             <span class="tcell" role="columnheader">Check</span>
             <span class="tcell num" role="columnheader">Opened</span>
           </div>
           @foreach (openIncidents as incident)
-            <StxLink class="trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}" style="grid-template-columns: 150px minmax(0, 1.6fr) minmax(0, 1fr) 110px;">
+            <StxLink class="trow cols-incidents" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
               <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
               <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
               <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>

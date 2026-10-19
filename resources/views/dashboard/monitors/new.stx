@@ -233,7 +233,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
            soon as a type is chosen. Without JS nothing is hidden and the form
            behaves exactly as it did before — parseMonitorForm() only reads the
            keys that belong to the submitted type, so a stray value is inert. --}}
-      <section class="card" aria-label="Type-specific options" style="margin-top: 1.25rem;" data-optional-card>
+      <section class="card !mt-[1.25rem]" aria-label="Type-specific options" data-optional-card>
         <div class="card-head">
           <h2>Options for this type</h2>
           <span ref="optionsSub" class="sub" id="options-sub">Only the ones matching your type are used</span>
@@ -354,7 +354,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
         </div>
       </section>
 
-      <section class="card" aria-label="Heartbeat options" style="margin-top: 1.25rem;" data-types="cron" data-optional-card>
+      <section class="card !mt-[1.25rem]" aria-label="Heartbeat options" data-types="cron" data-optional-card>
         <div class="card-head">
           <h2>Heartbeat</h2>
           <span class="sub">Heartbeat / cron type only</span>
@@ -381,7 +381,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
       </section>
 
 
-      <div class="actions" style="margin-top: 1.25rem;">
+      <div class="actions mt-[1.25rem]">
         <button type="submit" class="button primary">Create monitor</button>
         <StxLink to="/dashboard/monitors" class="button">Cancel</StxLink>
       </div>

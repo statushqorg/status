@@ -490,7 +490,7 @@ function bannerDotClass(tone) {
                     <span class="text-sm text-gray-500">{{ monitorLabel(monitor) }}</span>
                   </div>
                 </div>
-                <div class="uptime-bars" style="display:flex;gap:2px;align-items:stretch;height:30px;margin-top:10px;">
+                <div class="uptime-bars !flex !gap-[2px] !items-stretch !h-[30px] mt-[10px]">
                   @foreach (uptimeBars(monitor.id) as bar)
                     <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ uptimeBarColor(bar.status) }};"></span>
                   @endforeach
@@ -520,7 +520,7 @@ function bannerDotClass(tone) {
                       <span class="text-sm text-gray-500">{{ monitorLabel(monitor) }}</span>
                     </div>
                   </div>
-                  <div class="uptime-bars" style="display:flex;gap:2px;align-items:stretch;height:30px;margin-top:10px;">
+                  <div class="uptime-bars !flex !gap-[2px] !items-stretch !h-[30px] mt-[10px]">
                     @foreach (uptimeBars(monitor.id) as bar)
                       <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ uptimeBarColor(bar.status) }};"></span>
                     @endforeach

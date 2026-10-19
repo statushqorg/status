@@ -141,29 +141,29 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
         <span class="sub">{{ currentPlan === 'self-hosted' ? 'No limits' : (currentPlan === 'pro' ? '$' + PAID_PLAN_PRICE_USD + '/mo' : '$0/mo') }}</span>
       </div>
       <div class="card-body">
-        <p style="margin: 0 0 1.15rem; font-family: var(--font-display); font-size: 1.35rem; font-weight: 600;">{{ planLabel }}</p>
+        <p class="mt-0 mx-0 mb-[1.15rem] [font-family:var(--font-display)] text-[1.35rem] font-semibold">{{ planLabel }}</p>
 
-        <div style="margin-bottom: 0.9rem;">
-          <div style="display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; color: var(--muted); font-size: 0.8rem;">
+        <div class="mb-[0.9rem]">
+          <div class="flex justify-between gap-[1rem] mb-[0.4rem] text-[var(--muted)] text-[0.8rem]">
             <span>Monitors</span>
             <span class="mono">{{ monitorCount }} / {{ limitLabel(limits.monitors) }}</span>
           </div>
-          <div style="height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden;">
+          <div class="h-[6px] rounded-[999px] bg-[var(--surface-2)] overflow-hidden">
             <div style="height: 100%; border-radius: 999px; background: var(--accent); width: {{ usagePct(monitorCount, limits.monitors) }}%;"></div>
           </div>
         </div>
 
-        <div style="margin-bottom: 0.9rem;">
-          <div style="display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; color: var(--muted); font-size: 0.8rem;">
+        <div class="mb-[0.9rem]">
+          <div class="flex justify-between gap-[1rem] mb-[0.4rem] text-[var(--muted)] text-[0.8rem]">
             <span>Status pages</span>
             <span class="mono">{{ statusPageCount }} / {{ limitLabel(limits.statusPages) }}</span>
           </div>
-          <div style="height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden;">
+          <div class="h-[6px] rounded-[999px] bg-[var(--surface-2)] overflow-hidden">
             <div style="height: 100%; border-radius: 999px; background: var(--accent); width: {{ usagePct(statusPageCount, limits.statusPages) }}%;"></div>
           </div>
         </div>
 
-        <p style="margin: 0; color: var(--muted); font-size: 0.8rem;">Minimum check interval: <span class="mono">{{ limits.checkIntervalFloorSeconds }}s</span></p>
+        <p class="m-0 text-[var(--muted)] text-[0.8rem]">Minimum check interval: <span class="mono">{{ limits.checkIntervalFloorSeconds }}s</span></p>
       </div>
     </section>
 
@@ -173,7 +173,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
           <h2>Manage subscription</h2>
         </div>
         <div class="card-body">
-          <p style="margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem;">
+          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem]">
             @if (subscription && subscription.ends_at)
               Cancels at the end of the current billing period.
             @else
@@ -194,7 +194,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
           <span class="sub">${{ PAID_PLAN_PRICE_USD }}/mo</span>
         </div>
         <div class="card-body">
-          <ul style="margin: 0 0 1.15rem; padding-left: 1.1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.7;">
+          <ul class="mt-0 mx-0 mb-[1.15rem] pl-[1.1rem] text-[var(--muted)] text-[0.9rem] leading-[1.7]">
             <li>{{ PLAN_LIMITS.pro.monitors }} monitors (vs {{ PLAN_LIMITS.free.monitors }} on Free)</li>
             <li>{{ PLAN_LIMITS.pro.statusPages }} status pages (vs {{ PLAN_LIMITS.free.statusPages }} on Free)</li>
             <li>Checks as often as every {{ PLAN_LIMITS.pro.checkIntervalFloorSeconds }}s</li>
@@ -212,7 +212,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
           <h2>Self-hosted</h2>
         </div>
         <div class="card-body">
-          <p style="margin: 0; color: var(--muted); font-size: 0.9rem;">
+          <p class="m-0 text-[var(--muted)] text-[0.9rem]">
             This is your own install, so there are no plan limits. Monitor as much as your
             server can handle. Billing is inactive because no payment provider is configured.
           </p>

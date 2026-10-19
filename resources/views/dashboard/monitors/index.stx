@@ -318,7 +318,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     @if (__monitorRows.length > 0)
       <section class="card scroll-x" aria-label="Monitor list">
         <div ref="rowsTable" class="rows" role="table" aria-label="Monitor list">
-          <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
+          <div class="trow thead cols-monitors" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>
             <span class="tcell" role="columnheader">Type</span>
@@ -327,11 +327,11 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
             <span class="tcell num" role="columnheader">Checked</span>
           </div>
           @foreach (__monitorRows as monitor)
-            <StxLink class="trow" role="row" to="/dashboard/monitors/{{ monitor.id }}" data-monitor-id="{{ monitor.id }}" style="grid-template-columns: 110px minmax(220px, 1.7fr) 100px 112px 80px 92px;">
+            <StxLink class="trow cols-monitors" role="row" to="/dashboard/monitors/{{ monitor.id }}" data-monitor-id="{{ monitor.id }}">
               <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}" data-monitor-status><span class="dot"></span><span data-monitor-status-label>{{ stLabel(monitor.status) }}</span></data></span>
               <span class="tcell" role="cell">
-                <span class="name ellipsis" style="display: block;">{{ monitor.name }}</span>
-                <span class="sub" style="display: block;">{{ targetLabel(monitor.url) }}</span>
+                <span class="name ellipsis block">{{ monitor.name }}</span>
+                <span class="sub !block">{{ targetLabel(monitor.url) }}</span>
               </span>
               <span class="tcell" role="cell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
               <span class="tcell" role="cell">

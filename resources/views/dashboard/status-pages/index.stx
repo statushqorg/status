@@ -119,7 +119,7 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
     @if (statusPages.length > 0)
       <section class="card scroll-x" aria-label="Status pages">
         <div class="rows" role="table" aria-label="Status pages">
-          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
+          <div class="trow thead cols-status-pages" role="row">
             <span class="tcell" role="columnheader">Name</span>
             <span class="tcell" role="columnheader">Route</span>
             <span class="tcell" role="columnheader">Custom domain</span>
@@ -127,7 +127,7 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
             <span class="tcell num" role="columnheader">Visibility</span>
           </div>
           @foreach (statusPages as page)
-            <StxLink class="trow" role="row" to="/dashboard/status-pages/{{ page.id }}" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 140px 110px;">
+            <StxLink class="trow cols-status-pages" role="row" to="/dashboard/status-pages/{{ page.id }}">
               <span class="tcell ellipsis name" role="cell">{{ page.title }}</span>
               <span class="tcell sub ellipsis" role="cell">/status/{{ page.slug }}</span>
               <span class="tcell sub ellipsis" role="cell">{{ page.custom_domain || '--' }}</span>
@@ -139,7 +139,7 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
       </section>
     @endif
 
-    <section class="card" style="margin-top: 1.25rem;" aria-label="Create status page">
+    <section class="card !mt-[1.25rem]" aria-label="Create status page">
       <div class="card-head">
         <h3>New status page</h3>
       </div>

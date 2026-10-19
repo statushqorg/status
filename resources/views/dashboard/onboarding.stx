@@ -77,7 +77,7 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
 @include('../partials/app-head.stx')
 @include('../partials/app-nav.stx')
 
-<main class="app-shell" style="max-width: 860px;">
+<main class="app-shell max-w-[860px]">
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"
@@ -96,8 +96,8 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
       </div>
     </header>
 
-    <section aria-label="Setup progress" style="margin: 0 0 1.5rem;">
-      <div class="uptime-bars" style="height: 12px;">
+    <section class="mt-0 mx-0 mb-[1.5rem]" aria-label="Setup progress">
+      <div class="uptime-bars !h-[12px]">
         @foreach (stepsDisplay as step)
           <span class="{{ step.done ? '' : 'unknown' }}" title="Step {{ step.num }} {{ step.done ? 'complete' : 'pending' }}"></span>
         @endforeach
@@ -115,8 +115,8 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
             <data class="pill pill-unknown" value="pending"><span class="dot"></span>Pending</data>
           @endif
         </div>
-        <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-          <p style="margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 34rem;">{{ step.description }}</p>
+        <div class="card-body flex items-center justify-between gap-[1rem] flex-wrap">
+          <p class="m-0 text-[var(--muted)] text-[0.9rem] max-w-[34rem]">{{ step.description }}</p>
           <StxLink to="{{ step.href }}" class="button {{ step.done ? '' : 'primary' }}">{{ step.done ? 'Review' : 'Start' }}</StxLink>
         </div>
       </section>

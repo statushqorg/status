@@ -156,7 +156,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
         <div class="crumb"><StxLink to="/dashboard/status-pages">Status pages</StxLink></div>
         <h1>{{ statusPage.title }}</h1>
         <p class="meta">
-          Public route <a class="mono" style="color: var(--accent); font-weight: 600;" href="/status/{{ statusPage.slug }}" target="_blank">/status/{{ statusPage.slug }}</a>
+          Public route <a class="mono text-[var(--accent)] font-semibold" href="/status/{{ statusPage.slug }}" target="_blank">/status/{{ statusPage.slug }}</a>
           @if (statusPage.custom_domain)
             &middot; custom domain <span class="mono">{{ statusPage.custom_domain }}</span>
           @endif
@@ -183,7 +183,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
       </div>
       <div class="stat-card">
         <dt>Access mode</dt>
-        <dd style="font-size: 1.05rem; line-height: 1.4;">{{ accessLabel(statusPage.access_type) }}</dd>
+        <dd class="text-[1.05rem] leading-[1.4]">{{ accessLabel(statusPage.access_type) }}</dd>
       </div>
     </dl>
 
@@ -234,7 +234,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
           <span class="sub">Who can read this page</span>
         </div>
         <div class="card-body">
-          <div class="form-row" style="margin-bottom: 1rem;">
+          <div class="form-row mb-[1rem]">
             <div class="field">
               <label for="sp-access">Access</label>
               <select id="sp-access" name="access_type" class="select">
@@ -267,19 +267,19 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
 
       @if (assignedMonitors.length > 0)
         <div class="rows" role="table" aria-label="Monitors on this page">
-          <div class="trow thead" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
+          <div class="trow thead cols-attached-monitors" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>
             <span class="tcell" role="columnheader">Type</span>
             <span class="tcell num" role="columnheader">Action</span>
           </div>
           @foreach (assignedMonitors as monitor)
-            <div class="trow" role="row" style="grid-template-columns: 120px minmax(0, 1.4fr) 130px 100px;">
+            <div class="trow cols-attached-monitors" role="row">
               <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
               <span class="tcell ellipsis name" role="cell">{{ monitor.display_name || monitor.name }}</span>
               <span class="tcell sub" role="cell">{{ monitor.type.replace('_', ' ') }}</span>
               <span class="tcell num" role="cell">
-                <form method="POST" action="/api/status-page-forms/{{ statusPage.id }}/monitors/remove" style="display: inline-block;">
+                <form class="inline-block" method="POST" action="/api/status-page-forms/{{ statusPage.id }}/monitors/remove">
                   <input type="hidden" name="monitor_id" value="{{ monitor.monitor_id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
                 </form>
@@ -290,10 +290,10 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
       @endif
 
       @if (availableMonitors.length > 0)
-        <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface-2);">
-          <div class="field" style="margin-bottom: 0.5rem;"><span class="label">Attach a monitor</span></div>
-          <form method="POST" action="/api/status-page-forms/{{ statusPage.id }}/monitors/add" style="display: flex; align-items: stretch; gap: 0.6rem;">
-            <select id="sp-add-monitor" name="monitor_id" class="select" style="flex: 1 1 auto; width: auto;" aria-label="Monitor to attach">
+        <div class="py-[1rem] px-[1.25rem] border-t border-[var(--border)] bg-[var(--surface-2)]">
+          <div class="field !mb-[0.5rem]"><span class="label">Attach a monitor</span></div>
+          <form class="flex items-stretch gap-[0.6rem]" method="POST" action="/api/status-page-forms/{{ statusPage.id }}/monitors/add">
+            <select id="sp-add-monitor" name="monitor_id" class="select [flex:1_1_auto] !w-auto" aria-label="Monitor to attach">
               @foreach (availableMonitors as monitor)
                 <option value="{{ monitor.id }}">{{ monitor.name }} ({{ monitor.type.replace('_', ' ') }})</option>
               @endforeach
@@ -304,7 +304,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
       @endif
 
       @if (availableMonitors.length === 0 && assignedMonitors.length > 0)
-        <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem;">
+        <div class="py-[1rem] px-[1.25rem] border-t border-[var(--border)] text-[var(--muted)] text-[0.85rem]">
           All of this team's monitors are attached to this page.
         </div>
       @endif
@@ -317,7 +317,7 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
           <span class="sub">{{ componentGroups.length }} group{{ componentGroups.length === 1 ? '' : 's' }}</span>
         </div>
         <div class="card-body">
-          <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+          <div class="flex flex-wrap gap-[0.35rem]">
             @foreach (componentGroups as group)
               <span class="chip">{{ group.name }}</span>
             @endforeach
@@ -333,13 +333,13 @@ useHead({ title: (statusPage ? statusPage.title + ' \u00b7 StatusHQ' : 'Status p
           <span class="sub">Last {{ maintenanceWindows.length }}</span>
         </div>
         <div class="rows" role="table" aria-label="Maintenance windows">
-          <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
+          <div class="trow thead cols-maintenance-windows" role="row">
             <span class="tcell" role="columnheader">Window</span>
             <span class="tcell" role="columnheader">State</span>
             <span class="tcell num" role="columnheader">Schedule</span>
           </div>
           @foreach (maintenanceWindows as mw)
-            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) 130px minmax(0, 1fr);">
+            <div class="trow cols-maintenance-windows" role="row">
               <span class="tcell ellipsis name" role="cell">{{ mw.title }}</span>
               <span class="tcell" role="cell"><data class="{{ mwClass(mw.status) }}" value="{{ mw.status }}"><span class="dot"></span>{{ mwLabel(mw.status) }}</data></span>
               <span class="tcell num" role="cell"><time>{{ formatDate(mw.starts_at) }} -&gt; {{ formatDate(mw.ends_at) }}</time></span>

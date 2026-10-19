@@ -212,7 +212,7 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
     @if (incidents.length > 0)
       <section class="card scroll-x" aria-label="Incident list">
         <div class="rows" role="table" aria-label="Incident list">
-          <div class="trow thead" role="row" style="grid-template-columns: 150px minmax(0, 1.5fr) minmax(0, 1fr) 130px 110px;">
+          <div class="trow thead cols-incident-log" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
             <span class="tcell" role="columnheader">Monitor</span>
@@ -220,7 +220,7 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
             <span class="tcell num" role="columnheader">Duration</span>
           </div>
           @foreach (incidents as incident)
-            <StxLink class="trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}" style="grid-template-columns: 150px minmax(0, 1.5fr) minmax(0, 1fr) 130px 110px;">
+            <StxLink class="trow cols-incident-log" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
               <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
               <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
               <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>

@@ -240,7 +240,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
       </div>
     </section>
 
-    <section class="card" style="margin-top: 1.25rem;" aria-label="Covered monitors">
+    <section class="card !mt-[1.25rem]" aria-label="Covered monitors">
       <div class="card-head">
         <h3>Covered monitors</h3>
         <span class="sub">{{ attachedMonitors.length }} attached</span>
@@ -253,7 +253,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @if (attachedMonitors.length > 0)
           <div class="rows" role="table" aria-label="Covered monitors">
             @foreach (attachedMonitors as m)
-              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.6fr) 140px 120px;">
+              <div class="trow cols-window-monitors" role="row">
                 <span class="tcell ellipsis name" role="cell">{{ m.name }}</span>
                 <span class="tcell sub" role="cell">{{ m.type }}</span>
                 <span class="tcell num" role="cell">
@@ -268,7 +268,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (availableMonitors.length > 0)
-          <form method="POST" action="/api/maintenance-forms/{{ win.id }}/monitors/add" style="margin-top: 1rem;">
+          <form class="mt-[1rem]" method="POST" action="/api/maintenance-forms/{{ win.id }}/monitors/add">
             <div class="form-row">
               <div class="field">
                 <label for="mw-monitor">Add a monitor</label>
@@ -284,16 +284,16 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (availableMonitors.length === 0 && teamMonitors.length > 0)
-          <p class="help" style="margin-top: 1rem;">Every monitor on this team is already covered.</p>
+          <p class="help !mt-[1rem]">Every monitor on this team is already covered.</p>
         @endif
 
         @if (teamMonitors.length === 0)
-          <p class="help" style="margin-top: 1rem;">This team has no monitors yet. <StxLink to="/dashboard/monitors/new">Create one</StxLink> first.</p>
+          <p class="help !mt-[1rem]">This team has no monitors yet. <StxLink to="/dashboard/monitors/new">Create one</StxLink> first.</p>
         @endif
       </div>
     </section>
 
-    <section class="card" style="margin-top: 1.25rem;" aria-label="Upcoming occurrences">
+    <section class="card !mt-[1.25rem]" aria-label="Upcoming occurrences">
       <div class="card-head">
         <h3>Occurrences</h3>
         <span class="sub">Next {{ HORIZON_DAYS }} days</span>
@@ -305,29 +305,29 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
 
         @if (occurrences.length > 0)
           <div class="rows" role="table" aria-label="Upcoming occurrences">
-            <div class="trow thead" role="row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+            <div class="trow thead cols-occurrences" role="row">
               <span class="tcell" role="columnheader">Starts (UTC)</span>
               <span class="tcell" role="columnheader">Ends (UTC)</span>
             </div>
             @foreach (occurrences as occ)
-              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+              <div class="trow cols-occurrences" role="row">
                 <span class="tcell sub" role="cell">{{ fmt(occ.startMs) }}</span>
                 <span class="tcell sub" role="cell">{{ fmt(occ.endMs) }}</span>
               </div>
             @endforeach
           </div>
-          <p class="help" style="margin-top: 0.75rem;">Expanded with the same function the suppression path uses, so what you see here is exactly what will be suppressed.</p>
+          <p class="help !mt-[0.75rem]">Expanded with the same function the suppression path uses, so what you see here is exactly what will be suppressed.</p>
         @endif
       </div>
     </section>
 
-    <section class="card" style="margin-top: 1.25rem;" aria-label="Delete window">
+    <section class="card !mt-[1.25rem]" aria-label="Delete window">
       <div class="card-head">
         <h3>Delete</h3>
       </div>
       <div class="card-body">
         <p class="help">Prefer <b>Cancelled</b> above for anything already announced: it keeps the record and resumes alerting. Deleting removes the window and its monitor links for good.</p>
-        <form method="POST" action="/api/maintenance-forms/{{ win.id }}/delete" style="margin-top: 0.75rem;">
+        <form class="mt-[0.75rem]" method="POST" action="/api/maintenance-forms/{{ win.id }}/delete">
           <button type="submit" class="button">Delete window</button>
         </form>
       </div>

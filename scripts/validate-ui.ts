@@ -134,6 +134,81 @@ for (const file of filesIn(resources, /\.(?:stx|html|ts)$/)) {
   }
 }
 
+/*
+ * Rule 11.5: no style="" for anything a utility can express.
+ *
+ * A hand-written declaration on an element is invisible to Crosswind, which
+ * extracts from class= attributes only, so it cannot be deduped, purged or
+ * themed -- and it silently outranks every utility and shortcut on that
+ * element, because an inline style beats any layer.
+ *
+ * Three shapes are legitimate and exempt. Each was measured, not assumed:
+ *
+ *   style="width: {{ pct }}%"    a value computed per render and unbounded: a
+ *                                bar height, a progress width. The rule names
+ *                                this case. It stays a mustache rather than
+ *                                becoming the :style binding the rule suggests,
+ *                                because these are SERVER values and :style is
+ *                                evaluated in a browser where the server's data
+ *                                does not exist.
+ *
+ *   :style="progress()"          the client-bound form, for a value the browser
+ *                                computes.
+ *
+ *   style="display:none" beside  owned by the runtime, and NOT convertible.
+ *   :show= or :hidden=           setVisible() in dist/signals.js reads
+ *                                node.style.display -- the INLINE value, not
+ *                                the computed one -- remembers it, and unhides
+ *                                by writing it back, mapping a 'none' it finds
+ *                                there to ''. So class="hidden" plus :show
+ *                                would unhide to display:'' and fall straight
+ *                                back to the class: hidden forever. The inline
+ *                                none is what makes the element correct before
+ *                                hydration and restorable after it.
+ *
+ * Two directories are excluded, both because no stylesheet of ours reaches
+ * them:
+ *
+ *   resources/emails/            an HTML email has no stylesheet that can reach
+ *                                it and mail clients honour inline CSS only.
+ *
+ *   a component directory that   the chart components are distributed to
+ *   ships its own .css           applications that have never heard of
+ *                                Crosswind, so they carry charts.css and every
+ *                                class they use has to be in it (enforced by
+ *                                tests/feature/chart-components.test.ts). A
+ *                                utility class there is INERT, which is the
+ *                                silent-layout-bug case that test exists for --
+ *                                it caught four legend swatches converted to
+ *                                bg-[color-mix(...)] during this very sweep.
+ *                                The colour of a swatch is the one thing that
+ *                                must survive with no stylesheet at all, so
+ *                                inline is the portable spelling there, and
+ *                                moving it would mean regenerating six
+ *                                distributed artifacts to say the same thing.
+ *                                Detected by a sibling .css rather than by
+ *                                path, so the next such component is covered
+ *                                without being named.
+ */
+const shipsOwnStylesheet = (file: string): boolean =>
+  files.some(other => other.endsWith('.css') && other.slice(0, other.lastIndexOf('/')) === file.slice(0, file.lastIndexOf('/')))
+
+for (const file of markupFiles) {
+  if (file.includes('/emails/') || shipsOwnStylesheet(file))
+    continue
+  const source = withoutComments(readFileSync(file, 'utf8'))
+  for (const match of source.matchAll(/(?:^|[^:\w-])style="([^"]*)"/g)) {
+    const value = match[1]
+    if (value.includes('{{'))
+      continue
+    const tag = source.slice(source.lastIndexOf('<', match.index), source.indexOf('>', match.index) + 1)
+    if (/^\s*display:\s*none;?\s*$/.test(value) && /:(?:show|hidden)=/.test(tag))
+      continue
+    const shown = value.length > 48 ? `${value.slice(0, 48)}...` : value
+    report(file, source, match.index, `inline style="${shown}" belongs in a class (stx-standards 11.5)`)
+  }
+}
+
 if (!/(?:focus-visible|:focus|focus:|focus-within)/.test(combined))
   issues.add('resources: no visible keyboard focus treatment found')
 /*

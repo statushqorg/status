@@ -174,7 +174,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
       </div>
     </section>
 
-    <section class="card" aria-label="Minimal IAM permissions" style="margin-top: 1.25rem;">
+    <section class="card !mt-[1.25rem]" aria-label="Minimal IAM permissions">
       <div class="card-head">
         <h3>Minimal IAM permissions</h3>
         <span class="sub">least privilege</span>

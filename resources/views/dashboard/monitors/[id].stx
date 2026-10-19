@@ -720,7 +720,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
              were read between the links. They stay flex items of `.crumb`, so
              the 0.4rem gaps are unchanged. --}}
         <nav class="crumb" aria-label="Related pages"><StxLink to="/dashboard/sites/{{ monitorSiteSlug }}"><span aria-hidden="true">&larr;</span> {{ monitorSiteHost }}</StxLink> <span aria-hidden="true">&middot;</span> <StxLink to="/dashboard/monitors">All monitors</StxLink>@if (serverCard) <span aria-hidden="true">&middot;</span> <StxLink to="/dashboard/servers/{{ serverCard.id }}">{{ serverCard.name }}</StxLink>@endif</nav>
-        <h1 style="overflow-wrap: anywhere;">{{ monitor.name }}</h1>
+        <h1 class="[overflow-wrap:anywhere]">{{ monitor.name }}</h1>
         <p class="meta"><span class="mono">{{ monitor.url }}</span> &middot; {{ monitor.type.replace('_', ' ') }} &middot; {{ intervalLabel(monitor.check_interval_seconds) }} &middot; {{ monitor.enabled ? 'enabled' : 'disabled' }}</p>
       </div>
       <div class="actions">
@@ -762,7 +762,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </div>
       <div class="stat-card">
         <dt>Last check</dt>
-        <dd style="font-size: 1.05rem;"><time>{{ agoLabel(monitor.last_checked_at) }}</time></dd>
+        <dd class="text-[1.05rem]"><time>{{ agoLabel(monitor.last_checked_at) }}</time></dd>
       </div>
     </dl>
 
@@ -789,7 +789,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         </div>
         <div class="mon-legend">
           <span>90d ago</span>
-          <span style="margin-left: auto;">Today</span>
+          <span class="ml-auto">Today</span>
         </div>
       </div>
     </section>
@@ -939,15 +939,15 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
           <span class="sub">Last {{ dnsSnapshots.length }}</span>
         </div>
         <div class="rows" role="table" aria-label="DNS snapshots">
-          <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
+          <div class="trow thead cols-dns-records" role="row">
             <span class="tcell" role="columnheader">Record</span>
             <span class="tcell" role="columnheader">Values</span>
             <span class="tcell num" role="columnheader">Checked</span>
           </div>
           @foreach (dnsSnapshots as snap)
-            <div class="trow" role="row" style="grid-template-columns: 110px minmax(0, 1fr) 140px;">
+            <div class="trow cols-dns-records" role="row">
               <span class="tcell name mono" role="cell">{{ snap.record_type }}</span>
-              <span class="tcell sub" role="cell" style="white-space: normal; overflow-wrap: anywhere;">{{ snap.record_values }}</span>
+              <span class="tcell sub !whitespace-normal [overflow-wrap:anywhere]" role="cell">{{ snap.record_values }}</span>
               <span class="tcell num" role="cell"><time>{{ formatDate(snap.checked_at) }}</time></span>
             </div>
           @endforeach
@@ -963,17 +963,17 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         </div>
         <div class="card-body">
           @if (crawlBrokenPages.length === 0 && crawlMixedContentPages.length === 0)
-            <p style="margin: 0; color: var(--muted); font-size: 0.88rem;">No broken links or mixed content in the latest crawl.</p>
+            <p class="m-0 text-[var(--muted)] text-[0.88rem]">No broken links or mixed content in the latest crawl.</p>
           @endif
 
           @if (crawlBrokenPages.length > 0)
             <p class="subhead">Broken links, by source page</p>
-            <div class="rows" role="table" aria-label="Broken links, by source page" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
+            <div class="rows !border !border-[var(--border)] rounded-[var(--radius-sm)] overflow-hidden mb-[1.25rem]" role="table" aria-label="Broken links, by source page">
               @foreach (crawlBrokenPages as page)
-                <div class="trow" role="row" style="grid-template-columns: 60px minmax(0, 1.4fr) minmax(0, 1fr);">
-                  <span class="tcell mono" role="cell" style="color: var(--danger); font-weight: 600; font-size: 0.82rem;">{{ page.status_code }}</span>
-                  <span class="tcell" role="cell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
-                  <span class="tcell sub" role="cell" style="white-space: normal; overflow-wrap: anywhere;">found on {{ page.found_on_url }}</span>
+                <div class="trow cols-broken-links" role="row">
+                  <span class="tcell mono !text-[var(--danger)] !font-semibold !text-[0.82rem]" role="cell">{{ page.status_code }}</span>
+                  <span class="tcell !text-[0.85rem] [overflow-wrap:anywhere]" role="cell">{{ page.url }}</span>
+                  <span class="tcell sub !whitespace-normal [overflow-wrap:anywhere]" role="cell">found on {{ page.found_on_url }}</span>
                 </div>
               @endforeach
             </div>
@@ -981,11 +981,11 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
 
           @if (crawlMixedContentPages.length > 0)
             <p class="subhead">Mixed content</p>
-            <div class="rows" role="table" aria-label="Mixed content" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+            <div class="rows !border !border-[var(--border)] rounded-[var(--radius-sm)] overflow-hidden" role="table" aria-label="Mixed content">
               @foreach (crawlMixedContentPages as page)
-                <div class="trow" role="row" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);">
-                  <span class="tcell" role="cell" style="font-size: 0.85rem; overflow-wrap: anywhere;">{{ page.url }}</span>
-                  <span class="tcell sub" role="cell" style="white-space: normal; overflow-wrap: anywhere;">on {{ page.found_on_url }}</span>
+                <div class="trow cols-link-pages" role="row">
+                  <span class="tcell !text-[0.85rem] [overflow-wrap:anywhere]" role="cell">{{ page.url }}</span>
+                  <span class="tcell sub !whitespace-normal [overflow-wrap:anywhere]" role="cell">on {{ page.found_on_url }}</span>
                 </div>
               @endforeach
             </div>
@@ -1002,7 +1002,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         </div>
         <div class="card-body">
           @if (lighthouseRegression)
-            <div class="flash error" role="alert" style="margin-bottom: 1.25rem;">Performance regression: the score dropped more than 10 points since the previous run.</div>
+            <div class="flash error !mb-[1.25rem]" role="alert">Performance regression: the score dropped more than 10 points since the previous run.</div>
           @endif
           <dl class="kv">
             <div><dt>Performance</dt><dd class="big">{{ latestLighthouse.performance_score }}</dd></div>
@@ -1036,7 +1036,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
           <span class="sub" style="{{ blocklist.anyListed ? 'color: var(--amber);' : '' }}">{{ blocklist.anyListed ? 'Listed' : 'Clean' }} &middot; checked {{ formatDate(blocklist.checkedAt) }}</span>
         </div>
         <div class="card-body">
-          <dl class="kv" style="margin-bottom: 1rem;">
+          <dl class="kv !mb-[1rem]">
             <div>
               <dt>Checked IP</dt>
               <dd class="mono">{{ blocklist.ip || 'unresolved' }}</dd>
@@ -1049,13 +1049,13 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
             @endif
           </dl>
           @if (blocklist.sharedEdge && blocklist.anyListed)
-            <p style="margin: 0 0 1rem; padding: 0.7rem 0.9rem; border-radius: var(--radius-sm); background: var(--amber-soft); color: var(--amber); font-size: 0.85rem; line-height: 1.5;">
+            <p class="mt-0 mx-0 mb-[1rem] py-[0.7rem] px-[0.9rem] rounded-[var(--radius-sm)] bg-[var(--amber-soft)] text-[var(--amber)] text-[0.85rem] leading-[1.5]">
               This is a shared {{ blocklist.sharedEdge }} edge IP, not your own server. A listing here reflects other sites behind the same CDN and rarely affects your mail. To monitor your real sending reputation, point a blocklist monitor at your mail server's IP instead.
             </p>
           @endif
-          <div class="rows" role="table" aria-label="Blocklist status" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+          <div class="rows !border !border-[var(--border)] rounded-[var(--radius-sm)] overflow-hidden" role="table" aria-label="Blocklist status">
             @foreach (blocklist.zones as z)
-              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) 110px; border-bottom: 1px solid var(--border);">
+              <div class="trow cols-blocklist !border-b !border-[var(--border)]" role="row">
                 <span class="tcell name" role="cell">{{ z.label }} <span class="sub mono">{{ z.zone }}</span></span>
                 <span class="tcell" role="cell">
                   @if (z.listed)
@@ -1069,8 +1069,8 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
             @endforeach
           </div>
           @if (blocklist.ip)
-            <p style="margin: 1rem 0 0; font-size: 0.85rem;">
-              <a href="https://check.spamhaus.org/results?query={{ blocklist.ip }}" target="_blank" rel="noopener" style="color: var(--accent); font-weight: 600;">Check {{ blocklist.ip }} on Spamhaus &rarr;</a>
+            <p class="mt-[1rem] mx-0 mb-0 text-[0.85rem]">
+              <a class="text-[var(--accent)] font-semibold" href="https://check.spamhaus.org/results?query={{ blocklist.ip }}" target="_blank" rel="noopener">Check {{ blocklist.ip }} on Spamhaus &rarr;</a>
             </p>
           @endif
         </div>
@@ -1084,21 +1084,21 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </div>
       @if (incidents.length === 0)
         <div class="card-body">
-          <p style="margin: 0; color: var(--muted); font-size: 0.88rem;">No incidents recorded for this monitor.</p>
+          <p class="m-0 text-[var(--muted)] text-[0.88rem]">No incidents recorded for this monitor.</p>
         </div>
       @endif
       @if (incidents.length > 0)
         <div class="rows" role="table" aria-label="Incident history">
-          <div class="trow thead" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
+          <div class="trow thead cols-monitor-incidents" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
             <span class="tcell num" role="columnheader">Started</span>
             <span class="tcell num" role="columnheader">Resolved</span>
           </div>
           @foreach (incidents as incident)
-            <div class="trow" role="row" style="grid-template-columns: 130px minmax(0, 1.6fr) 140px 140px;">
+            <div class="trow cols-monitor-incidents" role="row">
               <span class="tcell" role="cell"><data class="{{ incidentPillClass(incident, monitor ? monitor.type : '') }}" value="{{ incident.status }}"><span class="dot"></span>{{ incident.status.replace('_', ' ') }}</data></span>
-              <span class="tcell ellipsis" role="cell" style="font-size: 0.88rem;">{{ incident.cause }}</span>
+              <span class="tcell ellipsis !text-[0.88rem]" role="cell">{{ incident.cause }}</span>
               <span class="tcell num" role="cell"><time>{{ formatDate(incident.started_at) }}</time></span>
               <span class="tcell num" role="cell"><time>{{ incident.resolved_at ? formatDate(incident.resolved_at) : '--' }}</time></span>
             </div>
@@ -1192,7 +1192,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
            by 1.25rem inset the channel name twice as far as the note beneath
            it — two different left edges in one card. --}}
       @if (routingSaved)
-        <div class="card-body" style="padding-bottom: 0;">
+        <div class="card-body !pb-0">
           <div class="flash" role="status">Alert routing saved.</div>
         </div>
       @endif
@@ -1217,10 +1217,10 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       @if (routedChannelCount > 0)
         <div class="rows" role="table" aria-label="Routed alert channels">
           @foreach (routedChannels as channel)
-            <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) auto;">
+            <div class="trow cols-label-value" role="row">
               <span class="tcell ellipsis" role="cell">
                 <span class="name">{{ channel.name }}</span>
-                <span class="sub" style="margin-left: 0.5rem;"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
+                <span class="sub !ml-[0.5rem]"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
               </span>
               <span class="tcell" role="cell"><data class="pill pill-up" value="{{ channel.firesOn }}"><span class="dot"></span>{{ firesOnLabel(channel.firesOn) }}</data></span>
             </div>
@@ -1258,23 +1258,23 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
           </header>
 
           <div class="dlg-body">
-            <div class="rows" role="table" aria-label="Alert channels" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
-              <div class="trow thead" role="row" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
+            <div class="rows !border !border-[var(--border)] rounded-[var(--radius-sm)] overflow-hidden" role="table" aria-label="Alert channels">
+              <div class="trow thead cols-alert-rules" role="row">
                 <span class="tcell" role="columnheader">Alert</span>
                 <span class="tcell" role="columnheader">Channel</span>
                 <span class="tcell" role="columnheader">Fires on</span>
               </div>
               @foreach (routableChannels as channel)
-                <div class="trow" role="row" style="grid-template-columns: 44px minmax(0, 1fr) 160px;">
+                <div class="trow cols-alert-rules" role="row">
                   <span class="tcell" role="cell">
                     <input type="checkbox" id="chan-{{ channel.id }}" name="chan_{{ channel.id }}" value="1" {{ channel.routed ? 'checked' : '' }} />
                   </span>
-                  <label class="tcell ellipsis" role="cell" for="chan-{{ channel.id }}" style="cursor: pointer;">
-                    <span class="name" style="font-size: 0.9rem; font-weight: 600;">{{ channel.name }}</span>
-                    <span class="sub" style="margin-left: 0.5rem;"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
+                  <label class="tcell ellipsis cursor-pointer" role="cell" for="chan-{{ channel.id }}">
+                    <span class="name !text-[0.9rem] !font-semibold">{{ channel.name }}</span>
+                    <span class="sub !ml-[0.5rem]"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
                   </label>
                   <span class="tcell" role="cell">
-                    <select name="fires_{{ channel.id }}" class="select sm" style="width: auto;" aria-label="Fires on for {{ channel.name }}">
+                    <select name="fires_{{ channel.id }}" class="select sm !w-auto" aria-label="Fires on for {{ channel.name }}">
                       <option value="both" {{ channel.firesOn === 'both' ? 'selected' : '' }}>Down + issues</option>
                       <option value="down" {{ channel.firesOn === 'down' ? 'selected' : '' }}>Down only</option>
                       <option value="issue" {{ channel.firesOn === 'issue' ? 'selected' : '' }}>Issues only</option>
@@ -1283,7 +1283,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
                 </div>
               @endforeach
             </div>
-            <p class="help" style="margin: 0.85rem 0 0;">Down covers hard outages; issues covers softer events like SSL and domain expiry, DNS drift and blocklistings. Need a channel that isn't listed? <StxLink to="/dashboard/settings/notifications" style="color: var(--accent); font-weight: 600;">Manage channels</StxLink></p>
+            <p class="help !mt-[0.85rem] !mx-0 !mb-0">Down covers hard outages; issues covers softer events like SSL and domain expiry, DNS drift and blocklistings. Need a channel that isn't listed? <StxLink class="text-[var(--accent)] font-semibold" to="/dashboard/settings/notifications">Manage channels</StxLink></p>
           </div>
 
           <footer class="dlg-foot">
@@ -1301,10 +1301,10 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </div>
       <div class="card-body">
         @if (monitorAssertions.length > 0)
-          <div class="rows" role="table" aria-label="Response assertions" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1.25rem;">
+          <div class="rows !border !border-[var(--border)] rounded-[var(--radius-sm)] overflow-hidden mb-[1.25rem]" role="table" aria-label="Response assertions">
             @foreach (monitorAssertions as assertion)
-              <div class="trow" role="row" style="grid-template-columns: minmax(0, 1fr) auto;">
-                <span class="tcell" role="cell"><span class="mono" style="font-size: 0.85rem;">{{ assertionLabel(assertion) }}</span></span>
+              <div class="trow cols-label-value" role="row">
+                <span class="tcell" role="cell"><span class="mono !text-[0.85rem]">{{ assertionLabel(assertion) }}</span></span>
                 <form method="POST" action="/api/assertion-forms/monitors/{{ monitor.id }}/remove">
                   <input type="hidden" name="assertion_id" value="{{ assertion.id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
@@ -1315,15 +1315,15 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         @endif
 
         <form method="POST" action="/api/assertion-forms/monitors/{{ monitor.id }}/add">
-          <div style="display: flex; gap: 0.6rem; align-items: stretch; flex-wrap: wrap;">
-            <select name="target" class="select" style="width: auto;" aria-label="Assertion target">
+          <div class="flex gap-[0.6rem] items-stretch flex-wrap">
+            <select name="target" class="select !w-auto" aria-label="Assertion target">
               <option value="body">Body (JSON path)</option>
               <option value="status_code">Status code</option>
               <option value="response_time">Response time (ms)</option>
               <option value="header">Header</option>
             </select>
-            <input name="property" class="input" style="flex: 1 1 12rem; width: auto;" placeholder="checks.database.status (path or header name)" aria-label="Assertion path or header name" />
-            <select name="compare" class="select" style="width: auto;" aria-label="Comparison">
+            <input name="property" class="input [flex:1_1_12rem] !w-auto" placeholder="checks.database.status (path or header name)" aria-label="Assertion path or header name" />
+            <select name="compare" class="select !w-auto" aria-label="Comparison">
               <option value="eq">equals</option>
               <option value="not_eq">not equals</option>
               <option value="lt">less than</option>
@@ -1335,10 +1335,10 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               <option value="not_empty">is present</option>
               <option value="empty">is empty</option>
             </select>
-            <input name="expected" class="input" style="flex: 0 1 8rem; width: auto;" placeholder="value" aria-label="Expected assertion value" />
+            <input name="expected" class="input [flex:0_1_8rem] !w-auto" placeholder="value" aria-label="Expected assertion value" />
             <button type="submit" class="button primary">Add</button>
           </div>
-          <p class="help" style="margin-top: 0.5rem;">Every assertion must pass for the check to be healthy. For a JSON health endpoint, target Body and enter a dot-path like <span class="mono">checks.database.latency_ms</span>. Leave the path blank to match the whole body.</p>
+          <p class="help !mt-[0.5rem]">Every assertion must pass for the check to be healthy. For a JSON health endpoint, target Body and enter a dot-path like <span class="mono">checks.database.latency_ms</span>. Leave the path blank to match the whole body.</p>
         </form>
       </div>
     </section>
@@ -1350,12 +1350,12 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </div>
       @if (recentChecks.length === 0)
         <div class="card-body">
-          <p style="margin: 0; color: var(--muted); font-size: 0.88rem;">No checks recorded yet. First probe lands within {{ intervalLabel(monitor.check_interval_seconds).replace('every ', '') }} of enabling.</p>
+          <p class="m-0 text-[var(--muted)] text-[0.88rem]">No checks recorded yet. First probe lands within {{ intervalLabel(monitor.check_interval_seconds).replace('every ', '') }} of enabling.</p>
         </div>
       @endif
       @if (recentChecks.length > 0)
         <div class="rows" role="table" aria-label="Recent check results">
-          <div class="trow thead" role="row" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
+          <div class="trow thead cols-check-log" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Message</span>
             <span class="tcell num" role="columnheader">Code</span>
@@ -1364,7 +1364,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
             <span class="tcell num" role="columnheader">Checked</span>
           </div>
           @foreach (recentChecks as check)
-            <div class="trow" role="row" style="grid-template-columns: 110px minmax(0, 1.6fr) 60px 100px 80px 130px;">
+            <div class="trow cols-check-log" role="row">
               <span class="tcell" role="cell"><data class="{{ stClass(check.status) }}" value="{{ check.status }}"><span class="dot"></span>{{ stLabel(check.status) }}</data></span>
               <span class="tcell sub ellipsis" role="cell">{{ check.message }}</span>
               <span class="tcell num" role="cell"><samp>{{ check.status_code !== null && check.status_code !== undefined ? check.status_code : '--' }}</samp></span>
@@ -1380,10 +1380,10 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
     {{-- Edit + delete. Collapsed by default (native <details>, no client JS
          by the app's convention) so the settings never crowd the telemetry
          an operator opened this page for. --}}
-    <section class="card" aria-label="Monitor settings" style="margin-top: 1.25rem;">
+    <section class="card !mt-[1.25rem]" aria-label="Monitor settings">
       <details>
-        <summary class="card-head" style="cursor: pointer;">
-          <h2 style="display: inline;">Settings</h2>
+        <summary class="card-head cursor-pointer">
+          <h2 class="inline">Settings</h2>
           <span class="sub">Edit or delete this monitor</span>
         </summary>
         <div class="card-body">
@@ -1625,7 +1625,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
             syncSoon()
           </script>
 
-          <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--border);" />
+          <hr class="my-[1.5rem] mx-0 border-0 border-t border-[var(--border)]" />
 
           <form method="POST" action="/api/monitor-forms/{{ monitor.id }}/delete" data-confirm="Its check history, incidents and alert routing are deleted with it. This cannot be undone." data-confirm-title="Delete this monitor?" data-confirm-action="Delete monitor">
             <p class="help">Deleting removes this monitor's check history, incidents, certificates and alert routing. There is no undo.</p>

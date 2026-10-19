@@ -378,15 +378,15 @@ useHead({
          never red: the monitors listed inside keep their own pills, and those
          may be red, because a site being down is a different claim. --}}
     @foreach (bands as band)
-      <div class="server-band" style="border: 1px solid var(--amber); background: var(--amber-soft); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem;">
+      <div class="server-band border border-[var(--amber)] bg-[var(--amber-soft)] rounded-[12px] py-[1rem] px-[1.25rem] mb-[1rem]">
         <strong>{{ band.title }}</strong>
         <span>{{ band.cause }}</span>
         <span class="sub">since {{ band.since }}</span>
         @if (attachedMonitors.length)
-          <div class="blast" style="margin-top: 0.75rem;">
+          <div class="blast mt-[0.75rem]">
             <p class="sub">{{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }} on this server</p>
             @foreach (attachedMonitors as m)
-              <StxLink to="/dashboard/monitors/{{ m.id }}" style="display: inline-flex; gap: 0.4rem; align-items: center; margin-right: 0.9rem;">
+              <StxLink class="inline-flex gap-[0.4rem] items-center mr-[0.9rem]" to="/dashboard/monitors/{{ m.id }}">
                 <span class="{{ m.pill }}"><span class="dot"></span>{{ m.statusLabel }}</span> {{ m.name }}
               </StxLink>
             @endforeach
@@ -427,7 +427,7 @@ useHead({
           <span class="sub">now {{ hostChart.nowLabel }}</span>
         </div>
         <div class="card-body">
-          <div class="chips" style="margin-bottom: 0.75rem;">
+          <div class="chips mb-[0.75rem]">
             <StxLink to="{{ rangeUrl('24h') }}" class="chip {{ range === '24h' ? 'active' : '' }}">24h</StxLink>
             <StxLink to="{{ rangeUrl('7d') }}" class="chip {{ range === '7d' ? 'active' : '' }}">7d</StxLink>
             <StxLink to="{{ rangeUrl('30d') }}" class="chip {{ range === '30d' ? 'active' : '' }}">30d</StxLink>
@@ -447,17 +447,17 @@ useHead({
             @endforeach
           </svg>
           <div class="mon-legend">
-            <span style="color: var(--accent);">&#9632; CPU</span>
-            <span style="color: var(--muted);">&#9632; Memory</span>
+            <span class="text-[var(--accent)]">&#9632; CPU</span>
+            <span class="text-[var(--muted)]">&#9632; Memory</span>
             @if (hostChart.hasDisk)
-              <span style="color: var(--amber);">&#9632; Disk</span>
+              <span class="text-[var(--amber)]">&#9632; Disk</span>
             @endif
             @if (hostChart.host)
               <span class="sub">showing {{ hostChart.host }}</span>
             @endif
           </div>
           @if (hostNames.length > 1)
-            <div class="chips" style="margin-top: 0.75rem;">
+            <div class="chips mt-[0.75rem]">
               @foreach (hostNames as h)
                 <StxLink to="{{ hostUrl(h) }}" class="chip {{ chartHost === h ? 'active' : '' }}">{{ h }}</StxLink>
               @endforeach
@@ -568,7 +568,7 @@ useHead({
         </div>
         <div class="card-body">
           @foreach (__incidents as incident)
-            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+            <div class="py-[0.75rem] px-0 border-b border-[var(--border)]">
               <span class="{{ incident.pill }}"><span class="dot"></span>{{ incident.state }}</span>
               <strong>{{ incident.title }}</strong>
               <span class="sub">{{ incident.started }}</span>
@@ -576,7 +576,7 @@ useHead({
                 <p class="card-copy">{{ incident.cause }}</p>
               @endif
               @foreach (incident.updates as update)
-                <p class="sub" style="margin-left: 1rem;">{{ update.at }} &middot; {{ update.message }}</p>
+                <p class="sub !ml-[1rem]">{{ update.at }} &middot; {{ update.message }}</p>
               @endforeach
             </div>
           @endforeach
