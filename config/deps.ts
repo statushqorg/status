@@ -61,9 +61,23 @@ export const config: PantryConfig = {
    * These are binary tools and system packages required for development
    */
   dependencies: {
-    craft: "^0.0.1",
     ...(withSystemDeps
       ? {
+          // Craft is the native desktop shell. It moved in here on 2026-10-19
+          // because craft-native.org is not in the registry AT ALL -- not a
+          // dropped version: craft-native.org/versions.txt and both platform
+          // paths all 404 -- so every build failed on
+          // `craft-native.org@^0.0.1 (RegistryArtifactNotFound)`. CI had been
+          // green on 2026-10-16 with this same line, and nothing about it
+          // changed; what changed is that the workflow downloads pantry from
+          // releases/latest on every run, so a new pantry resolved the name
+          // differently underneath us.
+          //
+          // Nothing here needs the binary: no script, workflow or cloud/ file
+          // invokes it, and functions/craft.ts is plain TypeScript that probes
+          // window bridges at runtime. Same reasoning, and the same gate, as
+          // the binaries below.
+          craft: "^0.0.1",
           "bun.com": "^1.3.0",
           // SQLite for self-hosted; Postgres for the hosted/multi-region deploy.
           ...(usePostgres ? { "postgresql.org": "18.4" } : { "sqlite.org": "^3.47.2" }),
