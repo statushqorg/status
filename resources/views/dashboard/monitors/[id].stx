@@ -1133,18 +1133,18 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         @endif
       </div>
       <footer class="card-foot">
-        <button type="button" class="button" id="server-open">{{ serverCard ? 'Change server' : 'Attach a server' }}</button>
+        <button type="button" class="button" @click="openBox">{{ serverCard ? 'Change server' : 'Attach a server' }}</button>
       </footer>
     </section>
 
-    <dialog id="server-dialog" class="dlg" aria-labelledby="server-dialog-title">
+    <dialog ref="boxPanel" class="dlg" aria-labelledby="server-dialog-title" @click="backdropBox">
       <form method="POST" action="/api/server-forms/monitors/{{ monitor.id }}/server">
         <header class="dlg-head">
           <div>
             <h3 id="server-dialog-title">Which server?</h3>
             <p class="sub">Attaching is a label, not a check. It changes nothing about how this monitor runs.</p>
           </div>
-          <button type="button" class="dlg-x" id="server-close" aria-label="Close">
+          <button type="button" class="dlg-x" @click="closeBox" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
           </button>
         </header>
@@ -1170,7 +1170,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
         </div>
 
         <footer class="dlg-foot">
-          <button type="button" class="button" id="server-cancel">Cancel</button>
+          <button type="button" class="button" @click="closeBox">Cancel</button>
           <button type="submit" class="button primary">Save</button>
         </footer>
       </form>
@@ -1234,7 +1234,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       @if (routableChannels.length > 0)
         <div class="card-body alert-foot">
           <p class="help">Down covers hard outages; issues covers softer events like SSL and domain expiry, DNS drift and blocklistings.</p>
-          <button type="button" class="button primary" id="alerts-open">Manage alerts</button>
+          <button type="button" class="button primary" @click="openAlerts">Manage alerts</button>
         </div>
       @endif
     </section>
@@ -1245,14 +1245,14 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
          nothing at all, so DashboardSaveRoutingAction reconciles against
          the team's channel list rather than against what arrived. --}}
     @if (routableChannels.length > 0)
-      <dialog id="alerts-dialog" class="dlg" aria-labelledby="alerts-dialog-title">
+      <dialog ref="alertsPanel" class="dlg" aria-labelledby="alerts-dialog-title" @click="backdropAlerts">
         <form method="POST" action="/api/notification-channel-forms/monitors/{{ monitor.id }}/routing">
           <header class="dlg-head">
             <div>
               <h3 id="alerts-dialog-title">Manage alerts</h3>
               <p class="sub">Choose which of your channels this check alerts, and when.</p>
             </div>
-            <button type="button" class="dlg-x" id="alerts-close" aria-label="Close">
+            <button type="button" class="dlg-x" @click="closeAlerts" aria-label="Close">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
             </button>
           </header>
@@ -1287,7 +1287,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
           </div>
 
           <footer class="dlg-foot">
-            <button type="button" class="button" id="alerts-cancel">Cancel</button>
+            <button type="button" class="button" @click="closeAlerts">Cancel</button>
             <button type="submit" class="button primary">Save routing</button>
           </footer>
         </form>
@@ -1390,7 +1390,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
           {{-- The id exists so the script at the foot can find this form
                without naming it in a selector. See that script for why the
                spelling of its own text matters. --}}
-          <form id="settings-form" method="POST" action="/api/monitor-forms/{{ monitor.id }}/update">
+          <form ref="settingsPanel" method="POST" action="/api/monitor-forms/{{ monitor.id }}/update">
             <div class="form-row">
               <div class="field">
                 <label for="edit-name">Name</label>
@@ -1398,7 +1398,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               </div>
               <div class="field">
                 <label for="edit-type">Type</label>
-                <select id="edit-type" name="type" class="select" aria-invalid="{{ invalidFields.includes('edit-type') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-type')) aria-describedby="edit-form-error"@endif>
+                <select id="edit-type" name="type" class="select" @change="sync" aria-invalid="{{ invalidFields.includes('edit-type') ? 'true' : 'false' }}"@if (invalidFields.includes('edit-type')) aria-describedby="edit-form-error"@endif>
                   @foreach (monitorTypes as t)
                     <option value="{{ t.value }}" {{ monitor.type === t.value ? 'selected' : '' }}>{{ t.label }}</option>
                   @endforeach
@@ -1551,73 +1551,78 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
             </div>
           </form>
 
-          <script>
-            ;(function () {
-              // Progressive enhancement, same contract as monitors/new.stx:
-              // the form is complete and submittable before this runs, and
-              // all it does is hide fields that do not apply to the selected
-              // type. parseMonitorForm() already ignores keys outside the
-              // submitted type's branch, so hiding them changes nothing about
-              // what is saved.
-              //
-              // It matters more here than on the create form. This page had
-              // no gating at all, so "TCP port", "Health path", "Health
-              // endpoint secret" and "Report freshness" rendered for all
-              // fourteen types. A field visible on a type whose branch never
-              // reads it accepts input, saves without complaint, and comes
-              // back empty — indistinguishable from having typed it wrong.
-              //
-              // Scoped to this form on purpose: the page carries unrelated
-              // forms (assertions, notification channels) that use the same
-              // .form-row and .field classes, and a document-wide lookup
-              // would reach into them.
-              //
-              // WATCH THE WORDING IN HERE, comments included. stx's
-              // server->client data bridge serializes any server binding
-              // whose name word-matches anywhere in a plain script's TEXT,
-              // prose as much as code. This page's server scope holds the
-              // whole row for the thing being edited, metrics_token and all.
-              // The first draft found the form through its action attribute
-              // and described the scoping in plain English, and those two
-              // incidental word matches alone were enough to publish that
-              // row into the page HTML.
-              // tests/unit/bridge-hygiene.test.ts caught it. The element is
-              // found by id now for exactly that reason, and the sentences
-              // here are written around the binding names on purpose.
-              var form = document.getElementById('settings-form')
-              if (!form) return
-              var typeSelect = form.querySelector('select[name="type"]')
-              if (!typeSelect) return
+          <script client>
+            // Progressive enhancement, same contract as monitors/new.stx: the
+            // form is complete and submittable before this runs, and all it
+            // does is hide fields that do not apply to the selected type.
+            // parseMonitorForm() already ignores keys outside the submitted
+            // type's branch, so hiding them changes nothing about what is saved.
+            //
+            // It matters more here than on the create form. This page had no
+            // gating at all, so "TCP port", "Health path", "Health endpoint
+            // secret" and "Report freshness" rendered for all fourteen types. A
+            // field visible on a type whose branch never reads it accepts
+            // input, saves without complaint, and comes back empty --
+            // indistinguishable from having typed it wrong.
+            //
+            // Scoped to this form on purpose: the page carries unrelated forms
+            // (assertions, notification channels) that use the same .form-row
+            // and .field classes, and a document-wide lookup would reach into
+            // them. The ref gives that scoping for free.
+            //
+            // WATCH THE WORDING IN HERE, comments included. The server-to-client
+            // data bridge serialises any binding whose name word-matches this
+            // block's TEXT, prose as much as code, and a client block is
+            // exactly what it scans. This page's server scope holds the whole
+            // row for the thing being edited, metrics_token and all. An earlier
+            // draft of this block found the form through its action attribute
+            // and described the scoping in plain English, and those two
+            // incidental word matches alone were enough to publish that row
+            // into the page HTML. tests/unit/bridge-hygiene.test.ts caught it
+            // then and gates it now; the sentences here are written around the
+            // binding names on purpose, and the ref name is deliberately not
+            // one of them.
+            const settingsPanel = useRef('settingsPanel')
 
-              function applies(el, type) {
-                var want = el.getAttribute('data-types')
-                // No data-types means "every type" — the agent metric
-                // thresholds, which are gated on reports_metrics, not type.
-                return !want || want.split(' ').indexOf(type) !== -1
-              }
+            function applies(el: Element, type: string): boolean {
+              const want = el.getAttribute('data-types')
+              // No data-types means "every type" -- the agent metric
+              // thresholds, which are gated on reports_metrics, not type.
+              return !want || want.split(' ').includes(type)
+            }
 
-              function sync() {
-                var type = typeSelect.value
+            function sync(): void {
+              const root = settingsPanel.current
+              if (!root)
+                return
 
-                var fields = form.querySelectorAll('[data-types]')
-                for (var i = 0; i < fields.length; i++) fields[i].hidden = !applies(fields[i], type)
+              const picker = root.querySelector('select[name="type"]') as HTMLSelectElement | null
+              if (!picker)
+                return
 
-                // A .form-row is a flex container; with every child hidden it
-                // still occupies its own gap, so collapse the row too. Rows
-                // carrying their own data-types were already handled above.
-                var rows = form.querySelectorAll('.form-row')
-                for (var r = 0; r < rows.length; r++) {
-                  if (rows[r].hasAttribute('data-types')) continue
-                  var kids = rows[r].querySelectorAll('.field')
-                  var anyVisible = false
-                  for (var k = 0; k < kids.length; k++) if (!kids[k].hidden) anyVisible = true
-                  rows[r].hidden = !(anyVisible || kids.length === 0)
-                }
-              }
+              const type = picker.value
+              root.querySelectorAll('[data-types]').forEach((el) => {
+                ;(el as HTMLElement).hidden = !applies(el, type)
+              })
 
-              typeSelect.addEventListener('change', sync)
-              sync()
-            })()
+              // A .form-row is a flex container; with every child hidden it
+              // still occupies its own gap, so collapse the row too. Rows
+              // carrying their own data-types were already handled above.
+              root.querySelectorAll('.form-row').forEach((row) => {
+                if (row.hasAttribute('data-types'))
+                  return
+                const kids = [...row.querySelectorAll('.field')] as HTMLElement[]
+                const anyVisible = kids.some(kid => !kid.hidden)
+                ;(row as HTMLElement).hidden = !(anyVisible || kids.length === 0)
+              })
+            }
+
+            // The change handler binds in the markup. The first pass is
+            // deferred because this block's top level runs before the ref is
+            // populated, so calling sync() directly would read a null and every
+            // field would stay visible.
+            const syncSoon = useDebounce(sync, 20)
+            syncSoon()
           </script>
 
           <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--border);" />
@@ -1630,66 +1635,62 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </details>
     </section>
 
-    <script>
-      (function () {
-        // Every element is reached by id, and the wording below is chosen
-        // around this page's server bindings on purpose: the server->client
-        // data bridge serializes any binding whose name word-matches a plain
-        // script's TEXT, prose included, and this page's scope holds the full
-        // row for the thing being viewed. See the settings-form script above
-        // for the incident that established the rule.
-        var dlg = document.getElementById('alerts-dialog')
-        if (!dlg) return
+    <script client>
+      // The two dialogs, converted for stx-standards rule 8: this reached each
+      // dialog, its opener, its close control and its cancel control by id and
+      // bound four listeners apiece.
+      //
+      // The openers, close and cancel controls bind @click in the markup, so no
+      // listener is registered here. Each dialog keeps a ref, because
+      // showModal() and close() are element methods and no composable drives a
+      // native dialog element; the showModal-where-available fallback and the
+      // backdrop-dismiss behaviour are unchanged.
+      //
+      // WATCH THE WORDING IN HERE, comments included. The server-to-client data
+      // bridge serialises any binding whose name word-matches this block's
+      // TEXT, prose as much as code, and a client block is exactly what it
+      // scans. This page's scope holds the full row for the thing being viewed.
+      // The note on the settings block below records the incident that
+      // established the rule; tests/unit/bridge-hygiene.test.ts enforces it.
+      const alertsPanel = useRef('alertsPanel')
+      const boxPanel = useRef('boxPanel')
 
-        function show() {
-          if (dlg.showModal) dlg.showModal()
-          else dlg.setAttribute('open', '')
-        }
+      function openPanel(ref: { current: unknown }): void {
+        const el = ref.current as HTMLDialogElement | null
+        if (!el)
+          return
+        if (typeof el.showModal === 'function')
+          el.showModal()
+        else
+          el.setAttribute('open', '')
+      }
 
-        function hide() {
-          if (dlg.close) dlg.close()
-          else dlg.removeAttribute('open')
-        }
+      function closePanel(ref: { current: unknown }): void {
+        const el = ref.current as HTMLDialogElement | null
+        if (!el)
+          return
+        if (typeof el.close === 'function')
+          el.close()
+        else
+          el.removeAttribute('open')
+      }
 
-        var opener = document.getElementById('alerts-open')
-        if (opener) opener.addEventListener('click', show)
+      function openAlerts(): void { openPanel(alertsPanel) }
+      function closeAlerts(): void { closePanel(alertsPanel) }
+      function openBox(): void { openPanel(boxPanel) }
+      function closeBox(): void { closePanel(boxPanel) }
 
-        var closer = document.getElementById('alerts-close')
-        if (closer) closer.addEventListener('click', hide)
+      // The event target is the dialog itself only when the click landed
+      // outside its content box, so a click on a row inside does not close it.
+      function backdropAlerts(event: Event): void {
+        if (event.target === alertsPanel.current)
+          closeAlerts()
+      }
 
-        var canceller = document.getElementById('alerts-cancel')
-        if (canceller) canceller.addEventListener('click', hide)
-
-        // The server dialog, same shape. Kept in this IIFE rather than a
-        // second one so both dialogs share the backdrop-dismiss behaviour.
-        var sdlg = document.getElementById('server-dialog')
-        if (sdlg) {
-          var sShow = function () {
-            if (sdlg.showModal) sdlg.showModal()
-            else sdlg.setAttribute('open', '')
-          }
-          var sHide = function () {
-            if (sdlg.close) sdlg.close()
-            else sdlg.removeAttribute('open')
-          }
-          var sOpen = document.getElementById('server-open')
-          if (sOpen) sOpen.addEventListener('click', sShow)
-          var sClose = document.getElementById('server-close')
-          if (sClose) sClose.addEventListener('click', sHide)
-          var sCancel = document.getElementById('server-cancel')
-          if (sCancel) sCancel.addEventListener('click', sHide)
-          sdlg.addEventListener('click', function (event) {
-            if (event.target === sdlg) sHide()
-          })
-        }
-
-        // Clicking the backdrop dismisses. The event target is the dialog
-        // itself only when the click landed outside its content box, so a
-        // click on a row inside does not close it.
-        dlg.addEventListener('click', function (event) {
-          if (event.target === dlg) hide()
-        })
-      })()
+      function backdropBox(event: Event): void {
+        if (event.target === boxPanel.current)
+          closeBox()
+      }
     </script>
 
     <footer class="app-foot">
