@@ -113,6 +113,7 @@
       ta.select()
       var ok = false
       try { ok = document.execCommand('copy') } catch (_e) { ok = false }
+      // stx-strict-ignore-next-line document.body -- the undo of the append above
       document.body.removeChild(ta)
       return ok
     }
