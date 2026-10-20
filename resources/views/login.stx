@@ -298,11 +298,11 @@ async function handlePasskey(): Promise<void> {
           <input class="w-[16px] h-[16px] m-0 [accent-color:var(--accent,#4f46e5)] cursor-pointer" id="remember" name="remember" type="checkbox">
           <span>Keep me signed in for 30 days</span>
         </label>
-        <button class="button" type="submit" :disabled="loading()">{{ loading() ? 'Signing in…' : 'Sign in' }}</button>
+        <button class="button" type="submit" :disabled="loading()" :aria-busy="loading()">{{ loading() ? 'Signing in…' : 'Sign in' }}</button>
 
         <div :class="passkeyReady() ? 'sso-divider passkey-divider' : 'sso-divider passkey-divider hide'">or</div>
         <div class="sso-buttons">
-          <button type="button" @click="handlePasskey" :disabled="passkeyBusy()"
+          <button type="button" @click="handlePasskey" :disabled="passkeyBusy()" :aria-busy="passkeyBusy()"
             :class="passkeyReady() ? 'button sso' : 'button sso hide'"><span class="sso-icon sso-icon-passkey"></span>{{ passkeyBusy() ? 'Waiting for your device…' : 'Sign in with a passkey' }}</button>
         </div>
 
@@ -324,7 +324,7 @@ async function handlePasskey(): Promise<void> {
           <label for="code">Authentication code</label>
           <input ref="code" id="code" name="code" :aria-invalid="error() ? 'true' : 'false'" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required aria-describedby="error">
         </div>
-        <button class="button" type="submit" :disabled="loading()">{{ loading() ? 'Verifying…' : 'Verify &amp; sign in' }}</button>
+        <button class="button" type="submit" :disabled="loading()" :aria-busy="loading()">{{ loading() ? 'Verifying…' : 'Verify &amp; sign in' }}</button>
       </form>
 
       <p class="alt">Don't have an account? <StxLink to="/register">Create one</StxLink></p>

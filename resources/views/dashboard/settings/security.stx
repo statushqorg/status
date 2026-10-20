@@ -239,7 +239,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       <div class="card-body border-b border-[var(--border)]">
         <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Passkeys let you sign in with your device's screen lock or a hardware key instead of a password. They're phishing-resistant and never leave your device.</p>
         <button type="button" id="pk-add" class="button primary" @click="addPasskey"
-          :disabled="pkBusy() || pkUnsupported()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
+          :disabled="pkBusy() || pkUnsupported()" :aria-busy="pkBusy()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
         <div id="pk-msg" :class="pkMessage() ? ('pk-msg show ' + pkKind()) : 'pk-msg'" role="status">{{ pkMessage() }}</div>
       </div>
       @if (__passkeys.length === 0)

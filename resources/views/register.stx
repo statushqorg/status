@@ -174,7 +174,7 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
           <input id="password" name="password" :aria-invalid="error() ? 'true' : 'false'" type="password" autocomplete="new-password" placeholder="Create a password" minlength="6" required aria-describedby="error">
           <p class="hint">At least 6 characters.</p>
         </div>
-        <button class="button" type="submit" :disabled="loading()">{{ loading() ? 'Creating account…' : 'Create account' }}</button>
+        <button class="button" type="submit" :disabled="loading()" :aria-busy="loading()">{{ loading() ? 'Creating account…' : 'Create account' }}</button>
 
         @if (hasSso)
           <div class="sso-divider">or</div>
