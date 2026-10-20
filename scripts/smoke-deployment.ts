@@ -6,6 +6,8 @@ interface SmokeContract {
   homeText: string
   /** Whether POST /api/email/subscribe is registered in that app. */
   subscribe: boolean
+  /** Where sign-in answers, and whether that route is CSRF guarded. */
+  signIn: { path: string, csrf: boolean } | null
 }
 
 interface HealthPayload {
@@ -20,12 +22,12 @@ interface HealthPayload {
 }
 
 const CONTRACTS: Record<string, SmokeContract> = {
-  analyticshq: { domain: 'analyticshq.org', homeText: 'analyticshq', subscribe: true },
-  bughq: { domain: 'bughq.org', homeText: 'Error tracking for people who ship.', subscribe: false },
-  commshq: { domain: 'commshq.org', homeText: 'Grow an audience worth knowing.', subscribe: true },
-  loghq: { domain: 'loghq.org', homeText: 'Your logs, finally worth reading.', subscribe: true },
-  reportshq: { domain: 'reportshq.org', homeText: 'Reports that build themselves', subscribe: true },
-  status: { domain: 'statushq.org', homeText: 'Know the moment', subscribe: true },
+  analyticshq: { domain: 'analyticshq.org', homeText: 'analyticshq', subscribe: true, signIn: { path: '/login', csrf: false } },
+  bughq: { domain: 'bughq.org', homeText: 'Error tracking for people who ship.', subscribe: false, signIn: { path: '/login', csrf: false } },
+  commshq: { domain: 'commshq.org', homeText: 'Grow an audience worth knowing.', subscribe: true, signIn: null },
+  loghq: { domain: 'loghq.org', homeText: 'Your logs, finally worth reading.', subscribe: true, signIn: null },
+  reportshq: { domain: 'reportshq.org', homeText: 'Reports that build themselves', subscribe: true, signIn: { path: '/api/auth/login', csrf: false } },
+  status: { domain: 'statushq.org', homeText: 'Know the moment', subscribe: true, signIn: { path: '/api/login', csrf: true } },
 }
 
 const projectRoot = resolve(import.meta.dir, '..')
@@ -210,6 +212,98 @@ async function run(): Promise<void> {
   }
 
   if (contract.subscribe) await assertSubscribeWorks()
+
+  /**
+   * Sign in for real.
+   *
+   * Every other check here passes with sign-in completely broken: they read
+   * public HTML. The failures that actually cost this estate days were invisible
+   * to exactly that - a schema the box never migrated, an auth action silently
+   * routed to a framework default. A deploy that cannot issue a session has not
+   * deployed, and nothing here could previously tell.
+   *
+   * Asserts two things and deliberately stops there: the endpoint answers 200,
+   * and the session cookie it sets is one a browser will actually keep and
+   * return. Spending the session on an authenticated route afterwards would be
+   * better still, but the right route differs per app and an unverified guess
+   * would fail for its own reasons rather than the app's.
+   *
+   * Not retried. Login is rate limited, and a retry loop spends that budget and
+   * reports a 429 as a deploy failure.
+   */
+  async function assertSignInWorks(): Promise<boolean> {
+    const signIn = contract.signIn
+    if (!signIn) return false
+
+    const email = process.env.SMOKE_EMAIL
+    const password = process.env.SMOKE_PASSWORD
+
+    // LOUD, not a quiet log line. commshq has carried this leg for a while with
+    // the credentials never set, so it printed "skipped" into a passing run and
+    // nobody saw it: a check that cannot fail reads exactly like a check that
+    // passed. ::warning:: puts it on the job summary instead.
+    if (!email || !password) {
+      console.log(`::warning title=Sign-in not verified::${baseUrl} deployed without exercising sign-in. Set the SMOKE_EMAIL and SMOKE_PASSWORD repository secrets to turn this leg on.`)
+      return false
+    }
+
+    const headers: Record<string, string> = { 'content-type': 'application/json', 'accept': 'application/json' }
+
+    /*
+     * Some apps guard the login route with CSRF, and answer 403 to a bare POST.
+     * The token arrives as a cookie on any GET of the login page and goes back as
+     * a header. Verified against production: without it the POST is 403, with it
+     * the same wrong credentials get a 401.
+     */
+    if (signIn.csrf) {
+      const page = await fetch(`${baseUrl}/login`, { signal: AbortSignal.timeout(15_000) })
+      const token = /(?:^|;|,)\s*X-CSRF-Token=([^;,\s]+)/i.exec(page.headers.get('set-cookie') || '')?.[1]
+      if (!token) throw new Error(`GET /login issued no X-CSRF-Token cookie, so the sign-in leg cannot post to ${signIn.path}.`)
+      headers['X-CSRF-Token'] = decodeURIComponent(token)
+      headers.cookie = `X-CSRF-Token=${token}`
+    }
+
+    const response = await fetch(`${baseUrl}${signIn.path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ email, password }),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(15_000),
+    })
+
+    if (response.status !== 200) {
+      throw new Error(
+        `POST ${signIn.path} returned ${response.status}, expected 200. `
+        + `401 means the smoke credentials are wrong, 403 a CSRF mismatch, `
+        + `429 that the rate limit was already spent, 5xx that the app cannot reach its own database.`,
+      )
+    }
+
+    const setCookie = response.headers.get('set-cookie') || ''
+    if (!/(?:^|;|,)\s*auth-token=/.test(setCookie)) {
+      // A 200 with no session is the shape worth naming: it is what a correct
+      // response looks like to every check that only reads the status code.
+      throw new Error(`POST ${signIn.path} answered 200 but set no auth-token cookie. Set-Cookie was: ${setCookie.slice(0, 200) || '(absent)'}`)
+    }
+
+    /*
+     * The attributes decide whether the session is safe and whether it survives.
+     * `Secure` in particular is derived from the app's configured URL, so an
+     * APP_URL that failed to decrypt ships a long-lived token in the clear and
+     * nothing else notices.
+     */
+    const missing = ['HttpOnly', 'Path=/', 'SameSite', 'Secure']
+      .filter(attribute => !new RegExp(`(?:^|;\\s*)${attribute}`, 'i').test(setCookie))
+    if (missing.length)
+      throw new Error(`The deployed auth-token cookie is missing ${missing.join(', ')}. Set-Cookie was: ${setCookie.slice(0, 200)}`)
+    if (!/(?:^|;\s*)Max-Age=[1-9]\d*/i.test(setCookie))
+      throw new Error(`The deployed auth-token cookie carries no positive Max-Age, so the session dies with the tab. Set-Cookie was: ${setCookie.slice(0, 200)}`)
+
+    return true
+  }
+
+  const signedIn = await assertSignInWorks()
+  if (signedIn) console.log('  sign-in verified: session issued and the cookie is well formed.')
 
   const robots = await readWithRetry('/robots.txt')
   if (robots.includes('http://localhost')) throw new Error('Deployed robots.txt contains a localhost URL.')
