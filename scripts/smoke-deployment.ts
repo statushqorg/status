@@ -19,6 +19,11 @@ interface HealthPayload {
       message?: unknown
     }
   }
+  migrations?: {
+    applied?: unknown
+    pending?: unknown
+    error?: unknown
+  }
 }
 
 const CONTRACTS: Record<string, SmokeContract> = {
@@ -89,6 +94,47 @@ export function assertHealthyDeployment(body: string): void {
   if (health.checks?.database?.ok !== true) {
     const detail = health.checks?.database?.message
     throw new Error(`Health smoke reported an unhealthy database${detail ? `: ${String(detail)}` : '.'}`)
+  }
+
+  /*
+   * A reachable database is not a current one, and only the second means this
+   * release can run. The probe above is `SELECT 1`, which succeeds against a
+   * half-migrated database -- which is exactly what this app served for six
+   * days while deploy-prod stayed green, five queue tables were missing, and
+   * the worker logged `no such table: queue_circuit_state` twice a second.
+   *
+   * Migrations here run from `preStart` on the box, server side, so neither
+   * their output nor their exit code ever reaches CI. This is how the deploy
+   * finds out, and it is deliberately asserted HERE rather than in the health
+   * payload's own status: a pending migration should fail a deploy, and should
+   * not tell an uptime monitor the site is down.
+   */
+  const migrations = health.migrations
+  if (!migrations) {
+    throw new Error(
+      'Health smoke response carries no `migrations` fact, so the deployed release predates the schema check '
+      + 'or routes/api.ts stopped passing it. Either way the deploy is no longer verifying that migrations ran.',
+    )
+  }
+
+  if (migrations.error) {
+    throw new Error(
+      `The deployed release could not read its own migration state: ${String(migrations.error)}. `
+      + 'A missing `migrations` table means nothing has ever been applied on this box.',
+    )
+  }
+
+  const pending = Array.isArray(migrations.pending) ? migrations.pending.map(String) : null
+  if (pending === null)
+    throw new Error(`Health smoke reported a malformed migrations.pending: ${JSON.stringify(migrations.pending)}`)
+
+  if (pending.length > 0) {
+    throw new Error(
+      `${pending.length} migration(s) in this release have not been applied to the production database, `
+      + `so preStart's \`buddy migrate\` did not finish: ${pending.slice(0, 5).join(', ')}`
+      + `${pending.length > 5 ? `, and ${pending.length - 5} more` : ''}. `
+      + `${String(migrations.applied ?? 0)} are applied.`,
+    )
   }
 }
 

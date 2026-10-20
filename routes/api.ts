@@ -1,5 +1,6 @@
 import { route } from '@stacksjs/router'
 import { healthResponse } from '../app/Support/health'
+import { migrationStatus } from '../app/Support/migrations'
 
 /**
  * This file is the entry point for your application's API routes.
@@ -308,5 +309,14 @@ route.post('/team-forms/{id}/report-settings', 'Actions/Teams/DashboardUpdateRep
 // build the fleet's monitoring on. See app/Support/health.ts.
 //
 // User routes load before the framework's, so this wins over route.health().
-route.get('/health', () => healthResponse())
-route.get('/api/health', () => healthResponse())
+/*
+ * `migrations` rides along in the body as a FACT, not as a health check, so a
+ * pending migration does not turn this endpoint 503 under an uptime monitor
+ * that only wants to know whether the site is up. The deploy smoke is what
+ * treats a pending migration as a failed deploy. See app/Support/migrations.ts
+ * for why the existing database probe cannot catch this on its own.
+ */
+const healthWithSchema = async () => healthResponse({ extra: { migrations: await migrationStatus() } })
+
+route.get('/health', healthWithSchema)
+route.get('/api/health', healthWithSchema)
