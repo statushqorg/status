@@ -1443,7 +1443,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               </div>
               <div class="field" data-types="health">
                 <label for="edit-health-secret">Health endpoint secret</label>
-                <input id="edit-health-secret" type="text" name="health_secret" class="input" value="{{ cfgValue('healthSecret') }}" />
+                <input id="edit-health-secret" type="password" autocomplete="off" name="health_secret" class="input" value="{{ cfgValue('healthSecret') }}" />
               </div>
               <div class="field" data-types="health">
                 <label for="edit-health-max-age">Report freshness (seconds)</label>

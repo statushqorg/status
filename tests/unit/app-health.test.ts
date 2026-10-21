@@ -89,9 +89,9 @@ describe('evaluateAppHealth status mapping', () => {
     expect(v.checks).toHaveLength(2)
   })
 
-  test('a report of only skipped checks is up, and says so', () => {
+  test('a report of only skipped checks is down, and says so', () => {
     const v = evaluateAppHealth(report([{ ...okCheck, status: 'skipped' }]), NOW)
-    expect(v.status).toBe('up')
+    expect(v.status).toBe('down')
     expect(v.message).toBe('All checks skipped')
   })
 
@@ -104,9 +104,9 @@ describe('evaluateAppHealth status mapping', () => {
     expect(v.checks[0]!.status).toBe('unknown')
   })
 
-  test('an empty report is up rather than an error', () => {
+  test('an empty report is down because it provides no evidence', () => {
     const v = evaluateAppHealth(report([]), NOW)
-    expect(v.status).toBe('up')
+    expect(v.status).toBe('down')
     expect(v.message).toBe('No checks reported')
   })
 })
@@ -274,7 +274,7 @@ describe('Stacks health reports', () => {
   })
 
   test('a services array that is empty or full of junk does not throw', () => {
-    expect(evaluateAppHealth(coerceHealthReport(stacks([]))!, STACKS_NOW).status).toBe('up')
+    expect(evaluateAppHealth(coerceHealthReport(stacks([]))!, STACKS_NOW).status).toBe('down')
     const v = evaluateAppHealth(coerceHealthReport(stacks([null as any, { name: 'API', status: 'healthy' }]))!, STACKS_NOW)
     expect(v.checks).toHaveLength(2)
     expect(v.checks[0]!.name).toBe('unnamed')
@@ -355,5 +355,40 @@ describe('Stacks probe reports (/api/health)', () => {
 
     expect(verdict.stale).toBe(true)
     expect(verdict.status).toBe('down')
+  })
+})
+
+
+describe('mail delivery health', () => {
+  const snapshot = () => ({ schema: 1, checked_at: NOW / 1000 - 5, status: 'healthy', checks: [{ name: 'TLS receipt', ok: true, duration_ms: 35 }] })
+  function verdict(body: unknown) {
+    const report = coerceHealthReport(body)
+    expect(report).not.toBeNull()
+    return evaluateAppHealth(report!, NOW, 180, ['TLS receipt'])
+  }
+  test('reads direct and authenticated envelope snapshots with per-check timing', () => {
+    const result = verdict({ available: true, stale: false, report: snapshot() })
+    expect(result.status).toBe('up')
+    expect(result.checks[0]?.summary).toBe('35ms')
+    expect(verdict(snapshot()).status).toBe('up')
+  })
+  test('storage, TLS and alert transport failures retain their names', () => {
+    const result = verdict({ ...snapshot(), status: 'degraded', checks: [{ name: 'Mail storage write and sync', ok: false }] })
+    expect(result.status).toBe('down')
+    expect(result.message).toContain('Mail storage write and sync')
+    expect(result.message).toContain('Required check is missing')
+  })
+  test('unavailable, stale, future, empty and malformed evidence never passes', () => {
+    for (const body of [
+      { available: false, stale: true },
+      { ...snapshot(), checked_at: NOW / 1000 - 181 },
+      { ...snapshot(), checked_at: NOW / 1000 + 31 },
+      { ...snapshot(), checked_at: 'invalid' },
+      { ...snapshot(), checks: [] },
+      { ...snapshot(), checks: [null] },
+      { ...snapshot(), checks: [{ name: 'TLS receipt', ok: 'true' }] },
+      { ...snapshot(), status: 'degraded' },
+      { available: true, stale: true, report: snapshot() },
+    ]) expect(verdict(body).status).toBe('down')
   })
 })

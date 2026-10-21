@@ -66,7 +66,7 @@ export default new Job({
       return
     }
 
-    let config: { path?: string, healthSecret?: string, healthMaxAgeSeconds?: number } = {}
+    let config: { path?: string, healthSecret?: string, healthMaxAgeSeconds?: number, healthRequiredChecks?: string[] } = {}
     try {
       config = monitor.config ? JSON.parse(monitor.config) : {}
     }
@@ -81,6 +81,7 @@ export default new Job({
     let status: 'up' | 'down' | 'degraded' = 'down'
     let message = ''
     let metadata: Record<string, unknown> = {}
+    let statusCode: number | undefined
 
     try {
       // SSRF guard: only fetch http/https. url derives from user-supplied
@@ -96,7 +97,8 @@ export default new Job({
       if (config.healthSecret)
         headersOut['oh-dear-health-check-secret'] = config.healthSecret
 
-      const response = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: headersOut })
+      const response = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: headersOut, redirect: config.healthSecret ? 'error' : 'follow' })
+      statusCode = response.status
       const rawBody = await response.text().catch(() => '')
       const parsed = ((): unknown => {
         try { return JSON.parse(rawBody) }
@@ -143,21 +145,15 @@ export default new Job({
         // still wins, and above the legacy branch so a report body is not
         // mistaken for a plain endpoint with a missing `status` field —
         // which would read any of these as an opaque 200 and call it up.
-        if (!response.ok) {
-          status = 'down'
-          message = `Health endpoint returned ${response.status}`
-        }
-        else {
-          const verdict = evaluateAppHealth(healthReport, Date.now(), config.healthMaxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS)
-          status = verdict.status
-          message = verdict.message
-          metadata = {
-            appHealth: {
-              checks: verdict.checks,
-              stale: verdict.stale,
-              finishedAt: verdict.finishedAtMs ? new Date(verdict.finishedAtMs).toISOString() : null,
-            },
-          }
+        const verdict = evaluateAppHealth(healthReport, Date.now(), config.healthMaxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS, config.healthRequiredChecks ?? [])
+        status = response.ok ? verdict.status : 'down'
+        message = response.ok ? verdict.message : `Health endpoint returned ${response.status}: ${verdict.message}`
+        metadata = {
+          appHealth: {
+            checks: verdict.checks,
+            stale: verdict.stale,
+            finishedAt: verdict.finishedAtMs ? new Date(verdict.finishedAtMs).toISOString() : null,
+          },
         }
       }
       else if (!response.ok || !body?.status) {
@@ -190,7 +186,7 @@ export default new Job({
       monitor_id: monitor.id,
       status,
       responseTimeMs: responseTimeMs,
-      statusCode: undefined,
+      statusCode,
       message,
       metadata: JSON.stringify(metadata),
       region: process.env.WORKER_REGION || 'default',

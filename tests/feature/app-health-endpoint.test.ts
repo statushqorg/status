@@ -132,6 +132,33 @@ describe('Application health endpoint (spatie/laravel-health schema)', () => {
     expect(result.message).toContain('503')
   })
 
+  test('503 keeps the failed mail checks and HTTP code for diagnosis', async () => {
+    responseStatus = 503
+    const { result } = await runAgainst(JSON.stringify({ available: true, stale: false, report: {
+      schema: 1, checked_at: Math.floor(Date.now() / 1000), status: 'degraded',
+      checks: [{ name: 'SMTP TLS padding', ok: false }, { name: 'Disk sync', ok: true }],
+    } }))
+    expect(result.status).toBe('down')
+    expect(result.status_code).toBe(503)
+    expect(result.message).toContain('SMTP TLS padding')
+    expect(JSON.parse(result.metadata).appHealth.checks).toHaveLength(3)
+  })
+
+  test('authenticated health fetches do not forward secrets through redirects', async () => {
+    let leaked = false
+    const target = Bun.serve({ port: 0, fetch: () => { leaked = true; return new Response(body([ok('Disk')])) } })
+    const redirect = Bun.serve({ port: 0, fetch: () => Response.redirect(`http://localhost:${target.port}/target`) })
+    try {
+      const monitor = await Monitor.create({ teamId: TEAM_ID, name: 'Private health',
+        url: `http://localhost:${redirect.port}/health`, type: 'health', config: JSON.stringify({ healthSecret: 'private-read-token' }) })
+      await RunHealthCheck.handle({ monitorId: monitor.id })
+      const result = (await CheckResult.where('monitor_id', monitor.id).get())[0]
+      expect(result.status).toBe('down')
+      expect(leaked).toBe(false)
+    }
+    finally { target.stop(true); redirect.stop(true) }
+  })
+
   test('the original { status } contract still works', async () => {
     // Regression guard: adding the new schema must not change existing monitors.
     const { result } = await runAgainst(JSON.stringify({ status: 'ok', checks: { db: true } }))

@@ -251,12 +251,39 @@ export function fromStacksProbeReport(body: StacksProbeReport): AppHealthReport 
   }
 }
 
+/** Mail's root-owned snapshot, optionally wrapped with its freshness verdict. */
+export function fromMailHealth(body: Record<string, unknown>): AppHealthReport {
+  const source = body.report && typeof body.report === 'object' ? body.report as Record<string, unknown> : body
+  const rawChecks = Array.isArray(source.checks) ? source.checks : []
+  const finishedAt = parseFinishedAt(source.checked_at)
+  const invalid = source.schema !== 1 || finishedAt == null || finishedAt <= 0
+    || body.available === false || body.stale === true
+  const checks: AppHealthCheckResult[] = rawChecks.map((entry: unknown) => {
+    const check = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {}
+    const name = typeof check.name === 'string' ? check.name.trim() : ''
+    const ok = check.ok === true && name.length > 0
+    const summary = typeof check.duration_ms === 'number' ? `${check.duration_ms}ms`
+      : typeof check.count === 'number' ? `Count: ${check.count}`
+        : typeof check.pending === 'number' ? `Pending: ${check.pending}` : ''
+    return { name: name || 'Invalid mail check', status: ok ? 'ok' : 'failed', shortSummary: summary,
+      notificationMessage: ok ? '' : `${name || 'Mail check'} failed${summary ? ` (${summary})` : ''}` }
+  })
+  if (invalid || source.status !== 'healthy')
+    checks.push({ name: 'Mail report', status: 'failed', notificationMessage: invalid ? 'Mail health evidence is unavailable or stale' : `Mail service reports ${String(source.status ?? 'unknown')}` })
+  return { finishedAt: source.checked_at, checkResults: checks }
+}
+
 /**
  * Accept any of the three dialects and return the canonical shape, or null when
  * the body is none of them. Oh Dear is tested first so an endpoint that somehow
  * carries both keys keeps the meaning it had before Stacks support existed.
  */
 export function coerceHealthReport(body: unknown): AppHealthReport | null {
+  if (body && typeof body === 'object') {
+    const candidate = body as Record<string, unknown>
+    if ('checked_at' in candidate || 'report' in candidate || 'available' in candidate)
+      return fromMailHealth(candidate)
+  }
   if (isAppHealthReport(body))
     return body
   if (isStacksHealthReport(body))
@@ -342,13 +369,19 @@ export function evaluateAppHealth(
   report: AppHealthReport,
   now: number = Date.now(),
   maxAgeSeconds: number = DEFAULT_MAX_AGE_SECONDS,
+  requiredChecks: readonly string[] = [],
 ): AppHealthVerdict {
   const checks = (Array.isArray(report.checkResults) ? report.checkResults : [])
     .map(entry => normalizeCheck((entry ?? {}) as AppHealthCheckResult))
 
+  for (const name of requiredChecks) {
+    if (!checks.some(check => check.name === name))
+      checks.push({ name, label: name, status: 'failed', summary: '', message: 'Required check is missing from the report' })
+  }
+
   const finishedAtMs = parseFinishedAt(report.finishedAt)
   const ageSeconds = finishedAtMs == null ? null : Math.round((now - finishedAtMs) / 1000)
-  const stale = ageSeconds != null && ageSeconds > maxAgeSeconds
+  const stale = ageSeconds != null && (ageSeconds > maxAgeSeconds || ageSeconds < -30)
 
   if (stale) {
     return {
@@ -363,7 +396,7 @@ export function evaluateAppHealth(
   const considered = checks.filter(c => c.status !== 'skipped')
   if (considered.length === 0) {
     return {
-      status: 'up',
+      status: 'down',
       message: checks.length ? 'All checks skipped' : 'No checks reported',
       checks,
       stale,
