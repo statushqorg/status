@@ -161,3 +161,9 @@ see [Server Metrics](/monitors/server-metrics).
 - [Uptime](/monitors/uptime) · [Cron & Heartbeats](/monitors/cron-heartbeats) · [Performance](/monitors/performance)
 - [Notifications](/operate/notifications)
 - Marketing: [Health checks feature](https://statushq.org/features/health-checks)
+
+## Mail delivery checks
+
+For a complete mail service report, independent listener checks and alert routing,
+see [Mail delivery monitoring](../mail-monitoring.md). This reuses the health
+monitor's per-check dashboard and incident handling.
