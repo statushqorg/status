@@ -152,7 +152,7 @@ export default new Job({
       switch (channel.type) {
         case 'email':
           if (!config.email) throw new Error('email channel is missing email address')
-          await mail.send({ to: config.email, subject: payload.subject, text: payload.message, html: `<p>${payload.message}</p>` })
+          await mail.sendOrFail({ to: config.email, subject: payload.subject, text: payload.message, html: `<p>${payload.message}</p>` })
           break
         case 'sms':
           if (!config.phone) throw new Error('sms channel is missing phone number')
