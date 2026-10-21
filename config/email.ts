@@ -28,6 +28,7 @@ export default {
    */
   mailboxes: [
     'chris',
+    'notifications',
     'blake',
     'glenn',
   ],
