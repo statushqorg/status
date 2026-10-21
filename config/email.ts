@@ -10,11 +10,11 @@ import { env } from '@stacksjs/env'
  */
 export default {
   from: {
-    name: env.MAIL_FROM_NAME || 'Stacks',
-    address: env.MAIL_FROM_ADDRESS || `hello@${env.MAIL_DOMAIN || 'stacksjs.com'}`,
+    name: env.MAIL_FROM_NAME || 'StatusHQ',
+    address: env.MAIL_FROM_ADDRESS || `hello@${env.MAIL_DOMAIN || 'statushq.org'}`,
   },
 
-  domain: env.MAIL_DOMAIN || 'stacksjs.com',
+  domain: env.MAIL_DOMAIN || 'statushq.org',
 
   /**
    * Mailbox users for IMAP/SMTP access.
@@ -32,11 +32,13 @@ export default {
     'glenn',
   ],
 
-  url: env.APP_URL || 'https://stacksjs.com',
+  url: env.APP_URL || 'https://statushq.org',
   charset: 'UTF-8',
 
   server: {
     enabled: true,
+    // App compute is separate from the shared, monitored mail host.
+    attachTo: 'stacks',
     scan: true, // scans for spam and viruses
     subdomain: 'mail', // mail.stacksjs.com
 
