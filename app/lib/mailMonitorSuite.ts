@@ -36,6 +36,6 @@ export function mailMonitorSuite(hostname: string, healthSecret: string): MailMo
   ]
   return definitions.map(definition => ({ ...definition,
     name: `${hostname}: ${definition.name}`,
-    config: { ...definition.config, mailSuite: { version: 1, hostname, key: definition.key } },
+    config: { ...definition.config, maxBackoffMultiplier: 1, mailSuite: { version: 1, hostname, key: definition.key } },
   }))
 }

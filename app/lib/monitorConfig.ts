@@ -9,7 +9,8 @@ export type CheckStatus = 'up' | 'down' | 'degraded'
 
 export function parseMonitorConfig(json: string | null | undefined): Record<string, unknown> {
   try {
-    return json ? JSON.parse(json) as Record<string, unknown> : {}
+    const parsed: unknown = json ? JSON.parse(json) : {}
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}
   }
   catch {
     return {}
@@ -59,4 +60,15 @@ export function applyPingDegradation(
   if (opts.rttThresholdMs > 0 && typeof rttMs === 'number' && rttMs >= opts.rttThresholdMs)
     return { status: 'degraded', reason: `RTT ${rttMs.toFixed(0)}ms >= ${opts.rttThresholdMs}ms` }
   return { status, reason: null }
+}
+
+
+/** Cap outage backoff per monitor. Critical services can keep their configured cadence. */
+export function pollBackoffMultiplier(consecutiveFailures: number, config: Record<string, unknown>): number {
+  const configured = config.maxBackoffMultiplier
+  const cap = typeof configured === 'number' && Number.isInteger(configured) && configured >= 1 && configured <= 16 ? configured : 16
+  if (!Number.isFinite(consecutiveFailures) || consecutiveFailures <= 2)
+    return 1
+  const doublings = Math.floor((consecutiveFailures - 2) / 5) + 1
+  return Math.min(cap, 2 ** doublings)
 }

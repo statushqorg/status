@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { applyLatencyThreshold, applyPingDegradation, configBool, configNumber, parseMonitorConfig } from '../../app/lib/monitorConfig'
+import { applyLatencyThreshold, applyPingDegradation, configBool, configNumber, parseMonitorConfig, pollBackoffMultiplier } from '../../app/lib/monitorConfig'
 
 describe('parseMonitorConfig / configNumber / configBool', () => {
   test('parses valid JSON, tolerates missing/malformed', () => {
@@ -60,5 +60,20 @@ describe('applyPingDegradation (packet loss / RTT -> degraded)', () => {
   })
   test('a down host is untouched', () => {
     expect(applyPingDegradation('down', null, 100, opts).status).toBe('down')
+  })
+})
+
+
+describe('critical monitor polling cadence', () => {
+  test('retains normal backoff unless a monitor explicitly caps it', () => {
+    expect(pollBackoffMultiplier(0, {})).toBe(1)
+    expect(pollBackoffMultiplier(3, {})).toBe(2)
+    expect(pollBackoffMultiplier(100, {})).toBe(16)
+    expect(pollBackoffMultiplier(100, { maxBackoffMultiplier: 1 })).toBe(1)
+    expect(pollBackoffMultiplier(100, { maxBackoffMultiplier: 2 })).toBe(2)
+  })
+  test('malformed configuration does not break dispatch or remove the default cap', () => {
+    for (const value of ['null', '[]', '42', '"text"']) expect(parseMonitorConfig(value)).toEqual({})
+    for (const cap of [0, -1, 17, 1.5, '1', null]) expect(pollBackoffMultiplier(100, { maxBackoffMultiplier: cap })).toBe(16)
   })
 })

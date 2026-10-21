@@ -33,6 +33,7 @@ const options = () => ({ email, teamId, hostname: 'mail.example.test', healthSec
 test('suite requires every mail check, external listeners and certificate verification', () => {
   const suite = mailMonitorSuite('mail.example.test', secret)
   expect(suite).toHaveLength(8)
+  expect(suite.every(monitor => monitor.config.maxBackoffMultiplier === 1)).toBe(true)
   expect(suite[0]?.config.healthRequiredChecks).toEqual(MAIL_REQUIRED_CHECKS)
   expect(suite[0]?.config.healthMaxAgeSeconds).toBe(180)
   expect(suite.filter(monitor => monitor.type === 'tcp_port').map(monitor => monitor.config.port)).toEqual([25, 143, 465, 587, 993])

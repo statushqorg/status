@@ -2,6 +2,7 @@ import { log } from '@stacksjs/logging'
 import { Job } from '@stacksjs/queue'
 import AiCheck from '../Models/AiCheck'
 import { isActivelyPolled, type PolledMonitorType } from '../lib/monitorTypes'
+import { parseMonitorConfig, pollBackoffMultiplier } from '../lib/monitorConfig'
 import Monitor from '../Models/Monitor'
 import RunAiCheck from './RunAiCheck'
 import RunBlocklistCheck from './RunBlocklistCheck'
@@ -36,22 +37,6 @@ import { broadcastMonitorUpdate } from '../Realtime/broadcastMonitorUpdate'
  * multiple AiCheck assertions attached, so it fans out one RunAiCheck job
  * per assertion rather than one job per monitor.
  */
-const MAX_BACKOFF_MULTIPLIER = 16 // caps effective interval at 16x normal, not unbounded
-
-/**
- * Exponential backoff once a monitor has been failing for a while: 1x
- * interval for the first 2 failures, then doubling every 5 more failures,
- * capped at MAX_BACKOFF_MULTIPLIER. A site that's been down for an hour
- * doesn't need re-checking every 30s for that entire hour — it needs
- * checking often enough to catch recovery promptly, not hammered at full
- * frequency the whole time (stacksjs/status#1 Phase 11).
- */
-function backoffMultiplier(consecutiveFailures: number): number {
-  if (consecutiveFailures <= 2) return 1
-  const doublings = Math.floor((consecutiveFailures - 2) / 5) + 1
-  return Math.min(MAX_BACKOFF_MULTIPLIER, 2 ** doublings)
-}
-
 // Keyed by PolledMonitorType rather than `string`, so a type listed in
 // POLLED_MONITOR_TYPES with no runner here — or a runner for a type nothing
 // declares as polled — is a build error rather than a monitor that silently
@@ -99,7 +84,7 @@ export default new Job({
 
     for (const monitor of monitors) {
       const lastCheckedAt = monitor.last_checked_at ? new Date(monitor.last_checked_at).getTime() : null
-      const effectiveIntervalSeconds = monitor.check_interval_seconds * backoffMultiplier(monitor.consecutive_failures)
+      const effectiveIntervalSeconds = monitor.check_interval_seconds * pollBackoffMultiplier(monitor.consecutive_failures, parseMonitorConfig(monitor.config))
       const dueAt = lastCheckedAt ? lastCheckedAt + effectiveIntervalSeconds * 1000 : 0
       if (now < dueAt)
         continue

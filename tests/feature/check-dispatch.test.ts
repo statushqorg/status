@@ -89,6 +89,17 @@ describe('DispatchDueChecks (stacksjs/status#1 Phase 1)', () => {
     expect(refreshed!.last_checked_at).toBe(recentCheckedAt)
   })
 
+  test('critical monitors keep polling during an outage while ordinary monitors retain backoff', async () => {
+    const monitor = await Monitor.create({ teamId: TEAM_ID, name: 'Critical recovery check',
+      url: `http://localhost:${server.port}/`, type: 'uptime', enabled: true, status: 'down',
+      consecutiveFailures: 100, checkIntervalSeconds: 60, lastCheckedAt: new Date(Date.now() - 65_000).toISOString() })
+    await DispatchDueChecks.handle({ teamId: TEAM_ID })
+    expect(await CheckResult.where('monitor_id', monitor.id).count()).toBe(0)
+    await monitor.update({ config: JSON.stringify({ maxBackoffMultiplier: 1 }) })
+    await DispatchDueChecks.handle({ teamId: TEAM_ID })
+    expect(await CheckResult.where('monitor_id', monitor.id).count()).toBe(1)
+  })
+
   test('a disabled monitor is never dispatched regardless of how overdue it is', async () => {
     const veryStale = new Date(Date.now() - 86_400_000).toISOString()
     const monitor = await Monitor.create({

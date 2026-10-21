@@ -8,7 +8,9 @@ future-dated reports, unavailable evidence and missing required checks fail.
 HTTP 503 retains each failed check and its explanation.
 
 The suite adds external public-health, certificate and five TCP listener checks.
-These run on the StatusHQ worker, independently of the mail host. TCP checks
+These run on the StatusHQ worker, independently of the mail host. The suite
+sets `maxBackoffMultiplier: 1`, so outages do not stretch the configured polling
+interval or delay recovery detection. Other monitors retain the default 16x cap. TCP checks
 prove reachability; the detailed report proves the host's protocol and storage
 checks. Synthetic receipt and forced storage-failure regressions also run in
 the mail repository's CI. These checks reduce detection gaps; they do not prove
