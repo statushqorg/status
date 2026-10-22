@@ -34,6 +34,12 @@ async function ensureOk(response: Response, service: string): Promise<void> {
   if (!response.ok) throw new Error(`${service} responded ${response.status}`)
 }
 
+function ensureChatSent(result: { success: boolean }, service: string): void {
+  // Chat transports return failed results instead of throwing. Reject the job
+  // so its queue retry policy applies, without logging webhook URLs or bodies.
+  if (!result.success) throw new Error(`${service} notification was not accepted`)
+}
+
 async function sendPagerDuty(config: { routingKey?: string }, payload: NotificationPayload): Promise<void> {
   if (!config.routingKey) throw new Error('pagerduty channel is missing routingKey')
   const response = await fetch('https://events.pagerduty.com/v2/enqueue', {
@@ -159,13 +165,13 @@ export default new Job({
           await sendSms({ to: config.phone, body: `${payload.subject}: ${payload.message}` })
           break
         case 'slack':
-          await sendToSlack(config.webhookUrl, `*${payload.subject}*\n${payload.message}`)
+          ensureChatSent(await sendToSlack(config.webhookUrl, `*${payload.subject}*\n${payload.message}`), 'slack')
           break
         case 'discord':
-          await sendToDiscord(config.webhookUrl, `**${payload.subject}**\n${payload.message}`)
+          ensureChatSent(await sendToDiscord(config.webhookUrl, `**${payload.subject}**\n${payload.message}`), 'discord')
           break
         case 'teams':
-          await sendToTeams(config.webhookUrl, `${payload.subject}\n${payload.message}`)
+          ensureChatSent(await sendToTeams(config.webhookUrl, `${payload.subject}\n${payload.message}`), 'teams')
           break
         case 'pagerduty':
           await sendPagerDuty(config, payload)

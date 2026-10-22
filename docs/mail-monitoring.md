@@ -7,6 +7,15 @@ write durability and queued admin alerts. Reports older than 180 seconds,
 future-dated reports, unavailable evidence and missing required checks fail.
 HTTP 503 retains each failed check and its explanation.
 
+Attach Discord to every monitor with `fires_on: both` for incident and recovery
+notifications. A failed detailed check names the indicator in the incident
+message. The root-owned mail watcher also sends to Discord when the set of
+failing indicators changes, including a new failure during an existing outage,
+and queues undelivered alerts durably. Unchanged failures do not repeat.
+StatusHQ rejects unsuccessful chat transport results so its notification job's
+three attempts and 30-second retry delay apply to Discord rejections and network
+failures as well as thrown errors.
+
 The suite adds external public-health, certificate and five TCP listener checks.
 These run on the StatusHQ worker, independently of the mail host. The suite
 sets `maxBackoffMultiplier: 1`, so outages do not stretch the configured polling
