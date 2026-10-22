@@ -446,7 +446,12 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 
     // Keep the relative "last checked" labels fresh between checks (they'd
     // otherwise freeze at whatever a new event last set them to).
-    var agoTimer = setInterval(function () {
+    // useInterval, not setInterval (rule 8). Called as (callback, delay) --
+    // the composable is overloaded and also takes (delay, options), so the
+    // argument order here is load-bearing. It starts on creation and registers
+    // an onDestroy pause of its own, which is a second line of defence behind
+    // the stx:navigate teardown below.
+    var agoTimer = useInterval(function () {
       var container = rowsTable.current
       if (!container) return
       var nodes = container.querySelectorAll('[data-monitor-checked]')
@@ -473,6 +478,11 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     }
 
     function connect() {
+      // A reconnect scheduled before teardown still fires afterwards; without
+      // this it would open a fresh socket on a page the reader has already
+      // left. schedule() is only reached from the close handler, which checks
+      // the same flag, so this is the guard for the already-pending attempt.
+      if (closedByUs) return
       try { ws = new WebSocket(url) }
       catch (e) { return schedule() }
 
@@ -495,6 +505,12 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
 
     function schedule() {
       setLive(false)
+      // The one timer here that cannot be a composable: useTimeout closes over
+      // its delay at creation, and this one doubles on every failure, so a
+      // single handle cannot express it and creating one per attempt would
+      // stack an onDestroy hook per attempt. The pending attempt is made
+      // harmless by the closedByUs guard in connect() instead.
+      // stx-strict-ignore-next-line setTimeout
       setTimeout(connect, backoff)
       backoff = Math.min(backoff * 2, 15000) // capped exponential backoff
     }
@@ -511,7 +527,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
     // refresher down on the router's navigation event or they leak.
     useEventListener('stx:navigate', function () {
       closedByUs = true
-      clearInterval(agoTimer)
+      agoTimer.pause()
       setLive(false)
       if (ws) try { ws.close() } catch (e) {}
     }, { target: window })
