@@ -42,6 +42,11 @@
 # Second argument is the .env.production key to update. Omit it when the account
 # has no key in this repo, and only the mail server is changed.
 #
+# Add --yes to skip the confirmation and run straight through. The prompt exists
+# to catch a mistyped address, and passing --yes is its own deliberate act, so
+# use it when you are pasting a line you have already read. It is also the only
+# form that works when stdin is not a terminal.
+#
 # Anything that authenticates as the rotated address needs the new value too.
 # For chris@statushq.org that is this app, handled here. For the others, check
 # whichever app owns them before rotating, or their mail stops sending.
@@ -50,12 +55,21 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-ADDRESS="${1:-}"
-ENV_KEY="${2:-}"
+ASSUME_YES=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    -y|--yes) ASSUME_YES=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+
+ADDRESS="${ARGS[0]:-}"
+ENV_KEY="${ARGS[1]:-}"
 
 if [ -z "$ADDRESS" ]; then
-  echo "usage: $0 <email-address> [ENV_KEY]" >&2
-  echo "example: $0 chris@statushq.org MAIL_PASSWORD_CHRIS" >&2
+  echo "usage: $0 <email-address> [ENV_KEY] [--yes]" >&2
+  echo "example: $0 chris@statushq.org MAIL_PASSWORD_CHRIS --yes" >&2
   exit 1
 fi
 
@@ -71,10 +85,20 @@ if [ -n "$ENV_KEY" ]; then
 else
   echo "(no .env key given, so only the mail server changes)"
 fi
-echo
-printf 'Type the address again to confirm: '
-read -r CONFIRM
-[ "$CONFIRM" = "$ADDRESS" ] || { echo "aborted"; exit 1; }
+if [ "$ASSUME_YES" -eq 1 ]; then
+  echo "(--yes given, not asking)"
+elif [ ! -t 0 ]; then
+  # Without this the read below consumes whatever happens to be on stdin and
+  # aborts, which looks like the script refusing for no reason.
+  echo "error: stdin is not a terminal, so the confirmation cannot be typed." >&2
+  echo "       Re-run with --yes." >&2
+  exit 1
+else
+  echo
+  printf 'Type the address again to confirm: '
+  read -r CONFIRM
+  [ "$CONFIRM" = "$ADDRESS" ] || { echo "aborted, nothing was changed"; exit 1; }
+fi
 
 # 24 chars from a 32-byte draw, punctuation stripped so it survives every env
 # and config path this value passes through without quoting surprises.
