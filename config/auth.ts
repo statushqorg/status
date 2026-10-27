@@ -119,6 +119,18 @@ export default {
     expire: env.AUTH_PASSWORD_RESET_EXPIRE ||60,
 
     /**
+     * Where the emailed link points.
+     *
+     * Must match the page that exists. Before resources/views/reset-password.stx
+     * was added there was no page at all, and /reset-password answered 404 while
+     * /forgot-password answered 200 with the marketing homepage from the
+     * catch-all - so a reset email would have delivered a valid token to a dead
+     * end. Stated explicitly rather than left to the framework default for that
+     * reason: the two have to be changed together or not at all.
+     */
+    url: '/reset-password?token={token}&email={email}',
+
+    /**
      * Throttle time in seconds between password reset requests.
      * Users must wait this long before requesting another reset email.
      *

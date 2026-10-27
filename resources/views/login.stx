@@ -291,6 +291,9 @@ async function handlePasskey(): Promise<void> {
         <div class="field">
           <div class="row-between">
             <label for="password">Password</label>
+            {{-- The row-between was already here with nothing to balance
+                 against the label, which is what it is for. --}}
+            <StxLink to="/forgot-password">Forgot?</StxLink>
           </div>
           <input id="password" name="password" :aria-invalid="error() ? 'true' : 'false'" type="password" autocomplete="current-password" placeholder="Your password" required aria-describedby="error">
         </div>
