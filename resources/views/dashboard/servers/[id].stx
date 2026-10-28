@@ -21,7 +21,8 @@
   script's text. Enforced by tests/unit/bridge-hygiene.test.ts.
 -->
 <script server>
-import { scaleLinear, line, curveMonotoneX } from 'ts-charts'
+import { scaleLinear } from '@ts-charts/scale'
+import { curveMonotoneX, line } from '@ts-charts/shape'
 import { incidentPillClass, relativeTime, serverStatusPill, statusLabel, statusPillClass } from '~/app/lib/display'
 import { aggregateHostStatus, DEFAULT_HOST, readingsFromSamples } from '~/app/lib/agentHosts'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'

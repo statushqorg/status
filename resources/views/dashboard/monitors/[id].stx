@@ -25,7 +25,8 @@ import { maintenanceIntervalsByMonitor } from '~/app/lib/maintenance'
 import { computeUptime, roundMsForInterval } from '~/app/lib/uptime'
 import { db } from '@stacksjs/database'
 import { suggestServerForMonitor } from '~/app/lib/serverSuggestion'
-import { scaleLinear, scaleBand, line, area, curveMonotoneX } from 'ts-charts'
+import { scaleBand, scaleLinear } from '@ts-charts/scale'
+import { area, curveMonotoneX, line } from '@ts-charts/shape'
 // require() destructured these under other names; `import { x as y }`
 // binds undefined in a server block, so the rename happens here.
 const chartLine = line

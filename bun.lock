@@ -12,20 +12,18 @@
         "@stacksjs/stx": "0.2.520",
         "@stacksjs/ts-validation": "^0.5.6",
         "@ts-analytics/tracking": "^0.1.15",
+        "@ts-charts/scale": "^0.2.7",
+        "@ts-charts/shape": "^0.2.7",
         "bun-plugin-stx": "0.2.520",
         "bun-query-builder": "^0.3.3",
         "stacks": "^0.75.37",
         "stripe": "22.3.2",
-        "ts-charts": "github:stacksjs/ts-charts",
       },
       "devDependencies": {
         "better-dx": "^0.2.15",
       },
     },
   },
-  "trustedDependencies": [
-    "ts-charts",
-  ],
   "overrides": {
     "@stacksjs/bunpress": "0.1.11",
     "@stacksjs/stx": "0.2.520",
@@ -387,8 +385,6 @@
     "stx-router": ["stx-router@0.2.520", "", {}, "sha512-xhXEbTKzU1IkmH87v2N76CDLV2Cd5ZVDAdAgdldDePf+MSkIADwOmY+kEQTOkKmm+n44O7TxTUJI75wmzsnuuw=="],
 
     "ts-broadcasting": ["ts-broadcasting@0.0.11", "", { "bin": { "broadcast": "./dist/bin/cli.js" } }, "sha512-lqn/VGfW/JiXY8TMtzq4RLu2QlK6Q8oLQg/G9zLBtp5gFoO4dfxihyXPSr/elmGCvV9keC7RbLva6cMSBkhnQg=="],
-
-    "ts-charts": ["ts-charts@github:stacksjs/ts-charts#6aca006", {}, "stacksjs-ts-charts-6aca006", "sha512-XUubkLh1roFUsyR/1k99f8z8HISrVaEmvonZBe5M7j9T2MJZf5CQXRf+qTJx8al6uBc6p6zZ0XPRc1/da+/Rgg=="],
 
     "ts-collect": ["ts-collect@0.4.3", "", {}, "sha512-ERSFPKwKa8e4dolfhgi/8D4SCCNPkly0+oK8nWqxf8+KEFsjVc5f8AcJ3d1Q0Q+jGv9bu4L/qlzYxdzPIfuR1w=="],
 
