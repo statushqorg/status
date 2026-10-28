@@ -28,7 +28,10 @@ export default {
    */
   mailboxes: [
     'chris',
-    'notifications',
+    // The mailbox the app authenticates as. It was 'notifications' and that
+    // address was never created on the mail host, so SMTP auth failed and the
+    // app sent nothing at all: password resets, alerts, invites.
+    'noreply',
     'blake',
     'glenn',
   ],
