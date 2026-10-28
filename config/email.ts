@@ -27,13 +27,26 @@ export default {
    * - Objects: [{ email: 'chris', password: '...' }]
    */
   mailboxes: [
-    'chris',
+    // 'chris' was here. chris@statushq.org already exists on the mail server and
+    // is NOT deleted by leaving it out: provisioning only creates and updates
+    // what it declares, it has no removal path. Leaving it IN is the dangerous
+    // option, because provisioning sets each declared mailbox's password from
+    // MAIL_PASSWORD_<LOCALPART>, and MAIL_PASSWORD_CHRIS is one of the values
+    // sitting in plaintext in this public repo's first commit. Every deploy runs
+    // the same reconcile, so each one would re-assert a publicly known password
+    // onto a live mailbox. Out of the list, the mailbox keeps whatever password
+    // it has.
     // The mailbox the app authenticates as. It was 'notifications' and that
     // address was never created on the mail host, so SMTP auth failed and the
     // app sent nothing at all: password resets, alerts, invites.
     'noreply',
-    'blake',
-    'glenn',
+    // 'blake' and 'glenn' were here and are deliberately gone. Neither had a
+    // statushq.org mailbox: the host carries 47 accounts and the only one on
+    // this domain is chris@. They were scaffold defaults, so the list was
+    // asking to create two addresses nobody had ever used, and their plaintext
+    // passwords are in this public repo's first commit. Provisioning is
+    // idempotent and reads this list, so leaving them in meant the next run
+    // would mint them for real.
   ],
 
   url: env.APP_URL || 'https://statushq.org',
