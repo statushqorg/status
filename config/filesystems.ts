@@ -42,7 +42,10 @@ export default {
           secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
         }
       : undefined,
-    // endpoint: 'https://s3-compatible-service.com', // For S3-compatible services
+    // S3-compatible endpoint (e.g. Hetzner Object Storage: https://<location>.your-objectstorage.com).
+    // Unset for AWS S3. Drives the off-box DB backup upload (buddy db:backup --destination s3://...).
+    endpoint: env.AWS_ENDPOINT || undefined,
+    usePathStyleEndpoint: env.AWS_USE_PATH_STYLE_ENDPOINT,
   },
 
   /**
