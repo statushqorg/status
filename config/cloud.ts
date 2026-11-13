@@ -43,6 +43,46 @@ const DEPLOY_ROLE = process.env.STATUS_DEPLOY_ROLE === 'worker' ? 'worker' : 'pr
 const API_PORT = 3008
 
 /**
+ * Every hostname StatusHQ answers on, declared in one place.
+ *
+ * The app has two domain families. `statushq.org` is the product's name and
+ * its canonical address: APP_URL, the mail identity, the public status pages
+ * and this file's own default all use it. `uptime-status.org` is the name it
+ * launched under, and production `APP_DOMAIN` still holds it, because that
+ * value also names the dashboard service and its state on the box.
+ *
+ * Whichever family `APP_DOMAIN` names, the other one is declared as an alias
+ * below. That is not cosmetic. The deploy writes the gateway's site file and
+ * the nightly certificate renewal script from the declared hostnames only, so
+ * a hostname that is served but not declared here keeps working until its
+ * certificate expires and then fails for every visitor. That happened:
+ * statushq.org was routed by a site file left behind by an older deploy, no
+ * renewal covered it, and it served an expired certificate from 2026-10-29
+ * until it was renewed by hand on 2026-11-13.
+ *
+ * Add a new public hostname here, never on the box.
+ */
+const CANONICAL_DOMAIN = 'statushq.org'
+const DOMAIN_FAMILIES = [CANONICAL_DOMAIN, 'uptime-status.org']
+const APP_DOMAIN = String(env.APP_DOMAIN || CANONICAL_DOMAIN).trim().toLowerCase()
+const ALIAS_DOMAINS = DOMAIN_FAMILIES.filter(domain => domain !== APP_DOMAIN)
+
+/**
+ * The control panel lives on one host, `dashboard.<APP_DOMAIN>`, which the
+ * deploy adds by itself. Its address on every other family is declared here
+ * as a redirect to that host, so the name has a route and a certificate that
+ * renews. A redirect and not a second copy of the panel, because a sign-in
+ * session belongs to one host.
+ *
+ * The site keys must not start with `dashboard`: the deploy reads such a key
+ * as "this project configures its own control panel" and stops adding one.
+ */
+const controlPanelRedirects = Object.fromEntries(ALIAS_DOMAINS.map(domain => [
+  `${domain.replace(/[^a-z0-9]+/g, '-')}-control-panel`,
+  { domain: `dashboard.${domain}`, redirect: `https://dashboard.${APP_DOMAIN}` },
+]))
+
+/**
  * StatusHQ Cloud Configuration
  *
  * Single Hetzner Cloud box (Forge-style, no AWS) running the app, its
@@ -59,7 +99,8 @@ const API_PORT = 3008
  * Environment variables:
  * - CLOUD_PROVIDER=hetzner
  * - HCLOUD_TOKEN / HCLOUD_LOCATION (apiToken/location fall back to these)
- * - APP_DOMAIN=statushq.org
+ * - APP_DOMAIN=statushq.org (production still sets uptime-status.org; see
+ *   DOMAIN_FAMILIES below, both families are declared either way)
  *
  * @see https://github.com/stacksjs/ts-cloud
  */
@@ -430,7 +471,7 @@ export const tsCloud: TsCloudConfig = {
     ssl: {
       enabled: false,
       provider: 'letsencrypt',
-      domains: env.SSL_DOMAINS?.split(',') || (env.APP_DOMAIN ? [env.APP_DOMAIN] : []),
+      domains: env.SSL_DOMAINS?.split(',') || [APP_DOMAIN, ...ALIAS_DOMAINS],
       redirectHttp: true,
       letsEncrypt: {
         email: env.LETSENCRYPT_EMAIL || 'admin@statushq.org',
@@ -452,7 +493,7 @@ export const tsCloud: TsCloudConfig = {
      * at the server's IP manually from the Porkbun dashboard.
      */
     dns: {
-      domain: env.APP_DOMAIN || 'statushq.org',
+      domain: APP_DOMAIN,
       provider: 'porkbun',
     },
 
@@ -698,7 +739,7 @@ export const tsCloud: TsCloudConfig = {
           env: {
             APP_ENV: 'production',
             WORKER_REGION: String(env.WORKER_REGION || 'us-east'),
-            API_URL: `https://${env.APP_DOMAIN || 'statushq.org'}/api`,
+            API_URL: `https://${APP_DOMAIN}/api`,
           },
         },
       }
@@ -708,7 +749,11 @@ export const tsCloud: TsCloudConfig = {
           // and install on the server via preStart, matching the Forge-style deploy.
           root: '.',
           path: '/',
-          domain: env.APP_DOMAIN || 'statushq.org',
+          domain: APP_DOMAIN,
+          // The other domain family serves the same app under its own name
+          // (see DOMAIN_FAMILIES above). Each alias gets this site's routes,
+          // a `www.` redirect, and a place in the certificate renewal script.
+          aliases: ALIAS_DOMAINS,
           // `./buddy` rather than a direct path: the framework is an npm
           // dependency now, and the shell wrapper resolves the CLI through its
           // fallback chain (vendored -> @stacksjs/buddy src -> dist) instead of
@@ -825,6 +870,10 @@ export const tsCloud: TsCloudConfig = {
           // this box, and buddy's preflight requires it regardless.
           env: { APP_ENV: 'production', PORT_API: String(API_PORT) },
         },
+
+        // `dashboard.<alias>` -> the one control panel host. Gateway only:
+        // nothing is built or shipped for these.
+        ...controlPanelRedirects,
       },
 }
 
