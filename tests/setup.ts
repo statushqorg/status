@@ -46,3 +46,20 @@ if (!Bun.env.APPLE_CLIENT_ID) {
 }
 
 setupTestEnvironment()
+
+// One mail driver for the whole test process: the in-memory capture driver.
+//
+// The Mail singleton latches whatever driver `config.email.default` names the
+// first time anything reaches for it, and never looks again. Five test files
+// set 'capture' in their own beforeAll, which only works when one of them is
+// the first file to touch mail. `bun test` promises no file order: when
+// tests/feature/email-notification-retry.test.ts ran first, the singleton
+// latched the 'log' driver and every later file asserting on captured mail saw
+// an empty outbox. That failed CI on a commit that changed nothing but a
+// dependency version, and passed on the next machine.
+//
+// After awaitConfig(), because the project's config files load asynchronously
+// and replace the email section wholesale: an earlier write is shadowed.
+const { awaitConfig, config } = await import('@stacksjs/config')
+await awaitConfig()
+;(config.email as { default: string }).default = 'capture'
