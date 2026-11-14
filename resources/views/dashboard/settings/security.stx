@@ -6,12 +6,20 @@
   to /api/security-forms/* (app/Actions/Security/*).
 
   TOTP setup is fully server-driven: visiting ?setup=1 generates a fresh
-  secret, stashes it server-side (10 minute TTL, delete-on-read — the
-  enable form only ever submits the 6-digit code, never the secret), and
-  renders the secret + otpauth URI for the authenticator app.
+  secret, stashes it server-side (10 minute TTL — the enable form only
+  ever submits the 6-digit code, never the secret), and renders the
+  secret + otpauth URI for the authenticator app.
+
+  Recovery codes are the one thing here that is NOT a redirect-back form.
+  The framework stores only a hash of each code, so the plaintext exists in
+  exactly one API response: the one that enables two-factor, or the one that
+  generates a new set. The client script below posts those two forms itself
+  and holds the answer in a signal until the person says they have saved it.
+  The codes are never in a URL, a cookie, browser storage or this server's
+  render, which is a separate process from the API and never sees them.
 -->
 <script server>
-import { generateTwoFactorSetup, getTwoFactorState, stashPendingTwoFactorSecret } from '@stacksjs/auth'
+import { generateTwoFactorSetup, getTwoFactorState, remainingTwoFactorRecoveryCodes, stashPendingTwoFactorSecret } from '@stacksjs/auth'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { config } from '@stacksjs/config'
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
@@ -62,12 +70,39 @@ if (AUTH_USER) {
   if (!TWO_FA_ENABLED && query.get('setup') === '1') {
     const appName = config.app?.name || 'StatusHQ'
     const { secret, uri } = generateTwoFactorSetup(AUTH_USER.email || '', appName)
-    // Server-side pending stash, delete-on-read; the enable form never
-    // carries the secret. Re-visiting this step replaces the stash, so
-    // the code must always come from the LAST secret shown.
+    // Server-side pending stash; the enable form never carries the secret.
+    // Re-visiting this step replaces the stash, so the code must always come
+    // from the LAST secret shown. A mistyped code leaves the stash in place.
     await stashPendingTwoFactorSecret(AUTH_USER.id, secret)
     __SETUP = { secret, uri }
   }
+}
+
+// How many recovery codes are still unused. Only ever a count: the framework
+// keeps a hash of each code and has no way to hand the codes themselves back.
+// null means the count could not be read (the auth pass of `buddy migrate`
+// creates the table), in which case the card says nothing rather than
+// claiming zero.
+let RECOVERY_LEFT = null
+if (AUTH_USER && TWO_FA_ENABLED) {
+  try {
+    RECOVERY_LEFT = await remainingTwoFactorRecoveryCodes(AUTH_USER.id)
+  } catch (e) {
+    RECOVERY_LEFT = null
+  }
+}
+// Two or fewer is the point to act: one lost phone and one typo from locked out.
+const RECOVERY_LOW = RECOVERY_LEFT !== null && RECOVERY_LEFT <= 2
+const RECOVERY_PILL = RECOVERY_LEFT === 0 ? 'pill pill-down' : (RECOVERY_LOW ? 'pill pill-degraded' : 'pill pill-up')
+
+function recoveryLabel(left) {
+  if (left === 0)
+    return 'You have no recovery codes left. If you lose your authenticator app you will be locked out of this account. Generate a new set now.'
+  if (left === 1)
+    return 'Only 1 recovery code left. Generate a new set before it is gone.'
+  if (left <= 2)
+    return 'Only ' + left + ' recovery codes left. Generate a new set before they run out.'
+  return left + ' recovery codes left. Each one signs you in once if you lose your authenticator app.'
 }
 
 // Passkeys. Framework-managed table (auth-tables.ts, no model), so raw
@@ -87,25 +122,34 @@ if (AUTH_USER) {
   }
 }
 
+// What the markup's @if conditions read. stx evaluates a condition with every
+// `__`-prefixed binding withheld, and an unknown name there is quietly false
+// rather than an error: a condition on the pending setup or on the passkey
+// rows rendered nothing at all, which left the two-factor card empty and hid
+// the passkey list. So the sensitive rows keep their `__` names (interpolation
+// and @foreach still see them) and the conditions get these plain facts
+// instead, neither of which is worth anything if the bridge does emit it.
+const SETUP_OPEN = !!__SETUP
+const PASSKEY_COUNT = __passkeys.length
+
 // Flash flags (redirect + query param, the app's notice convention).
 const flashEnabled = query.get('twofa') === 'enabled'
 const flashDisabled = query.get('twofa') === 'disabled'
+const flashRecoveryRegenerated = query.get('recovery') === 'regenerated'
 const flashPasskeyRemoved = query.get('passkey') === 'removed'
 const flashPasskeyAdded = query.get('passkey') === 'added'
 const flashError = query.get('error') || ''
 
+// Only the redirect-back form (turning two-factor off) reports through the
+// address. The setup and recovery-code forms answer in place, and their
+// messages come from the actions themselves.
 function errorLabel(code) {
-  if (code === 'invalid_code') return 'That code did not match. Scan the current QR secret and try again.'
-  if (code === 'setup_expired') return 'That setup session expired. Start again to get a fresh secret.'
   if (code === 'bad_password') return 'Incorrect password. Two-factor auth is still enabled.'
   return ''
 }
 
 // Which control the banner is about, so that one alone carries aria-invalid.
-// `setup_expired` is about the session, not a field, so it marks nothing.
 function errorFields(code) {
-  if (code === 'invalid_code')
-    return ['two-factor-code']
   if (code === 'bad_password')
     return ['two-factor-password']
   return []
@@ -168,6 +212,9 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
     @if (flashEnabled)
       <div class="flash" role="status">Two-factor authentication is on. You will be asked for a code at every sign-in.</div>
     @endif
+    @if (flashRecoveryRegenerated)
+      <div class="flash" role="status">Your new recovery codes are active. The old ones no longer work.</div>
+    @endif
     @if (flashDisabled)
       <div class="flash" role="status">Two-factor authentication is off.</div>
     @endif
@@ -191,9 +238,72 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           <data class="pill pill-unknown" value="disabled"><span class="dot"></span>Off</data>
         @endif
       </div>
-      <div class="card-body">
+      {{-- The one banner the two in-place forms share. Empty until a request
+           is refused, and in the page from the start so the alert role
+           announces the text when it arrives.
+
+           A bound class is added to the plain one, not swapped for it. So a
+           band that starts hidden is `reveal` and gains `show`; one that
+           starts open gains `hide`. Either way the page is right before the
+           client script has run, and the codes band never flashes open. --}}
+      <div class="card-body" :class="rcShown() ? 'hide' : ''">
+        <div id="rc-error" class="error flash reveal" :class="rcError() ? 'show' : ''" role="alert">{{ rcError() }}</div>
+
         @if (TWO_FA_ENABLED)
-          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Signing in requires your password plus a 6-digit code from your authenticator app. Confirm your password to turn it off.</p>
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Signing in requires your password plus a 6-digit code from your authenticator app. If you lose the app, a recovery code signs you in instead, and each one works once.</p>
+
+          @if (RECOVERY_LEFT !== null)
+            <p class="flex flex-wrap gap-[0.6rem] items-center mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem]">
+              <data class="{{ RECOVERY_PILL }}" value="{{ RECOVERY_LEFT }}"><span class="dot"></span>{{ RECOVERY_LEFT }} left</data>
+              <span class="{{ RECOVERY_LEFT === 0 ? 'text-[var(--danger)]' : (RECOVERY_LOW ? 'text-[var(--amber)]' : 'text-[var(--muted)]') }}">{{ recoveryLabel(RECOVERY_LEFT) }}</span>
+            </p>
+          @endif
+
+          <form method="POST" action="/api/security-forms/two-factor/recovery-codes" @submit="regenerateCodes">
+            <div class="form-row">
+              <div class="field">
+                <label for="recovery-proof">Authenticator or recovery code</label>
+                <input id="recovery-proof" type="text" name="code" required class="input mono" minlength="6" maxlength="64" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="000000" :aria-invalid="rcError() ? 'true' : 'false'" aria-describedby="recovery-proof-help rc-error" />
+                <p id="recovery-proof-help" class="help">Enter the current 6-digit code from your app, or one of your recovery codes. A new set replaces every code you have now.</p>
+              </div>
+            </div>
+            <button type="submit" class="button" :disabled="rcBusy()" :aria-busy="rcBusy()">{{ rcBusy() ? 'Generating…' : 'Generate new recovery codes' }}</button>
+          </form>
+        @endif
+
+        @if (!TWO_FA_ENABLED && !SETUP_OPEN)
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
+          <StxLink class="button primary" to="/dashboard/settings/security?setup=1">Set up two-factor auth</StxLink>
+        @endif
+
+        @if (!TWO_FA_ENABLED && SETUP_OPEN)
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes. You will get recovery codes to save as soon as it is confirmed.</p>
+          <div class="field">
+            <label>Secret (enter manually)</label>
+            <p class="m-0 px-[0.85rem] py-[0.7rem] !text-[0.95rem] break-all tracking-[0.08em] bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] mono">{{ __SETUP.secret }}</p>
+            <p class="help">On this device? <StxLink to="{{ __SETUP.uri }}">Open in your authenticator app</StxLink> instead of typing the secret.</p>
+          </div>
+          <form method="POST" action="/api/security-forms/two-factor/enable" @submit="confirmSetup">
+            <div class="form-row">
+              <div class="field">
+                <label for="two-factor-code">6-digit code</label>
+                <input id="two-factor-code" type="text" name="code" required class="input mono" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" :aria-invalid="rcError() ? 'true' : 'false'" aria-describedby="rc-error" />
+              </div>
+            </div>
+            <button type="submit" class="button primary" :disabled="rcBusy()" :aria-busy="rcBusy()">{{ rcBusy() ? 'Confirming…' : 'Confirm and enable' }}</button>
+            <StxLink class="ml-[0.5rem] button" to="/dashboard/settings/security">Cancel</StxLink>
+            {{-- An expired session has no code that can fix it: the way on is
+                 a fresh secret, so offer exactly that. --}}
+            <span class="reveal" :class="rcExpired() ? 'show' : ''"><StxLink class="ml-[0.5rem] button" to="/dashboard/settings/security?setup=1">Start again</StxLink></span>
+          </form>
+        @endif
+      </div>
+
+      {{-- Turning it off stays a redirect-back form in its own band, apart
+           from the recovery codes above it. --}}
+      @if (TWO_FA_ENABLED)
+        <div class="border-[var(--border)] border-t card-body" :class="rcShown() ? 'hide' : ''">
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Confirm your password to turn two-factor authentication off. Your recovery codes stop working too.</p>
           <form method="POST" action="/api/security-forms/two-factor/disable" data-confirm="Your account falls back to password-only sign-in." data-confirm-title="Turn off two-factor authentication?" data-confirm-action="Turn it off" data-confirm-type="warning">
             <div class="form-row">
               <div class="field">
@@ -203,31 +313,20 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
             </div>
             <button type="submit" class="button danger">Turn off two-factor auth</button>
           </form>
-        @endif
+        </div>
+      @endif
 
-        @if (!TWO_FA_ENABLED && !__SETUP)
-          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
-          <StxLink class="button primary" to="/dashboard/settings/security?setup=1">Set up two-factor auth</StxLink>
-        @endif
-
-        @if (!TWO_FA_ENABLED && __SETUP)
-          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes.</p>
-          <div class="field">
-            <label>Secret (enter manually)</label>
-            <p class="m-0 px-[0.85rem] py-[0.7rem] !text-[0.95rem] break-all tracking-[0.08em] bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] mono">{{ __SETUP.secret }}</p>
-            <p class="help">On this device? <StxLink to="{{ __SETUP.uri }}">Open in your authenticator app</StxLink> instead of typing the secret.</p>
-          </div>
-          <form method="POST" action="/api/security-forms/two-factor/enable">
-            <div class="form-row">
-              <div class="field">
-                <label for="two-factor-code">6-digit code</label>
-                <input id="two-factor-code" type="text" name="code" required class="input mono" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-invalid="{{ invalidFields.includes('two-factor-code') ? 'true' : 'false' }}"@if (invalidFields.includes('two-factor-code')) aria-describedby="tfa-form-error"@endif />
-              </div>
-            </div>
-            <button type="submit" class="button primary">Confirm and enable</button>
-            <StxLink class="ml-[0.5rem] button" to="/dashboard/settings/security">Cancel</StxLink>
-          </form>
-        @endif
+      {{-- The codes, once. This band replaces the two above while it is open,
+           so the only ways out are copying the codes and saying they are
+           saved. Focus is moved here when it opens (see focusCodes). --}}
+      <div ref="rcPanel" tabindex="-1" class="card-body reveal" :class="rcShown() ? 'show' : ''" aria-labelledby="rc-title">
+        <div class="flash" role="status">{{ rcNotice() }}</div>
+        <h3 id="rc-title" class="mb-[0.5rem] mt-0 mx-0 text-[1rem]">Save your recovery codes</h3>
+        <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Each code signs you in once if you lose your authenticator app. Keep them in a password manager or print them. This is the only time they are shown: we store them in a form we cannot read back.</p>
+        <pre class="mb-[1rem] mt-0 mx-0 px-[0.85rem] py-[0.7rem] !text-[0.95rem] break-all leading-[1.8] whitespace-pre-wrap bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] mono" aria-label="Recovery codes">{{ rcText() }}</pre>
+        <button type="button" class="button" @click="copyCodes">{{ rcCopyLabel() }}</button>
+        <button type="button" class="ml-[0.5rem] button primary" @click="finishCodes">I have saved these</button>
+        <p class="help" role="status">{{ rcCopyNote() }}</p>
       </div>
     </section>
 
@@ -242,7 +341,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           :disabled="pkBusy() || pkUnsupported()" :aria-busy="pkBusy()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
         <div id="pk-msg" :class="pkMessage() ? ('pk-msg show ' + pkKind()) : 'pk-msg'" role="status">{{ pkMessage() }}</div>
       </div>
-      @if (__passkeys.length === 0)
+      @if (PASSKEY_COUNT === 0)
         <div class="card-body">
           <EmptyState
             title="No passkeys yet"
@@ -250,7 +349,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           />
         </div>
       @endif
-      @if (__passkeys.length > 0)
+      @if (PASSKEY_COUNT > 0)
         <div class="rows" role="table" aria-label="Passkeys">
           <div class="cols-passkeys thead trow" role="row">
             <span class="tcell" role="columnheader">Credential</span>
@@ -342,6 +441,124 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
   // re-read. Debounced rather than a bare setTimeout so the composable owns
   // the timer and drops it if this block is torn down first.
   const reloadSoon = useDebounce(() => navigate('/dashboard/settings/security?passkey=added', { reload: true }), 600)
+
+  // Recovery codes. `rcCodes` is the only place the plaintext lives after the
+  // response is read: a signal in this page's memory, emptied when the person
+  // says the codes are saved and gone on any reload. Nothing here writes them
+  // to storage, a cookie, the address bar or a log.
+  //
+  // `rcBusy` owns both submit buttons, `rcError` the shared banner, `rcExpired`
+  // the "Start again" link, `rcNext` where "I have saved these" goes.
+  const rcCodes = state<string[]>([])
+  const rcBusy = state(false)
+  const rcError = state('')
+  const rcExpired = state(false)
+  const rcNotice = state('')
+  const rcNext = state('/dashboard/settings/security')
+  const rcCopied = state('')
+
+  const rcShown = derived(() => rcCodes().length > 0)
+  const rcText = derived(() => rcCodes().join('\n'))
+  const rcCopyLabel = derived(() => rcCopied() === 'yes' ? 'Copied' : 'Copy codes')
+  const rcCopyNote = derived(() => rcCopied() === 'no' ? 'Copying did not work in this browser. Select the codes above and copy them by hand.' : '')
+
+  // The panel is display:none until `rcShown` re-renders, so a focus issued in
+  // the same tick lands on nothing. Debounced so the composable owns the timer.
+  const rcPanel = useRef('rcPanel')
+  const focusCodes = useDebounce(() => rcPanel.current?.focus(), 20)
+
+  /** What the enable and recovery-codes actions answer with. */
+  interface RecoveryCodesResponse {
+    error?: string
+    reason?: string
+    recoveryCodes?: string[]
+  }
+
+  async function requestCodes(event: SubmitEvent, notice: string, next: string): Promise<void> {
+    event.preventDefault()
+    if (rcBusy())
+      return
+    const form = event.target
+    if (!(form instanceof HTMLFormElement))
+      return
+    const field = form.elements.namedItem('code')
+    const code = field instanceof HTMLInputElement ? field.value.trim() : ''
+
+    rcBusy.set(true)
+    rcError.set('')
+    rcExpired.set(false)
+
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'x-csrf-token': ensureCsrf() },
+        body: JSON.stringify({ code }),
+      })
+
+      let data: RecoveryCodesResponse = {}
+      try {
+        data = await res.json() as RecoveryCodesResponse
+      }
+      catch {
+        data = {}
+      }
+
+      if (res.ok && Array.isArray(data.recoveryCodes) && data.recoveryCodes.length > 0) {
+        form.reset()
+        rcCopied.set('')
+        rcNotice.set(notice)
+        rcNext.set(next)
+        rcCodes.set(data.recoveryCodes)
+        focusCodes()
+        return
+      }
+
+      rcExpired.set(data.reason === 'missing')
+      if (res.status === 401)
+        rcError.set('Your session has ended. Sign in again, then retry.')
+      else
+        rcError.set(data.error || 'Something went wrong and nothing was changed. Try again.')
+    }
+    catch {
+      // The request may have landed even though its answer did not, so this
+      // must not claim that nothing changed.
+      rcError.set('The server did not answer. Reload this page to see whether the change went through.')
+    }
+    finally {
+      rcBusy.set(false)
+    }
+  }
+
+  function confirmSetup(event: SubmitEvent): Promise<void> {
+    return requestCodes(event, 'Two-factor authentication is on. Save your recovery codes before you leave this page.', '/dashboard/settings/security?twofa=enabled')
+  }
+
+  function regenerateCodes(event: SubmitEvent): Promise<void> {
+    return requestCodes(event, 'New recovery codes generated. The old ones no longer work.', '/dashboard/settings/security?recovery=regenerated')
+  }
+
+  async function copyCodes(): Promise<void> {
+    // Never claim a copy that did not happen: someone who believes the codes
+    // are on their clipboard and moves on has no codes at all.
+    try {
+      await navigator.clipboard.writeText(rcText())
+      rcCopied.set('yes')
+    }
+    catch {
+      rcCopied.set('no')
+    }
+  }
+
+  function finishCodes(): void {
+    const next = rcNext()
+    rcCodes.set([])
+    rcNotice.set('')
+    // A router navigation, not a document load: the page is re-rendered by the
+    // server with two-factor on and the new count, and nothing is reloaded.
+    navigate(next)
+  }
 
   async function addPasskey(): Promise<void> {
     if (pkBusy() || pkUnsupported())

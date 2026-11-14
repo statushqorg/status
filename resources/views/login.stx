@@ -319,13 +319,18 @@ async function handlePasskey(): Promise<void> {
         @endif
       </form>
 
-      <!-- Step 2: TOTP (shown only when the account has 2FA enabled) -->
+      <!-- Step 2: second factor (shown only when the account has 2FA enabled).
+           One field takes either kind of code: six digits from the app, or a
+           recovery code, which is 32 letters and digits in dashed groups. So
+           it is a plain text field with no digit-only keyboard and no
+           six-character cap; the server tells the two apart. -->
       <form :class="step() === 'twofa' ? '' : 'hide'" @submit="handleTwoFactor">
         <h1>Two-factor code</h1>
-        <p class="sub">Enter the 6-digit code from your authenticator app.</p>
+        <p class="sub">Enter the 6-digit code from your authenticator app, or a recovery code.</p>
         <div class="field">
-          <label for="code">Authentication code</label>
-          <input ref="code" id="code" name="code" :aria-invalid="error() ? 'true' : 'false'" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required aria-describedby="error">
+          <label for="code">Authenticator or recovery code</label>
+          <input ref="code" id="code" name="code" :aria-invalid="error() ? 'true' : 'false'" type="text" inputmode="text" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="6" maxlength="64" placeholder="123456" required aria-describedby="code-help error">
+          <p id="code-help" class="mb-0 mt-[.4rem] mx-0 leading-[1.5] text-[.8rem] text-[var(--muted,#6b7280)]">Lost your authenticator app? Enter one of the recovery codes you saved when you turned two-factor on. Each one works once.</p>
         </div>
         <button class="button" type="submit" :disabled="loading()" :aria-busy="loading()">{{ loading() ? 'Verifying…' : 'Verify &amp; sign in' }}</button>
       </form>

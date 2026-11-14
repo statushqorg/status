@@ -45,6 +45,7 @@ export const actions = {
   'Actions/Security/DashboardDeletePasskeyAction': '../../../app/Actions/Security/DashboardDeletePasskeyAction.ts',
   'Actions/Security/DashboardDisableTwoFactorAction': '../../../app/Actions/Security/DashboardDisableTwoFactorAction.ts',
   'Actions/Security/DashboardEnableTwoFactorAction': '../../../app/Actions/Security/DashboardEnableTwoFactorAction.ts',
+  'Actions/Security/DashboardRegenerateRecoveryCodesAction': '../../../app/Actions/Security/DashboardRegenerateRecoveryCodesAction.ts',
   'Actions/Security/PasskeyLoginOptionsAction': '../../../app/Actions/Security/PasskeyLoginOptionsAction.ts',
   'Actions/Security/PasskeyLoginVerifyAction': '../../../app/Actions/Security/PasskeyLoginVerifyAction.ts',
   'Actions/Security/PasskeyRegisterOptionsAction': '../../../app/Actions/Security/PasskeyRegisterOptionsAction.ts',
