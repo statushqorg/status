@@ -41,12 +41,6 @@ export default defineModel({
       middleware: ['auth'],
       routes: ['index', 'show'],
     },
-    useSearch: {
-      displayable: ['id', 'name', 'status', 'lastSampleAt'],
-      searchable: ['name'],
-      sortable: ['name', 'lastSampleAt', 'createdAt'],
-      filterable: ['status'],
-    },
   },
 
   hasMany: ['Monitor', 'ServerMetricSample', 'Incident'],

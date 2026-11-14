@@ -20,12 +20,6 @@ export default defineModel({
       middleware: ['auth'],
       routes: ['index', 'store', 'show', 'update'],
     },
-    useSearch: {
-      displayable: ['id', 'status', 'cause', 'startedAt', 'resolvedAt'],
-      searchable: ['cause'],
-      sortable: ['startedAt', 'resolvedAt'],
-      filterable: ['status'],
-    },
     observe: true,
   },
 
