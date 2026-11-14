@@ -43,12 +43,24 @@ function subscriptionEvent(subId: string, status: string, eventId = `evt_${subId
   })
 }
 
+// The payments package remembers handled event ids in payment_webhook_events
+// (four days), so the ids this file sends have to be forgotten around each run:
+// left behind, the next local run is a redelivery and upserts nothing. The
+// table is the framework's own and may not exist yet, which is not a failure.
+async function forgetHandledEvents(): Promise<void> {
+  try {
+    await db.deleteFrom('payment_webhook_events').where('event_id', 'like', 'evt_sub_%').execute()
+  }
+  catch {}
+}
+
 describe('Stripe webhook (stacksjs/status#1 Phase 9 — import-crash regression)', () => {
   let userId: number
   let prevSecret: string | undefined
 
   beforeAll(async () => {
     await awaitConfig()
+    await forgetHandledEvents()
     const svc = (config as { services?: { stripe?: { webhookSecret?: string } } }).services
     prevSecret = svc?.stripe?.webhookSecret
     if (svc?.stripe)
@@ -63,6 +75,7 @@ describe('Stripe webhook (stacksjs/status#1 Phase 9 — import-crash regression)
     const svc = (config as { services?: { stripe?: { webhookSecret?: string } } }).services
     if (svc?.stripe)
       svc.stripe.webhookSecret = prevSecret
+    await forgetHandledEvents()
     await db.deleteFrom('subscriptions').where('user_id', '=', userId).execute()
     await db.deleteFrom('users').where('id', '=', userId).execute()
   })
