@@ -317,6 +317,12 @@ useHead({
   title: `${serverView ? serverView.name : 'Server'} · StatusHQ`,
   meta: [{ name: 'robots', content: 'noindex' }],
 })
+// Conditions cannot read a `__` name: stx withholds those from @if and
+// @unless and treats the unknown name as false, so both branches of a test
+// rendered nothing. The rows keep their `__` names (that is what keeps them
+// out of the client payload); these plain flags are what the template tests.
+const HAS_AGENT_INSTALL = !!__agentInstall
+const INCIDENT_COUNT = __incidents.length
 </script>
 
 @include('../partials/app-head.stx')
@@ -506,7 +512,7 @@ useHead({
       </footer>
     </section>
 
-    @if (__agentInstall)
+    @if (HAS_AGENT_INSTALL)
       <section class="card" aria-label="Agent setup">
         <div class="card-head">
           <h3>Agent setup</h3>
@@ -561,7 +567,7 @@ useHead({
       </section>
     @endif
 
-    @if (__incidents.length)
+    @if (INCIDENT_COUNT)
       <section class="card" aria-label="Server incidents">
         <div class="card-head">
           <h3>Incidents</h3>
