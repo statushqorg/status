@@ -675,6 +675,17 @@ const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
 // otherwise stamps every fragment 'stx App'). useHead is the sanctioned
 // per-page head hook for fragment views.
 useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 StatusHQ'), meta: [{ name: 'robots', content: 'noindex' }] })
+// Conditions cannot read a `__` name: stx withholds those from @if and
+// @unless and treats the unknown name as false, so both branches of a test
+// rendered nothing. The rows keep their `__` names (that is what keeps them
+// out of the client payload); these plain flags are what the template tests.
+const HAS_APP_HEALTH = !!__appHealth
+const APP_HEALTH_STALE = !!__appHealth?.stale
+const APP_HEALTH_REPORTED = !!__appHealth?.reportedAt
+const HAS_HEARTBEAT = !!__heartbeat
+const HEARTBEAT_HAS_DURATION = !!__heartbeat?.hasDuration
+const HEARTBEAT_HAS_STARTED = !!__heartbeat?.hasStarted
+const HEARTBEAT_HAS_FAILED = !!__heartbeat?.hasFailed
 </script>
 
 @include('../partials/app-head.stx')
@@ -825,14 +836,14 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       </section>
     @endif
 
-    @if (__appHealth)
+    @if (HAS_APP_HEALTH)
       <section class="card" aria-label="Application health">
         <div class="card-head">
           <h3>Application health</h3>
           <span class="sub">read {{ __appHealth.readAgo }}</span>
         </div>
         <div class="card-body">
-          @if (__appHealth.stale)
+          @if (APP_HEALTH_STALE)
             <p class="subhead">The endpoint answered, but the report it returned was older than this monitor's freshness window &mdash; so these results are not evidence about the application right now, and the monitor is down on that basis alone.</p>
           @endif
           <dl class="kv">
@@ -843,7 +854,7 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
               </div>
             @endforeach
           </dl>
-          @if (__appHealth.reportedAt)
+          @if (APP_HEALTH_REPORTED)
             <p class="subhead">The application generated this report at {{ __appHealth.reportedAt }}.</p>
           @endif
         </div>
@@ -854,25 +865,25 @@ useHead({ title: (monitor ? monitor.name + ' \u00b7 StatusHQ' : 'Monitor \u00b7 
       <section class="card" aria-label="Heartbeat">
         <div class="card-head">
           <h3>Heartbeat</h3>
-          @if (__heartbeat)
+          @if (HAS_HEARTBEAT)
             <span class="{{ __heartbeat.pillClass }}"><span class="dot"></span>{{ __heartbeat.label }}</span>
           @endif
         </div>
         <div class="card-body">
-          @if (__heartbeat)
+          @if (HAS_HEARTBEAT)
             <p class="subhead">{{ __heartbeat.note }}</p>
             <dl class="kv">
               <div><dt>Cadence</dt><dd>{{ __heartbeat.cadence }}</dd></div>
               <div><dt>Grace period</dt><dd>{{ __heartbeat.grace }}</dd></div>
               <div><dt>Last check-in</dt><dd>{{ __heartbeat.lastPing }}</dd></div>
               <div><dt>Next check-in due</dt><dd>{{ __heartbeat.due }}</dd></div>
-              @if (__heartbeat.hasDuration)
+              @if (HEARTBEAT_HAS_DURATION)
                 <div><dt>Last run duration</dt><dd>{{ __heartbeat.lastDuration }}</dd></div>
               @endif
-              @if (__heartbeat.hasStarted)
+              @if (HEARTBEAT_HAS_STARTED)
                 <div><dt>Last run started</dt><dd>{{ __heartbeat.lastStarted }}</dd></div>
               @endif
-              @if (__heartbeat.hasFailed)
+              @if (HEARTBEAT_HAS_FAILED)
                 <div><dt>Last reported failure</dt><dd>{{ __heartbeat.lastFail }}</dd></div>
               @endif
             </dl>
