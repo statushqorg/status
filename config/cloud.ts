@@ -46,10 +46,9 @@ const API_PORT = 3008
  * Every hostname StatusHQ answers on, declared in one place.
  *
  * The app has two domain families. `statushq.org` is the product's name and
- * its canonical address: APP_URL, the mail identity, the public status pages
- * and this file's own default all use it. `uptime-status.org` is the name it
- * launched under, and production `APP_DOMAIN` still holds it, because that
- * value also names the dashboard service and its state on the box.
+ * its canonical address: APP_URL, APP_DOMAIN, the mail identity, the public
+ * status pages and this file's own default all use it. `uptime-status.org`
+ * is the name it launched under and still answers on.
  *
  * Whichever family `APP_DOMAIN` names, the other one is declared as an alias
  * below. That is not cosmetic. The deploy writes the gateway's site file and
@@ -99,8 +98,8 @@ const controlPanelRedirects = Object.fromEntries(ALIAS_DOMAINS.map(domain => [
  * Environment variables:
  * - CLOUD_PROVIDER=hetzner
  * - HCLOUD_TOKEN / HCLOUD_LOCATION (apiToken/location fall back to these)
- * - APP_DOMAIN=statushq.org (production still sets uptime-status.org; see
- *   DOMAIN_FAMILIES below, both families are declared either way)
+ * - APP_DOMAIN=statushq.org (both domain families are declared either way,
+ *   see DOMAIN_FAMILIES above)
  *
  * @see https://github.com/stacksjs/ts-cloud
  */
