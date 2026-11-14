@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'PrintDevice',
@@ -7,6 +7,12 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
   hasMany: ['Receipt'],
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
+
   traits: {
     useUuid: true,
     useTimestamps: true,
@@ -94,7 +100,7 @@ export default defineModel({
       validation: {
         rule: schema.unix(),
         message: {
-          invalid: 'Invalid timestamp format',
+          unix: 'Invalid timestamp format',
         },
       },
       factory: faker => faker.date.recent().getTime(),

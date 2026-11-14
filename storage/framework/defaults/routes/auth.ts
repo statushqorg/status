@@ -23,7 +23,19 @@
  * and user routes load first, so your handler always takes priority.
  */
 
+import { handleDynamicOAuthRegistration, oauthAuthorizationServerMetadataPath, resolveOAuthProviderConfig } from '@stacksjs/auth'
+import { config } from '@stacksjs/config'
 import { route } from '@stacksjs/router'
+import { readJsonBody, RequestBodyError } from '@stacksjs/router/body'
+
+const oauthProvider = resolveOAuthProviderConfig(config.auth.oauthProvider)
+const oauthAuthorizationPath = oauthProvider ? new URL(oauthProvider.endpoints.authorization).pathname : '/oauth/authorize'
+const oauthTokenPath = oauthProvider ? new URL(oauthProvider.endpoints.token).pathname : '/oauth/token'
+const oauthRevocationPath = oauthProvider ? new URL(oauthProvider.endpoints.revocation).pathname : '/oauth/revoke'
+const oauthIntrospectionPath = oauthProvider ? new URL(oauthProvider.endpoints.introspection).pathname : '/oauth/introspect'
+const oauthMetadataPath = oauthProvider
+  ? oauthAuthorizationServerMetadataPath(oauthProvider.issuer)
+  : '/.well-known/oauth-authorization-server'
 
 // Rate limits on token-issuance + password-reset endpoints
 // (stacksjs/stacks#1921). `Auth.attempt()` already has a per-email
@@ -33,7 +45,29 @@ import { route } from '@stacksjs/router'
 // tokens until the row TTL. Userland that overrides any of these in
 // `routes/api.ts` (user routes win) gets to pick its own limits.
 route.post('/login', 'Actions/Auth/LoginAction').rateLimit(5, 'minute')
-route.post('/register', 'Actions/Auth/RegisterAction').rateLimit(3, 'minute')
+// Registration is the one route here an anonymous visitor writes through, so
+// it carries the honeypot (a no-op for clients that send neither field) and,
+// inside the action, hourly limits per address and per email on top of this
+// burst limit.
+route.post('/register', 'Actions/Auth/RegisterAction').middleware('honeypot').rateLimit(3, 'minute')
+// OAuth authorization-server token exchange. The action remains a 404 unless
+// config.auth.oauthProvider.enabled is explicitly true. PKCE or HTTP Basic is
+// the endpoint's credential boundary, so the action opts out of browser CSRF.
+route.post(oauthTokenPath, 'Actions/Auth/OAuthTokenAction').rateLimit(30, 'minute')
+route.post(oauthRevocationPath, 'Actions/Auth/OAuthRevocationAction').rateLimit(30, 'minute')
+route.post(oauthIntrospectionPath, 'Actions/Auth/OAuthIntrospectionAction').rateLimit(30, 'minute')
+route.get(oauthAuthorizationPath, 'Actions/Auth/OAuthAuthorizationAction').rateLimit(60, 'minute')
+route.post(oauthAuthorizationPath, 'Actions/Auth/OAuthConsentAction').middleware('auth').rateLimit(30, 'minute')
+route.get(oauthMetadataPath, 'Actions/Auth/OAuthMetadataAction')
+if (oauthProvider?.dynamicRegistration) {
+  route.post(new URL(oauthProvider.dynamicRegistration.endpoint).pathname, async (request) => {
+    try { return await handleDynamicOAuthRegistration(oauthProvider, await readJsonBody(request, 16_384)) }
+    catch (error) {
+      if (!(error instanceof RequestBodyError)) throw error
+      return Response.json({ error: 'invalid_client_metadata' }, { status: error.status, headers: { 'Cache-Control': 'no-store' } })
+    }
+  }).parseBody(false).skipCsrf().rateLimit(10, 'minute')
+}
 // Magic links (config.auth.magicLink.enabled gates both, 404 when off).
 // The send endpoint answers a uniform 202 either way (anti-enumeration
 // lives in sendMagicLink); the consume endpoint is a POST because email
@@ -53,7 +87,7 @@ route.post('/verify-registration', 'Actions/Auth/VerifyRegistrationAction').midd
 // Passkey AUTHENTICATION (logging in) is correctly unauthenticated —
 // the caller doesn't have a session yet, that's the point.
 route.get('/generate-authentication-options', 'Actions/Auth/GenerateAuthenticationAction').rateLimit(10, 'minute')
-route.get('/verify-authentication', 'Actions/Auth/VerifyAuthenticationAction').rateLimit(10, 'minute')
+route.post('/verify-authentication', 'Actions/Auth/VerifyAuthenticationAction').rateLimit(10, 'minute')
 
 // TOTP 2FA. Setup/enable/disable act on the caller's own authenticated
 // account (auth-gated, same identity rule as passkey enrollment above).
@@ -67,6 +101,13 @@ route.post('/verify-two-factor-login', 'Actions/Auth/VerifyTwoFactorLoginAction'
 
 route.group({ prefix: '/auth' }, () => {
   route.post('/refresh', 'Actions/Auth/RefreshTokenAction').rateLimit(10, 'minute')
+  route.get('/oauth/clients', 'Actions/Auth/OAuthClientsAction').middleware('auth')
+  route.post('/oauth/clients', 'Actions/Auth/OAuthClientStoreAction').middleware('auth').rateLimit(10, 'minute')
+  route.patch('/oauth/clients/{id}', 'Actions/Auth/OAuthClientUpdateAction').middleware('auth').rateLimit(20, 'minute')
+  route.post('/oauth/clients/{id}/disable', 'Actions/Auth/OAuthClientDisableAction').middleware('auth').rateLimit(10, 'minute')
+  route.post('/oauth/clients/{id}/rotate-secret', 'Actions/Auth/OAuthClientSecretRotateAction').middleware('auth').rateLimit(5, 'minute')
+  route.get('/oauth/connections', 'Actions/Auth/OAuthConnectionsAction').middleware('auth')
+  route.post('/oauth/connections/{id}/disconnect', 'Actions/Auth/OAuthDisconnectAction').middleware('auth').rateLimit(10, 'minute')
   route.get('/tokens', 'Actions/Auth/ListTokensAction').middleware('auth')
   route.post('/token', 'Actions/Auth/CreateTokenAction').middleware('auth').rateLimit(10, 'minute')
   route.delete('/tokens/{id}', 'Actions/Auth/RevokeTokenAction').middleware('auth')
@@ -74,7 +115,13 @@ route.group({ prefix: '/auth' }, () => {
 })
 
 route.group({ middleware: 'auth' }, () => {
+  route.get('/referrals', 'Actions/Auth/ReferralSummaryAction').rateLimit(60, 'minute')
+  route.post('/referrals/code', 'Actions/Auth/CreateReferralCodeAction').rateLimit(10, 'minute')
   route.get('/me', 'Actions/Auth/AuthUserAction')
+  // The caller's own personal data as a JSON download (GDPR access and
+  // portability, stacksjs/stacks#365). Reads every table the user touches,
+  // so it is held to a few an hour; each one is recorded in gdpr_requests.
+  route.get('/me/data-export', 'Actions/Auth/DataExportAction').rateLimit(3, 'hour')
   route.post('/logout', 'Actions/Auth/LogoutAction')
   // Sign out everywhere: revoke every access/refresh token AND destroy
   // every session for the authenticated user (stacksjs/stacks#1957).
@@ -88,3 +135,12 @@ route.group({ prefix: '/password' }, () => {
   route.post('/reset', 'Actions/Password/PasswordResetAction').rateLimit(5, 'minute')
   route.post('/verify-token', 'Actions/Password/VerifyResetTokenAction').rateLimit(10, 'minute')
 })
+
+// Discoverable passkeys: canonical JSON ceremonies, independent concurrent browser attempts.
+// Public flows carry a one-use ceremony capability; enrollment and removal also require auth/CSRF.
+route.post('/auth/passkeys/authentication/options', 'Actions/Auth/PasskeyAuthenticationOptionsAction').skipCsrf().rateLimit(10, 'minute')
+route.post('/auth/passkeys/authentication', 'Actions/Auth/PasskeyAuthenticationAction').skipCsrf().rateLimit(10, 'minute')
+route.post('/auth/passkeys/registration/options', 'Actions/Auth/PasskeyRegistrationOptionsAction').middleware('auth').rateLimit(5, 'minute')
+route.post('/auth/passkeys/registration', 'Actions/Auth/PasskeyRegistrationAction').middleware('auth').rateLimit(5, 'minute')
+route.get('/auth/passkeys', 'Actions/Auth/PasskeyIndexAction').middleware('auth')
+route.delete('/auth/passkeys/{id}', 'Actions/Auth/PasskeyDestroyAction').middleware('auth').rateLimit(10, 'minute')

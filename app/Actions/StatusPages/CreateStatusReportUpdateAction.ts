@@ -36,7 +36,7 @@ export default new Action({
     const update = await StatusReportUpdate.create({
       status_report_id: report.id,
       message,
-      status,
+      status: status as 'resolved' | 'investigating' | 'identified' | 'monitoring' | null | undefined,
       postedAt: request.get('posted_at') || new Date().toISOString(),
     })
 

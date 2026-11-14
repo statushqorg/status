@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * Pivot row between Subscriber and EmailList.
@@ -18,6 +18,9 @@ export default defineModel({
   belongsTo: ['EmailList', 'Subscriber'],
 
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 20 },
+    gdpr: { subject: { via: 'Subscriber' }, erasure: 'delete', basis: 'consent', purpose: 'Mailing list membership' },
     useUuid: true,
     useTimestamps: true,
     useApi: {
@@ -38,7 +41,6 @@ export default defineModel({
       validation: {
         rule: schema.number(),
       },
-      factory: faker => faker.number.int({ min: 1, max: 8 }),
     },
 
     subscriberId: {
@@ -47,7 +49,6 @@ export default defineModel({
       validation: {
         rule: schema.number(),
       },
-      factory: faker => faker.number.int({ min: 1, max: 100 }),
     },
 
     status: {
@@ -87,5 +88,9 @@ export default defineModel({
       },
       factory: () => null,
     },
+  },
+
+  dashboard: {
+    columns: ['subscriber', 'emailList', 'status', 'source', 'subscribedAt'],
   },
 } as const)

@@ -141,7 +141,9 @@ describe('layout groups', () => {
      * What this test is really about is that the two partials resolve and
      * render, which the assertions around this line already check.
      */
-    expect(html).toContain('class="app-shell')
+    // Matched as a class token, not as the first one: the linter orders class
+    // lists, so where `app-shell` sits inside the attribute is not the contract.
+    expect(/class="(?:[^"]*\s)?app-shell(?:\s[^"]*)?"/.test(html)).toBe(true)
     expect(/<nav\b[^>]*\bclass="app-nav"/.test(html)).toBe(true)
     expect(html).toContain(user ? 'Sign out' : 'Sign in')
     expect(html).not.toContain('Could not resolve path for include')

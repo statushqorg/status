@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'CampaignVariant',
@@ -21,5 +21,9 @@ export default defineModel({
     clickCount: { required: true, fillable: true, default: 0, validation: { rule: schema.number().min(0) }, factory: () => 0 },
     conversionCount: { required: true, fillable: true, default: 0, validation: { rule: schema.number().min(0) }, factory: () => 0 },
     isWinner: { required: true, fillable: true, default: false, validation: { rule: schema.boolean() }, factory: () => false },
+  },
+
+  dashboard: {
+    columns: ['name', 'campaign', 'allocation', 'sentCount', 'openCount', 'clickCount', 'isWinner'],
   },
 } as const)

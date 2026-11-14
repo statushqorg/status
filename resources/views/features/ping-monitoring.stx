@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="layer-heading">
+      <section class="section site-shell" aria-labelledby="layer-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="layer-heading">Separate the network from the application.</h2>
@@ -93,7 +93,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             <div class="panel" aria-label="Ping monitor list example">
               <div class="panel-top">
                 <strong>Ping monitors</strong>
-                <span class="pill down"><span class="dot"></span> 1 down</span>
+                <span class="down pill"><span class="dot"></span> 1 down</span>
               </div>
               <div class="panel-list">
                 <div class="panel-row">
@@ -114,8 +114,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="latency-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="latency-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="latency-heading">Latency is data, not a vibe.</h2>
             <p>
@@ -129,7 +129,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             <div class="panel" aria-label="Ping check history example">
               <div class="panel-top">
                 <strong>worker-3.yourcompany.com</strong>
-                <span class="pill down"><span class="dot"></span> Incident open</span>
+                <span class="down pill"><span class="dot"></span> Incident open</span>
               </div>
               <div class="panel-list">
                 <div class="panel-row">
@@ -150,8 +150,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What ping monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -164,7 +164,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Ping monitoring, answered.</h2>
@@ -179,8 +179,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

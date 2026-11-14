@@ -11,7 +11,7 @@ const liveError = useReactiveProp('error', '')
 const liveName = useReactiveProp('name', '')
 const liveId = useReactiveProp('id', '')
 const liveAriaLabel = useReactiveProp('ariaLabel', '')
-const emit = defineEmits()
+const emit = defineEmits(['update:checked', 'update:indeterminate', 'change'])
 const generatedId = useId('checkbox')
 
 const sizeClasses: Record<CheckboxSize, { control: string, icon: string, label: string, description: string }> = {
@@ -44,7 +44,7 @@ const iconClass = derived(() => [
 const labelClass = derived(() => [
   sizeClasses[liveSize()]?.label || sizeClasses.md.label,
   'font-medium',
-  liveDisabled() ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-700 dark:text-neutral-200',
+  liveDisabled() ? 'text-neutral-500 dark:text-neutral-500' : 'text-neutral-700 dark:text-neutral-200',
 ].join(' '))
 const descriptionClass = derived(() => [
   sizeClasses[liveSize()]?.description || sizeClasses.md.description,

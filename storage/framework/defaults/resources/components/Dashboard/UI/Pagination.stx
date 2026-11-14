@@ -8,7 +8,7 @@ const itemsPerPage = useReactiveProp('itemsPerPage', 20)
 const showItemsPerPage = useReactiveProp('showItemsPerPage', false)
 const showTotalItems = useReactiveProp('showTotalItems', true)
 const maxVisiblePages = useReactiveProp('maxVisiblePages', 5)
-const emit = defineEmits()
+const emit = defineEmits(['page', 'prev', 'next', 'per-page'])
 const selectedItemsPerPage = state(20)
 
 const perPageOptions = [10, 20, 25, 50, 100]
@@ -79,9 +79,7 @@ function emitItemsPerPage(event: Event): void {
     <label :if="showItemsPerPage()" class="flex gap-2 items-center">
       <span>Show</span>
       <select x-model.number="selectedItemsPerPage" class="px-2 py-1.5 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-md dark:border-neutral-600" @change="emitItemsPerPage($event)">
-        <template :for="option in perPageOptions">
-          <option :value="option">{{ option }}</option>
-        </template>
+        <option :for="option in perPageOptions" :value="option">{{ option }}</option>
       </select>
       <span>per page</span>
     </label>
@@ -99,15 +97,15 @@ function emitItemsPerPage(event: Event): void {
       <span class="block h-5 w-5 i-hugeicons-arrow-left-01"></span>
     </Button>
 
-    <template :for="page in visiblePages()">
-      <span :if="typeof page !== 'number'" class="px-2 text-neutral-400 dark:text-neutral-500">...</span>
+    <div :for="page in visiblePages()" class="contents">
+      <span :if="typeof page !== 'number'" class="px-2 text-neutral-500 dark:text-neutral-500">...</span>
       <Button :if="typeof page === 'number' && page === currentPage()" @click="goToPage(page)">
         <span aria-current="page">{{ page }}</span>
       </Button>
       <Button :if="typeof page === 'number' && page !== currentPage()" variant="secondary" @click="goToPage(page)">
         {{ page }}
       </Button>
-    </template>
+    </div>
 
     <Button variant="secondary" iconOnly :disabled="currentPage() >= totalPages()" ariaLabel="Next page" @click="nextPage">
       <span class="block h-5 w-5 i-hugeicons-arrow-right-01"></span>

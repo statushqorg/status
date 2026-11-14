@@ -44,30 +44,97 @@ auth/src/
 └── session-auth.ts        # Session-based SPA auth
 ```
 
-## Auth Class (authentication.ts) — Static Methods
+## Auth Class (authentication.ts) - Static Methods
 
 ### Login & Authentication
-- `Auth.attempt(credentials: AuthCredentials): Promise<boolean>` — validate credentials without creating token
-- `Auth.validate(credentials: AuthCredentials): Promise<boolean>` — alias for attempt
-- `Auth.login(credentials: AuthCredentials, options?: TokenCreateOptions): Promise<{ user, token } | null>` — login and create token
-- `Auth.loginUsingId(userId: number, options?: TokenCreateOptions): Promise<{ user, token } | null>` — login by user ID
-- `Auth.logout(): Promise<void>` — revoke current token
-- `Auth.once(credentials: AuthCredentials): Promise<boolean>` — one-time auth without token
-- `Auth.requestToken(credentials, clientId, clientSecret): Promise<{ token } | null>` — OAuth token request
+- `Auth.attempt(credentials: AuthCredentials): Promise<boolean>` - validate credentials without creating token
+- `Auth.validate(credentials: AuthCredentials): Promise<boolean>` - checks credentials without setting the request's authenticated user
+- `Auth.login(credentials: AuthCredentials, options?: TokenCreateOptions): Promise<{ user, token } | null>` - login and create token
+- `Auth.loginUsingId(userId: number, options?: TokenCreateOptions): Promise<{ user, token } | null>` - login by user ID
+- `Auth.logout(): Promise<void>` - revoke current token
+
+### Personal access tokens (Sanctum-shaped)
+
+`oauth_access_tokens` is polymorphic: `tokenable_type` holds the owner's TABLE
+name (`users`, `authors`) and `tokenable_id` its id there, so any model
+declaring `useAuth` can hold tokens - not only `User`.
+
+- `createToken(id, name, scopes, { tokenableType })` - mint one. Returns the
+  plaintext ONCE (`plainTextToken`); the table stores a hash and nothing can
+  recover it afterwards. `tokenableType` defaults to `users`.
+- `tokens(id, tokenableType?)` - list an owner's live tokens.
+- `tokenCan(scope)` / `tokenCanAll` / `tokenCanAny` / `tokenAbilities` - check
+  the current request's token.
+- `revokeToken`, `revokeTokenById`, `revokeAllTokens(id, type?)`,
+  `revokeOtherTokens(id, type?, { exceptTokenId? })` - revocation also revokes
+  the paired refresh token, which a raw row delete does not.
+- `setTrailActor(id)` - attribute writes in a queue job or CLI run that has no
+  request to read a user from.
+
+The `PersonalAccessToken` model maps the same table, so `owner.with('tokenable')`
+lists exactly what `createToken` minted. It deliberately generates no CRUD
+routes: minting and revoking both carry semantics a generic route does not.
+- `Auth.once(credentials: AuthCredentials): Promise<boolean>` - one-time auth without token
+- `Auth.requestUserTokenWithClient(credentials, clientId, clientSecret): Promise<{ token } | null>` authenticates both a legacy OAuth client and an end user password, then issues a user token. It is not the client credentials grant.
+- `Auth.requestToken(...)` is the deprecated compatibility alias for that same legacy exchange. New delegated integrations use the authorization-code provider.
 
 ### User State
-- `Auth.user(): Promise<UserModel | undefined>` — get authenticated user from bearer token
-- `Auth.check(): Promise<boolean>` — is user authenticated?
-- `Auth.guest(): Promise<boolean>` — is user a guest?
-- `Auth.id(): Promise<number | undefined>` — get authenticated user ID
-- `Auth.setUser(user: UserModel): void` — manually set user
+- `Auth.user(): Promise<UserModel | undefined>` - resolve the current request user through bearer/token-cookie state
+- `Auth.check(): Promise<boolean>` - is user authenticated?
+- `Auth.guest(): Promise<boolean>` - is user a guest?
+- `Auth.id(): Promise<number | undefined>` - get authenticated user ID
+- `Auth.setUser(user: UserModel | undefined): void` - set or clear the current request user
+
+### Audited support viewing
+
+Enable `auth.impersonation` with an `eligible(userId)` policy covering suspended
+or deleted actors and subjects. `buddy migrate` installs the framework session
+and privileged-audit tables when enabled. `migrateImpersonationTables()` is the
+explicit installation API for isolated tests. Never install tables in a request.
+
+For tenant-scoped applications, configure `workspaceId(request, subjectId)` to
+resolve the viewed account's actual workspace membership. The resolver runs
+after support authority checks and its bounded identifier is included in the
+durable access audit. A raw client-supplied tenant header is not membership proof.
+
+Grant native RBAC role `super-admin` in guard `platform` through a trusted
+operator flow. `Auth.startImpersonation(subjectId, reason)` requires a live
+ordinary token, rejects nesting and self-viewing, and returns a separate
+15-minute credential. The host should require a fresh password or passkey
+confirmation before calling it.
+
+Keep the real login credential. Attach the returned credential in the
+`x-stacks-impersonation` header alongside the ordinary bearer. Central
+`Auth.getUserFromToken()` resolves the viewed user only after checking the
+exact parent session, fresh platform role, actor/subject eligibility, expiry,
+revocation and a durable access audit. Support viewing permits GET only. HEAD
+is rejected because multiplexed application actions can handle it as a write.
+`requestImpersonation()` exposes trusted actor/subject metadata; ORM trails
+attribute writes to the original actor. `Auth.endImpersonation(credential)`
+requires the original actor request without the support header.
+Ordinary bearer lookups may be cached within a request. Viewed identities are
+never stored in that cache: each support-view resolution rechecks live authority
+and clears previously trusted support context before authenticating again.
+
+Store viewing state independently from the actor's login and cached profile,
+show a persistent disclosure and Exit control, disable offline persistence,
+and clear the viewed page on expiry or denial. Platform administration routes
+must reject the support header and separately check the current platform role.
+`recordPrivilegedAccess(actorId, action, subjectId?)` is a fail-closed audit
+primitive for these routes; do not put request bodies or credentials in logs.
+
+For a privileged operation that must immediately observe role revocation by a
+different worker, use `hasFreshRole(user, roleName, guardName)` instead of the
+process-cached `hasRole`. It reads the configured RBAC store and propagates
+store errors. It does not authenticate the caller or create an audit trail;
+the operation must do both separately.
 
 ### Token Creation
 - `Auth.createTokenForUser(user, options?: TokenCreateOptions): Promise<NewAccessToken>`
 - `Auth.createToken(user, name?, abilities?): Promise<AuthToken>`
 
 ### Token Validation
-- `Auth.validateToken(token: string): Promise<boolean>` — validate bearer token
+- `Auth.validateToken(token: string): Promise<boolean>` - validate bearer token
 - `Auth.getUserFromToken(token: string): Promise<UserModel | undefined>`
 - `Auth.currentAccessToken(): Promise<PersonalAccessToken | undefined>`
 
@@ -83,16 +150,16 @@ auth/src/
 - `Auth.revokeToken(token: string): Promise<void>`
 - `Auth.revokeTokenById(tokenId: number): Promise<void>`
 - `Auth.revokeAllTokens(userId?: number): Promise<void>`
-- `Auth.revokeOtherTokens(userId?: number): Promise<void>`
+- `Auth.revokeOtherTokens(userId?: number, { exceptTokenId? }): Promise<{ keptTokenId: number | null }>` - keeps `exceptTokenId`, else the request's own token; when neither resolves it revokes every token (fail closed)
 - `Auth.pruneExpiredTokens(): Promise<number>`
 - `Auth.pruneRevokedTokens(): Promise<number>`
 - `Auth.rotateToken(oldToken: string): Promise<AuthToken | null>`
 - `Auth.findToken(tokenId: number): Promise<PersonalAccessToken | null>`
 
 ### Utility
-- `Auth.guard(name?: string): typeof Auth` — select guard (returns self)
-- `Auth.viaRemember(): boolean` — always false currently
-- `Auth.clearState(): void` — clear cached user/token
+- `Auth.guard(name?: string): typeof Auth` - select guard (returns self)
+- `Auth.viaRemember(): boolean` - always false currently
+- `Auth.clearState(): void` - clear cached user/token
 
 ## Token System (tokens.ts)
 
@@ -115,7 +182,7 @@ auth/src/
 - `revokeToken(plainTextToken): Promise<void>`
 - `revokeTokenById(tokenId): Promise<void>`
 - `revokeAllTokens(userId): Promise<void>`
-- `revokeOtherTokens(userId): Promise<void>`
+- `revokeOtherTokens(userId, type?, { exceptTokenId? }): Promise<{ keptTokenId: number | null }>` - same rule as `Auth.revokeOtherTokens`
 - `deleteExpiredTokens(): Promise<number>`
 - `deleteRevokedTokens(daysOld?): Promise<number>`
 
@@ -133,6 +200,49 @@ auth/src/
 - `createClient(options: CreateClientOptions): Promise<CreateClientResult>`
 - `revokeClient(clientId): Promise<void>`
 
+### OAuth Provider and PKCE
+
+The authorization server is opt-in through `config/auth.ts` under
+`oauthProvider`. It is separate from social sign-in, where Stacks is the OAuth
+client. The provider profile is Authorization Code with S256 PKCE and rotating
+refresh tokens. Confidential client credentials are opt-in through
+`oauthProvider.clientCredentials` and mint access-only tokens without refresh
+tokens. Protected resource-server introspection is separately opt-in through
+`oauthProvider.introspection`; it authenticates a confidential client and
+requires that client to share a configured resource audience with the token.
+It does not support implicit or password grants or OpenID Connect.
+
+When enabled, the default auth route bundle registers:
+
+- `GET` and `POST /oauth/authorize`
+- `POST /oauth/token`
+- `POST /oauth/revoke`
+- `GET /.well-known/oauth-authorization-server`
+- owner-managed clients under `/auth/oauth/clients`
+- user-managed connected applications under `/auth/oauth/connections`
+
+Set a canonical `issuer`, then register every scope and resource explicitly.
+Resource audiences are absolute URIs and redirect URIs use exact matching.
+The consent view is `auth/oauth/consent` by default and can be overridden with
+`oauthProvider.consent.view`. Use `oauthProvider.consent.resolveWorkspace` when
+the application must bind consent to current server-owned workspace authority.
+Use `oauthProvider.subjectEligibility` when account status is represented by
+application data that is not simply the presence of a user row. The callback
+is rechecked before consent approval, delegated code exchange and refresh, and
+by introspection; returning false revokes the affected grant and reports the
+token inactive.
+
+Provider actions return 404 while `oauthProvider.enabled` is false. The token
+and revocation endpoints use protocol credentials and intentionally skip
+browser CSRF. Authorization approval, client management, and disconnect remain
+authenticated and CSRF protected.
+
+- `resolveOAuthProviderConfig(options)` returns `null` unless explicitly enabled
+- `generatePkceVerifier()` creates a 256-bit RFC 7636 verifier
+- `createS256CodeChallenge(verifier)` derives its S256 challenge
+- `verifyS256CodeChallenge(verifier, challenge)` validates without a plain fallback
+- `isValidPkceVerifier(value)` checks the required 43 to 128 character syntax
+
 ## Two-Factor Authentication (authenticator.ts)
 
 - `generateTwoFactorSecret(): string`
@@ -146,11 +256,19 @@ auth/src/
 
 ## Authorization Gates (gate.ts)
 
+Gate registrations, policies and before/after callbacks are shared by native
+module copies in one JavaScript process, including separately bundled Actions.
+`Gate.flush()` clears those registrations across every copy. This shares no
+request identity, token or authorization decision. Native `AuthorizationResponse`
+objects can cross bundle copies; arbitrary objects, forged prototypes and
+accessor fields are rejected. A conflicting shared-state version/shape refuses
+module initialization. This does not synchronize different processes or Workers.
+
 ### Gate Functions
 - `define<T>(ability: string, callback: GateCallback<T>): void`
 - `policy(model: string | { name }, policyClass: new () => Policy): void`
-- `before(callback): void` — run before any gate check
-- `after(callback): void` — run after any gate check
+- `before(callback): void` - run before any gate check
+- `after(callback): void` - run after any gate check
 - `allows(ability, user, ...args): Promise<boolean>`
 - `denies(ability, user, ...args): Promise<boolean>`
 - `can(ability, user, ...args): Promise<boolean>`
@@ -158,21 +276,21 @@ auth/src/
 - `any(abilities[], user, ...args): Promise<boolean>`
 - `all(abilities[], user, ...args): Promise<boolean>`
 - `none(abilities[], user, ...args): Promise<boolean>`
-- `authorize(ability, user, ...args): Promise<AuthorizationResponse>` — throws on deny
-- `inspect(ability, user, ...args): Promise<AuthorizationResponse>` — never throws
+- `authorize(ability, user, ...args): Promise<AuthorizationResponse>` - throws on deny
+- `inspect(ability, user, ...args): Promise<AuthorizationResponse>` - detailed result; invalid callback returns throw
 - `has(ability): boolean`
 - `hasPolicy(model): boolean`
 - `abilities(): string[]`
 - `getPolicyFor<T>(model: T): Policy<T> | null`
-- `flush(): void` — clear all gates
+- `flush(): void` - clear all gates
 
-### Gate Facade — `Gate.define()`, `Gate.can()`, etc
+### Gate Facade - `Gate.define()`, `Gate.can()`, etc
 
 ### AuthorizationResponse Class
 - `static allow(message?): AuthorizationResponse`
 - `static deny(message?, code?): AuthorizationResponse`
 - `allowed(): boolean`, `denied(): boolean`
-- `authorize(): void` — throws AuthorizationException if denied
+- `authorize(): void` - throws AuthorizationException if denied
 
 ### Policy Interface
 Methods: `before?`, `viewAny?`, `view?`, `create?`, `update?`, `delete?`, `restore?`, `forceDelete?`
@@ -221,7 +339,7 @@ Protected helpers: `allow(message?)`, `deny(message?, code?)`, `denyIf(condition
 - `Rbac.syncRolePermissions(roleName, permissionNames[], guardName?): Promise<void>`
 
 ### withRbac Mixin
-`withRbac(user)` — adds `hasRole()`, `hasPermission()`, `assignRole()`, `givePermission()`, etc. to any user object
+`withRbac(user)` - adds `hasRole()`, `hasPermission()`, `assignRole()`, `givePermission()`, etc. to any user object
 
 ### RBAC Types
 ```typescript
@@ -230,15 +348,83 @@ interface PermissionRecord { id, name, guard_name, description?, created_at?, up
 interface RbacStore { findRoleByName, createRole, deleteRole, getAllRoles, findPermissionByName, createPermission, ... }
 ```
 
+### Configured administrators (admins.ts)
+List operator emails in `config/auth.ts` and run `./buddy seed:admins` (alias `admins:seed`; safe in a deploy's preStart):
+```typescript
+admins: ['ops@example.com', 'founder@example.com'],
+adminRole: { name: 'admin', guard: 'web' }, // default; false = accounts only
+```
+- A missing account is created with a verified email and a random password nobody knows; first sign-in is a password reset or a social sign-in linking the verified address.
+- Grants only: removing an address never revokes. A malformed or repeated address throws.
+- `provisionAdmins({ emails?, role?, accounts?: { findUserId, createUser }, afterEach? })` for app-specific authority (an organization membership): `afterEach({ userId, email, created })` returns `true` when it changed something. Results: `{ email, userId, outcome: 'created' | 'granted' | 'unchanged' }`.
+- `adminEmails(list)` normalizes/validates; `nameFromEmail('ada.lovelace@x')` → `Ada Lovelace`.
+
 ## Session Auth (session-auth.ts)
 
 - `SessionAuth.login(email, password): Promise<{ user, sessionId }>`
-- `SessionAuth.logout(sessionId): void`
+- `SessionAuth.logout(sessionId): Promise<void>`
 - `SessionAuth.user(sessionId): Promise<UserModel | undefined>`
-- `SessionAuth.check(sessionId): boolean`
-- `SessionAuth.refresh(sessionId, ttlMs?): boolean`
+- `SessionAuth.check(sessionId): Promise<boolean>`
+- `SessionAuth.refresh(sessionId, ttlMs?): Promise<boolean>`, rejects non-positive or non-finite TTLs without changing the session
 
-Internal: in-memory Map with 10k session limit, 5-minute eviction interval, timing-safe password comparison with dummy bcrypt hash.
+Internal: database-backed `sessions` rows with expiry, optional IP/User-Agent fingerprint checks, transactional logout and refresh, and timing-safe password comparison with a dummy bcrypt hash. Sessions survive process restarts and are shared by workers through the configured database.
+
+## Durable database browser sessions
+
+Keep browser authority separate from short-lived API bearer credentials. After
+completed password/MFA, registration or verified SSO/social sign-in, a server
+adapter can exchange its freshly issued, ordinary full-scope sign-in token:
+
+```typescript
+const session = await startBrowserSession(issued.token, {
+  previousSession: request.cookie('session_id'),
+})
+if (!session) throw new Error('Sign-in is no longer valid')
+headers.append('Set-Cookie', browserSessionCookie(session))
+```
+
+This helper belongs inside the completed server sign-in path. Do not expose a
+public bearer-to-browser-session exchange endpoint. Limited/delegated tokens
+cannot acquire full browser authority. The exchange locks the credential owner,
+revalidates the token, saves the browser session, revokes the consumed access and
+refresh pair and retires an offered previous browser credential atomically.
+Keep an API client's ordinary JSON token/refresh response unchanged instead.
+
+Configure `auth.session.lifetime` in milliseconds (default 24 hours), independently
+of `auth.tokenExpiry`. For example, a database browser session lasting 30 days does not
+extend a one-hour API bearer. The auth migrator creates `auth_browser_sessions`; apply the normal
+`buddy migrate --auth` path before adopting this transport, not local table DDL.
+
+The HttpOnly, SameSite cookie is `session_id`; Secure follows the canonical app
+URL policy. Only a hash-backed identifier is stored in SQL. `Auth.user`, auth
+middleware and `SessionAuth` read this credential, preserving primary reads,
+absolute/idle expiry and configured fingerprint checks. Normal reads neither
+rotate cookies nor extend absolute expiry, so concurrent tabs cannot overwrite
+one another's renewed credentials. There is no browser-readable refresh secret
+or public cookie-renewal endpoint. Keep normal CSRF protection on sign-in,
+logout and session-management mutations.
+
+- `browserSessions(userId, currentCredential?)` returns owner-scoped metadata
+  and safe identifiers, never credentials. It includes existing ordinary full-scope sign-ins during migration; delegated and limited API tokens keep their own management contract. A listed identifier cannot be
+  replayed as a cookie or bearer.
+- `revokeBrowserSession(userId, identifier)` revokes only that owner's session.
+- `SessionAuth.logout(credential)` and `clearedBrowserSessionCookie()` end the
+  active browser session. Clear the old access-token cookie when changing
+  transports so it cannot mask the new identity.
+- `revokeAccountCredentials` includes database sessions. Its `exceptSessionId`
+  can preserve the current cookie credential or its server-side identifier.
+  Account deprovisioning must use the shared revocation primitive and also
+  revoke any application-owned credentials.
+
+Retain application provisioning, audit and new-device hooks. Password/MFA,
+registration and SSO/social adapters must all use the same transport. A JSON
+sign-in which issues an access-cookie for another account must retire/clear an
+old database browser cookie, so it cannot later restore the earlier identity.
+
+Real HTTP/database evidence: `auth/tests/browser-session-store.test.ts`, including
+service restart, real short bearer expiry, safe metadata identifiers, concurrent
+one-use exchange, owner isolation, failed-revocation rollback, account replacement,
+CSRF, logout races, current-session preservation, idle and absolute expiry.
 
 ## Email Verification (email-verification.ts)
 
@@ -252,13 +438,71 @@ Internal: in-memory Map with 10k session limit, 5-minute eviction interval, timi
 ```typescript
 const actions = passwordResets(email)
 await actions.sendEmail()
+// or: an invitation's first password, a custom expiry, your own delivery
+await actions.sendEmail({
+  purpose: 'setup',                       // 'reset' (default) | 'setup'
+  expiresAt: new Date(Date.now() + 3 * 864e5),
+  deliver: async ({ purpose, userId, email, token, url, expiresAt }) => { /* localized mail, ledger */ },
+})
 const valid = await actions.verifyToken(token)
 const result = await actions.resetPassword(token, newPassword)
 ```
 
+`deliver` runs after the token commits, instead of the framework mail; the
+`token`/`url` are the live credential, never log them. `sendEmail` stays a
+no-op for unknown or throttled addresses (anti-enumeration) and resolves
+`false` for them, `true` when a link was issued and delivered. That result is
+for the server: a public endpoint keeps answering every caller the same way,
+while an operator-facing one (the dashboard's user invitation) has to know the
+mail did not go. The mail states the link's lifetime in words ("7 days", "2
+hours", "60 minutes") through the `expiresIn` template variable
+(`describeLinkLifetime`); `expireMinutes` is still passed for templates an app
+overrides.
+
+### One credential sweep (password/credentials.ts)
+
+- `revokeAccountCredentials(userId, { exceptTokenId?, exceptSessionId?, tx? })`
+  stamps `password_changed_at` and revokes two-factor challenges, magic links,
+  OAuth grants and codes, access/refresh tokens and sessions, in one transaction
+  (joins the caller's when `tx` is given; a `tx` outside its transaction
+  throws). The kept token and its refresh token are re-bound to the stamp.
+  Returns `{ passwordChangedAt, keptTokenId }`. `resetPassword` runs it.
+- `changePassword(userId, current, next, { keepTokenId?, keepSessionId?, notify? })`
+  verifies `current`, commits only if that hash is still stored, runs the sweep,
+  then notifies after commit (`notify`: `true` = the `password-changed` mail, a
+  function = yours, `false` = nothing). Returns `{ success: true, keptTokenId }`
+  or `{ success: false, reason: 'invalid-current-password' | 'user-not-found' | 'invalid-new-password' }`.
+  Enforce the new password's policy first.
+- Any other path that changes how an account proves who it is (recovery, an
+  admin forcing a sign-out, an email change) should call the sweep too.
+
 ## Registration (register.ts)
 
 - `register(credentials: NewUser): Promise<{ token: AuthToken }>`
+
+### Registration hardening
+
+`register()` refuses a display name that is not a name: no link or web address
+(`bit.ly/x`, `example.com`, `www.`, a scheme, `/`, `@`), no markup, no control
+characters, only letters, digits, spaces and `. , ' - ( )`, at most
+`DISPLAY_NAME_MAX_LENGTH` (80) characters. It answers 422 with a sentence for
+the person, and stores the name whitespace-tidied. The rule lives in
+`@stacksjs/auth/display-name` (`displayNameProblem`, `displayNameMessage`,
+`normalizeDisplayName`).
+
+Mail that greets someone reads the name through `greetingName(name)`: a first
+name, or `undefined` when the stored value would not pass registration. Use it
+in every mail of your own that goes to an address the recipient has not
+confirmed. `RegisterAction` already passes `user:registered` listeners the
+greeting name rather than the stored one.
+
+`POST /register` is limited three ways: the route's 3 a minute per client, and
+inside the action 20 an hour per client address and 5 an hour per email
+(`config.auth.registration.rateLimit: { perIp, perEmail }`, `false` to turn
+one off). It also carries the `honeypot` middleware (see `stacks-forms`).
+
+`buddy user:audit` lists accounts whose stored name would be refused today,
+with the reason and whether the address was ever verified. It only lists.
 
 ## User Helpers (user.ts)
 
@@ -271,18 +515,43 @@ const result = await actions.resetPassword(token, newPassword)
 - `logout(): Promise<void>`
 - `refresh(): Promise<void>`
 
-## Passkey/WebAuthn (passkey.ts)
+## Passkey/WebAuthn
 
-- `getUserPasskeys(userId): Promise<PasskeyAttribute[]>`
-- `getUserPasskey(userId, passkeyId): Promise<PasskeyAttribute | undefined>`
-- `setCurrentRegistrationOptions(user, verified): Promise<void>`
+Opt in with `config.auth.passkeys: { enabled: true, origin?: string, name?: string }`.
+The canonical origin defaults to `config.app.url`; production requires HTTPS.
+`buddy migrate` / `buddy auth:setup` create `passkey_ceremonies` and `passkeys`.
 
-### Re-exported from @stacksjs/ts-auth
-- `generateRegistrationOptions`, `generateAuthenticationOptions`
-- `verifyRegistrationResponse`, `verifyAuthenticationResponse`
-- `startRegistration`, `startAuthentication` (browser)
-- `browserSupportsWebAuthn`, `browserSupportsWebAuthnAutofill`
-- `platformAuthenticatorIsAvailable`
+- `beginPasskeyRegistration({ id, email?, name? }, { origin, name })` returns
+  `{ ceremony, options }` as JSON. Call only for the authenticated account.
+- `finishPasskeyRegistration(userId, ceremony, credentialJSON, party)` consumes
+  the account-bound challenge and saves only verified resident credentials.
+- `beginPasskeyAuthentication(party)` returns discoverable options without an
+  email lookup, usable with conditional mediation and `autocomplete="username webauthn"`.
+- `finishPasskeyAuthentication(ceremony, credentialJSON, party)` returns the
+  verified user ID; the application then issues its usual session.
+- `listPasskeys(userId)` returns display-safe metadata, never public-key material.
+- `removePasskey(userId, id, hasAlternativeSignIn?)` serializes removals and
+  refuses to remove the last key without another login method. Supply a callback
+  when password hashes may be unusable placeholders or other factors exist.
+
+Default routes under `/auth/passkeys` expose registration/options, registration,
+authentication/options, authentication (POST), listing (GET) and deletion (DELETE
+`/{id}`). Public authentication endpoints require the canonical Origin header;
+enrollment/removal also require auth and CSRF protection. Deleting the last key
+requires proving the fallback password in the request. All responses are no-store.
+
+Browser code imports **`@stacksjs/auth/passkeys-browser`**, never the server barrel.
+It exports `startRegistration`, `startAuthentication(options, { signal?, mediation? })`,
+`browserSupportsWebAuthn`, `browserSupportsWebAuthnAutofill`, the JSON option/credential
+codecs and types. Abort a pending conditional request before explicit sign-in or
+password submission, and on unmount. Serialize results using
+`registrationCredentialToJSON` / `authenticationCredentialToJSON` before POSTing.
+Native JS contexts require a platform passkey bridge; web support alone does not
+provide one. Keep existing native sign-in available until that bridge exists.
+
+Legacy helpers (`getUserPasskeys`, `getUserPasskey`, `storeWebAuthnChallenge`,
+`consumeWebAuthnChallenge`) remain for existing integrations. New flows should
+use the ceremony API, which supports concurrent anonymous browser attempts.
 
 ## Auth Middleware (middleware.ts)
 
@@ -293,21 +562,30 @@ export const authMiddlewareHandler = {
 }
 ```
 
+
 ## Rate Limiter (rate-limiter.ts)
 
-```typescript
-class RateLimiter {
-  static MAX_ATTEMPTS = 5
-  static LOCKOUT_DURATION = 15 * 60 * 1000  // 15 minutes
-  static MAX_STORE_SIZE = 10_000
-  static EVICTION_INTERVAL = 5 * 60 * 1000  // 5 minutes
+Every check/update is async, including when the backing store is memory:
 
-  static isRateLimited(email): boolean
-  static recordFailedAttempt(email): void
-  static resetAttempts(email): void
-  static validateAttempt(email): void  // throws HttpError 429
-}
-```
+~~~ts
+import { RateLimiter } from '@stacksjs/auth'
+
+await RateLimiter.validateAttempt(email)
+await RateLimiter.recordFailedAttempt(email)
+const locked = await RateLimiter.isRateLimited(email)
+await RateLimiter.resetAttempts(email)
+~~~
+
+Five failed attempts (`maxFailedAttempts()`, times
+`config.security.rateLimit.scale` / `STACKS_RATE_LIMIT_SCALE`) lock an email for
+fifteen minutes. The configured store selects atomic Redis when the cache config
+selects Redis, wrapped in `FallbackRateLimiterStore` so a Redis outage degrades
+to process memory (warned once) instead of failing every sign-in; otherwise
+process-local memory. `useSharedStore(options?)` explicitly chooses Redis;
+`useStore(custom)` installs a store with atomic recordFailedAttempt;
+`useMemoryStore()` and `useConfiguredStore()` reset that choice.
+Shared deployments need a shared atomic store. Partial counters expire, and
+cleanup thresholds are not hard capacities that evict live lockouts.
 
 ## Authorizable Mixin (authorizable.ts)
 
@@ -324,19 +602,39 @@ await authUser.authorize('edit-post', post)  // throws if denied
 
 ### config/auth.ts
 ```typescript
-{
+const tokenExpiry = 60 * 60 * 1000
+const authOptions = {
   default: 'api',
   guards: { api: { driver: 'token', provider: 'users' } },
   providers: { users: { driver: 'database', table: 'users' } },
   username: 'email',      // AUTH_USERNAME_FIELD env
   password: 'password',   // AUTH_PASSWORD_FIELD env
-  tokenExpiry: 30,         // days, AUTH_TOKEN_EXPIRY env
-  tokenRotation: 7,        // days, AUTH_TOKEN_ROTATION env
+  tokenExpiry: 60 * 60 * 1000, // milliseconds, 1 hour
+  refreshTokenExpiry: 30 * 24 * 60 * 60 * 1000, // milliseconds
+  browserSession: {
+    baselineLifetime: tokenExpiry, // absolute milliseconds, default one hour
+    rememberedLifetime: tokenExpiry, // customize explicitly for a longer remembered tier
+    withRefreshToken: false, // fixed browser lifetime, no unused refresh token
+    logoutRedirect: '/login?logged_out=1', // local path for HTML logout only
+  },
   defaultAbilities: ['*'],
   defaultTokenName: 'auth-token',
   passwordReset: { expire: 60, throttle: 60 }
 }
 ```
+
+`browserSession` applies to credentials issued by the default login,
+registration, and completed two-factor actions. Dedicated personal access
+token and OAuth issuance remain unchanged. The default login form sends
+`remember`; registration uses the baseline tier unless a custom client sends
+that field. A two-factor challenge preserves the choice without minting a
+session until verification succeeds. Cookie Max-Age comes from the lifetime
+returned by token issuance, so it cannot outlive the token. Cookie-authenticated
+writes use the CSRF flow and same-origin credentials.
+
+When migrating an app that copied framework auth actions, remove only the
+equivalent login, registration, two-factor, logout, and cookie-helper overrides.
+Retain application-specific onboarding and event hooks.
 
 ### config/hashing.ts
 ```typescript
@@ -366,7 +664,7 @@ await authUser.authorize('edit-post', post)  // throws if denied
 Auth-relevant aliases: `auth`, `guest`, `verified` (EnsureEmailIsVerified),
 `abilities`, `can`, `role`, `permission`, `team`, `signed`, `throttle`. The
 environment aliases are `env`, `env:local`, `env:development` / `env:dev`,
-`env:staging`, `env:production` / `env:prod` — with a COLON, not a dot; an
+`env:staging`, `env:production` / `env:prod` - with a COLON, not a dot; an
 earlier version of this list wrote `env.local` and those never existed. See
 `stacks-middleware` for the full set and for the `!alias` and `alias:params`
 forms.
@@ -378,7 +676,7 @@ import { defineGates } from '@stacksjs/auth'
 
 export default defineGates({
   gates: {
-    'access-admin': user => user?.email?.endsWith('@stacksjs.org') ?? false,
+    'access-admin': user => user?.email?.endsWith('@stacksjs.com') ?? false,
     'edit-settings': user => !!user,
     'view-dashboard': user => !!user,
   },
@@ -389,7 +687,7 @@ export default defineGates({
 ```
 
 Registered at boot by `initializeAuthorization()`, from
-`injectGlobalAutoImports()` — the one place every entry point comes through, so
+`injectGlobalAutoImports()` - the one place every entry point comes through, so
 HTTP, `buddy seed`, a scheduled job and a console command all get the same
 gates.
 
@@ -411,6 +709,10 @@ is the declarative form and the one the ability-name completions come from.
 - `DELETE /auth/tokens/{id}` → RevokeTokenAction (auth middleware)
 - `GET /me` → GetMeAction (auth middleware)
 - `POST /logout` → LogoutAction (auth middleware)
+- Social bundle: `GET /auth/{provider}` → SocialRedirectAction (issues the
+  browser-bound OAuth state), `GET|POST /auth/{provider}/callback` →
+  SocialCallbackAction (redeems it, redirects with `#stx_handoff=<code>`),
+  `POST /auth/handoff` → SessionHandoffAction (redeems the code for the session)
 
 ## User Model Traits
 
@@ -428,22 +730,22 @@ traits: {
 
 - Auth depends on `@stacksjs/ts-auth` for TOTP and passkey functions
 - Password hashing defaults to bcrypt with 12 rounds (config/hashing.ts)
-- Rate limiter uses in-memory Map, resets on server restart — not shared across workers
-- Session auth also uses in-memory Map with 10k limit — for SPA cookie auth
-- Token format is `tokenId|plainText` — the `|` separates the encrypted ID from the plain token
-- The `parseToken()` helper splits on `|` to extract both parts
+- Rate limiting uses a process-local memory store unless `config/cache.ts` selects Redis, which the lockout and route limits then share. Production deployments with multiple workers should configure Redis or provide a custom atomic store. Test suites raise `config.security.rateLimit.scale` rather than disabling limits.
+- Session auth is database-backed through the `sessions` table, so it survives server restarts and is shared across workers.
+- New personal and delegated access tokens are opaque 40-byte hex bearers hashed at rest. Legacy `jwt:encryptedId` bearers remain readable during migration.
+- Token validation hashes the bearer directly. Do not parse or expose token contents, and never log plaintext bearer values.
 - Bearer tokens come from the `Authorization: Bearer <token>` header
-- `Auth.user()` internally calls `getBearerToken()` → `parseToken()` → `getTokenFromId()` → validates hash
-- RBAC has an internal cache (`userRoles`, `userPermissions`, `rolePermissions`) — call `Rbac.flushCache()` after direct DB changes
+- Auth resolves the parsed bearer first and falls back to the configured token cookie; request user state is scoped rather than shared globally
+- RBAC has an internal cache (`userRoles`, `userPermissions`, `rolePermissions`) - call `Rbac.flushCache()` after direct DB changes
 - `syncRoles()` and `syncPermissions()` are guard-scoped replacements: they preserve assignments belonging to other guards
-- Gate `before` callbacks can short-circuit — return `true` to allow, `null` to continue checking
-- An ability with no gate and no policy method **denies**. That is the right default, and it means a gate that was never registered is indistinguishable from one that says no — which is how `initializeAuthorization()` went unnoticed while nothing called it
+- Gate `before` callbacks can short-circuit - return `true` to allow, `null` to continue checking
+- An ability with no gate and no policy method **denies**. That is the right default, and it means a gate that was never registered is indistinguishable from one that says no - which is how `initializeAuthorization()` went unnoticed while nothing called it
 - `allows()` and friends take `Ability`, which is open (`GateName | PolicyAbility | (string & {})`). A `/can/:ability` route passes an ability straight through, so narrowing it would reject correct code; the union is for completions
 - `withRbac()` and `withAuthorization()` return new objects with methods mixed in
-- The `RbacStore` interface must be implemented and set via `Rbac.setStore()` for RBAC to work
+- RBAC lazily creates its SQL store. `Rbac.setStore()` is the optional override for a custom store; apply the role/permission model migrations before using it
 - Password reset tokens expire after 60 minutes by default
-- Default token abilities are `['*']` — wildcard access
-- Token expiry defaults to 30 days
+- Default token abilities are `['*']` - wildcard access
+- Token expiry defaults to one hour; inspect config/auth.ts and browserSession before choosing a lifetime
 - Session auth uses timing-safe bcrypt comparison even for failed lookups (dummy hash prevents timing attacks)
 
 ## Build
@@ -451,3 +753,122 @@ traits: {
 ```bash
 cd storage/framework/core/auth && bun build.ts
 ```
+
+
+## Native account workflows
+
+Read [ACCOUNT-WORKFLOWS.md](ACCOUNT-WORKFLOWS.md) when implementing magic links,
+completed two-factor login, active teams, social account linking, role seeding,
+referrals, cookie authentication or session idle/fingerprint policy. These are
+native APIs with complete workflows, beyond the low-level TOTP/passkey helpers.
+
+## Provider and entrypoint boundaries
+
+Default auth routes require the selected auth route bundle. `feature('auth')`
+controls account-family model loading and does not itself mount login/register.
+Opaque access tokens, OAuth grants, token cookies and database session IDs are
+different credentials with different issuance and expiry rules.
+`Auth.guard()` currently returns Auth rather than providing independent
+guard implementations. `viaRemember()` is a compatibility false result;
+browserSession's remember choice is the actual cookie lifetime policy.
+
+Session and token user state are bound to the current request. Entry points
+install that scope; application code must not cache a user globally for later
+requests. Revocation-sensitive reads use the primary DB path. Retained evidence:
+`auth/tests/auth-middleware-entrypoints.test.ts`,
+`request-token.test.ts`, `session-read-routing.test.ts`,
+`rbac-default-store.test.ts` and `browser-session-policy.test.ts` under
+`storage/framework/core/`.
+
+
+## Remote MCP authorization
+
+Use `oauthProtectedResourceMetadata` and `oauthProtectedResourceMetadataPath`
+for RFC 9728 discovery, with the exact canonical resource URL as the audience.
+The authorization server metadata advertises RFC 9207 issuer identification;
+`handleOAuthAuthorizationPageRequest` and `handleOAuthAuthorizationConsentRequest`
+include the provider issuer in success and error callbacks. Custom adapters using
+`oauthAuthorizationConsentResponse` or `oauthAuthorizationRequestErrorResponse`
+must pass `provider.issuer` too.
+
+Opt in to RFC 7591 registration with `oauthProvider.dynamicRegistration`:
+`{ endpoint?: string, allowedRedirectOrigins: ['https://client.example'] }`.
+Origins must be explicit HTTPS origins. The native auth bundle mounts the endpoint
+with bounded JSON, CSRF exemption for protocol clients and an IP quota. Custom
+route registries can use `handleDynamicOAuthRegistration(provider, metadata)`
+after the same bounded read and quota. Registration accepts only authorization
+code / refresh grants, `none` or `client_secret_basic`, and exact validated
+callback URIs. Anonymous clients have no account owner and no user access until
+consent. It never fetches client-controlled URLs. CIMD and private_key_jwt are
+not advertised.
+
+Consent may include a `scope` form value containing a non-empty subset of the
+requested scopes. `approvedScopes` on the native approval operation enforces
+that subset within the authorization transaction. The native consent handler
+can return `{ redirect_uri }` JSON for an authenticated first-party SPA that
+explicitly sends `Accept: application/json`; ordinary forms still receive a 302.
+The browser-bound opaque request, authenticated subject and CSRF policy still
+apply. Never construct callback URLs or accept an identity from browser input.
+
+Token and refresh requests retain RFC 8707 `resource` parameters. When supplied,
+they must match the complete approved audience set; this provider does not
+silently issue a broader token for a narrower resource request. Scope narrowing
+continues to use the `scope` parameter. MCP resource servers use
+`authorizeOAuthDelegatedToken` with their exact resource, audience, workspace,
+required scopes and current subject eligibility. Delegated grants are not login
+sessions. Real persistence and HTTP evidence lives in the OAuth code-store and
+HTTP lifecycle fixtures, with discovery policy in `oauth-mcp-discovery.test.ts`.
+
+For an application-rendered consent UI, use `createOAuthAuthorizationServer` from
+`@stacksjs/auth`. Supply the resolved provider, local consent page, ordinary
+server-authenticated identity callback and optional exact connection audience.
+It owns bounded registration/token/revocation reads, opaque browser-bound consent,
+selected permissions, discovery and subject-owned disconnect. Mount protocol
+POST handlers with `parseBody(false)` and `skipCsrf()`; keep router login and CSRF
+protection on consent and connection management. Do not duplicate these HTTP
+boundaries in applications or accept a subject from client input.
+
+Delegated OAuth bearers are not ordinary login credentials. `Auth.validateToken`,
+`Auth.getUserFromToken`, `Auth.currentAccessToken` and `Auth.rotateToken` reject
+them even while their grant is active. Generic `auth` middleware therefore does
+not authenticate them. OAuth resource endpoints must explicitly use
+`authorizeOAuthDelegatedToken` with the exact resource, audience, workspace and
+required scopes. Ordinary refresh also refuses delegated refresh credentials;
+use the OAuth token endpoint and the registered client's protocol authentication.
+
+### Userinfo and pairwise subjects
+
+The provider has no id_token. A relying party that signs people in with this
+provider reads `oauthUserInfoResponse(request, { scopes, resource, audience,
+workspaceId, isSubjectEligible, pairwiseSecret, claims })`: the same delegated
+token checks as any protected resource, then `{ ...claims, sub }`. `sub` comes
+from `pairwiseOAuthSubject(secret, clientId, subject)`, an HMAC that differs per
+client so two relying parties cannot join records on it; keep its secret apart
+from rotating app keys. `claims({ sub, subject, clientId, scopes })` releases
+only what the granted scopes cover, and null answers 401. The socials
+`StacksIssuerProvider` is the matching client.
+
+## Token-only recovery endpoints
+
+For high-entropy reset credentials, `mintPasswordResetToken()` returns `{ token, digest }`.
+Store the digest in `password_resets.token`, never the plaintext.
+Prefer `issuePasswordResetToken(email, { throttleMs?, expiresAt?, eligible? })` when
+issuing for an existing account. It locks that account before checking its current
+email, the synchronous application eligibility predicate and the saved throttle.
+It considers all supported legacy email-case variants when throttling, and retires
+them together when replacing the credential. `throttleMs: 0` disables throttling.
+It atomically replaces the digest and returns `{ issued: true, token, userId, email }`
+or `{ issued: false }`. The latter deliberately combines unknown, ineligible and
+throttled accounts; recovery endpoints must keep their public response generic.
+Only send the returned credential after issuance commits.
+Treat its value as opaque. It is bound to the issuing account, so reassigning an
+email address cannot let an old recovery reset the address's new account.
+`consumePasswordResetToken(token, async claim => { ... })` locks the owner and token,
+checks the stored expiry and consumes it in the same transaction as callback writes.
+`claim` is `{ userId, email, hasExplicitExpiry }`; result is `{ consumed: false }` or
+`{ consumed: true, value }`. Failures roll back the credential and account changes.
+Use database work only in the callback, and send notifications after commit.
+The credential is consumed before the callback, so it composes with
+`revokeAccountCredentials(claim.userId)`. That sweep also removes any pending
+password-reset links; changing a password must retire recovery credentials too.
+The existing `passwordResets(email)` flow supports email-addressed bcrypt tokens.

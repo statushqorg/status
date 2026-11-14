@@ -21,10 +21,11 @@ export * as arr from './arr'
 export * from './macro'
 ```
 
-The `arr.ts` re-exports from three submodules:
-- `contains.ts` — containment check functions
-- `helpers.ts` — array manipulation (toArray, flatten, partition, unique, shuffle, etc.)
-- `math.ts` — statistical functions (average, median, mode, variance, etc.)
+The `arr.ts` re-exports these submodules:
+- `contains.ts` - containment check functions
+- `helpers.ts` - array manipulation (toArray, flatten, partition, unique, shuffle, etc.)
+- `math.ts` - statistical functions (average, median, mode, variance, etc.)
+- `transform.ts` - typed grouping, selectors, ordering, sets and zip helpers
 
 The `macro.ts` provides the `Arr` and `arr` facade objects.
 
@@ -140,10 +141,10 @@ All containment functions work with `string[]`. The `contains` function checks i
 contains('foobar', ['foo', 'baz'])              // true  -- 'foobar'.includes('foo')
 contains('hello', ['foo', 'bar'])               // false
 
-containsAll(['foo', 'bar'], ['foobar', 'barx']) // true  -- all needles found
+containsAll(['foobar', 'barx'], ['foo', 'bar']) // true  -- each needle contains a haystack substring
 containsAll(['foo', 'qux'], ['foobar'])         // false -- 'qux' not found
 
-containsAny(['foo', 'qux'], ['foobar'])         // true  -- at least one found
+containsAny(['foobar', 'qux'], ['foo'])         // true  -- at least one needle contains a haystack substring
 containsAny(['baz', 'qux'], ['foobar'])         // false
 
 containsNone(['baz', 'qux'], ['foobar'])        // true  -- none found
@@ -153,7 +154,7 @@ containsOnly(['foo', 'bar'], ['foobar', 'barx']) // checks if haystack items onl
 // Implemented as: containsAll(haystack, needles) -- reversed args
 
 doesNotContain('qux', ['foo', 'bar'])           // true
-doesNotContain('foo', ['foobar'])               // false
+doesNotContain('foo', ['foobar'])               // true -- 'foo' does not contain 'foobar'
 ```
 
 **Important**: `contains` uses `needle.includes(hay)`, NOT `haystack.includes(needle)`. It checks if the needle string contains any of the haystack substrings. This is substring matching, not array membership.
@@ -197,10 +198,12 @@ zScore([1, 2, 3, 4], 3)           // 0.447...
 percentile([1, 2, 3, 4, 5], 50)   // 3       -- interpolated percentile
 percentile([1, 2, 3, 4], 25)      // 1.75    -- linear interpolation
 // Note: takes percentile value (0-100), uses linear interpolation
+// Throws for an empty array (like median) and a RangeError outside 0-100
 
 interquartileRange([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 // Q3 median - Q1 median
-// Splits array at midpoint, computes median of each half
+// Sorts, splits at the midpoint, computes the median of each half
+// One number gives 0; an empty array throws
 
 covariance([1, 2, 3, 4], [1, 2, 3, 4])     // 1.25  -- positive correlation
 covariance([1, 2, 3, 4], [4, 3, 2, 1])     // -1.25 -- negative correlation
@@ -211,7 +214,10 @@ covariance([1, 2, 3, 4], [4, 3, 2, 1])     // -1.25 -- negative correlation
 
 ## Arr Facade (`macro.ts`)
 
-Both `Arr` and `arr` are exported as equivalent facade objects.
+Use `Arr` for the facade. The root's lowercase `arr` is the namespace exported
+from `arr.ts`, with all standalone functions. It is not the same object as
+`Arr` and does not include the facade-only `random` method. A lowercase alias
+also exists in `macro.ts`, but the root namespace export wins.
 
 ```typescript
 import { Arr, arr } from '@stacksjs/arrays'
@@ -256,7 +262,37 @@ The facade adds one extra method not in the standalone functions:
 Arr.random(arr, count)   // like sample but filters null/undefined from results
 ```
 
-## Exported Types
+## Typed transformations
+
+These standalone functions are also available through the root `arr` namespace:
+
+- `groupBy`, `keyBy`, `countBy` use selector functions and return typed records.
+  Repeated keyBy keys overwrite earlier entries; groupBy accumulates them.
+- `sortBy(array, ...selectors)` copies before sorting, supports multiple keys,
+  and accepts `{ by, order: 'desc' }` selectors. Each selector runs once per element;
+  cached keys preserve stable ties.
+- `sumBy`, `meanBy`, `minBy`, `maxBy` aggregate selected values. `meanBy` returns
+  undefined on an empty input; extrema return the selected element, not its value.
+  Extrema retain infinite endpoints and ignore NaN candidates; ties keep the first.
+- `zip`, `zipWith` stop at the shorter input; `unzip` splits pairs.
+- `difference` keeps first-input duplicates that are not excluded;
+  `intersection` and `union` deduplicate by Set identity.
+- `chunk` validates a positive integer size; `compact` removes only null and
+  undefined, preserving false, zero and empty strings.
+- `splitAt` supports negative indexes; `splitWhen` starts the second half at
+  the first match; `times` requires a non-negative integer count.
+
+`take`, `takeLast`, `drop` and `dropLast` truncate fractional counts toward zero,
+clamp negatives/NaN to zero and treat Infinity as the entire array. Population
+variance, standard deviation, covariance and z-scores use scaled centered arithmetic
+for finite inputs. Standard deviation stays finite when only its square is outside
+the number range; unrepresentable final results keep IEEE number behavior.
+
+Read `core/arrays/src/transform.ts` and `tests/transform.test.ts` for precise
+empty-input and selector behavior. These pure helpers are preferable to a new
+utility dependency for common native transformations.
+
+## Type example
 
 ```typescript
 type PartitionFilter<T> = (item: T, index: number, array: readonly T[]) => any
@@ -275,3 +311,14 @@ type PartitionFilter<T> = (item: T, index: number, array: readonly T[]) => any
 - `mode` returns the first most-frequent value when there's a tie
 - For complex collection operations with chaining, consider `@stacksjs/collections`
 - The `Arr` facade wraps most but not all standalone functions -- advanced stats need direct imports
+
+## Daily series with provenance
+
+`@stacksjs/arrays/series` is a browser-safe entrypoint. `mergeDailySeries(rows,
+sourcePriority)` selects one finite numeric value per calendar day and field,
+falling back per field when a preferred source lacks it. Rows carry `day`,
+`source`, `values` and optional `updatedAt`; outputs carry `date`, `values`
+and `sources`. Source priority is application policy. Same-source ties prefer
+newer updates; invalid dates, blank values, booleans and nonfinite values are
+ignored. Zero is preserved. `summarizeSeries(points)` reports count, latest,
+average and extrema over `{ date, value, source? }` points without rounding.

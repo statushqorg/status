@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { customerOwnership, defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * A fund-a-need pledge.
@@ -16,6 +16,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { subject: { via: 'Customer' }, erasure: 'anonymize', basis: 'legal_obligation', purpose: 'Donation pledges, kept for receipts' },
     useUuid: true,
     useTimestamps: true,
 
@@ -34,7 +35,14 @@ export default defineModel({
     observe: true,
   },
 
-  belongsTo: ['Auction'],
+  /*
+   * A pledge is made BY someone. It chained only to `Auction`, an unscoped
+   * catalog, so there was no owner to resolve and its writes stayed denied
+   * (stacksjs/stacks#2412).
+   */
+  belongsTo: ['Auction', 'Customer'],
+
+  ownership: customerOwnership(),
 
   indexes: [
     { name: 'pledges_auction_id_index', columns: ['auction_id'] },
@@ -43,6 +51,7 @@ export default defineModel({
 
   attributes: {
     donorName: {
+      personal: true,
       order: 1,
       fillable: true,
       validation: {
@@ -55,6 +64,7 @@ export default defineModel({
     },
 
     donorEmail: {
+      personal: true,
       order: 2,
       fillable: true,
       validation: {

@@ -83,7 +83,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="baseline-heading">
+      <section class="section site-shell" aria-labelledby="baseline-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="baseline-heading">Pick a threshold, pick your poison.</h2>
@@ -101,10 +101,10 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                 <span class="pill warn"><span class="dot"></span> Degraded</span>
               </div>
               <div class="panel-body">
-                <div class="spark !h-[44px]" aria-hidden="true">
+                <div class="!h-[44px] spark" aria-hidden="true">
                   <span class="h-[30%]"></span><span class="h-[26%]"></span><span class="h-[32%]"></span><span class="h-[28%]"></span><span class="h-[34%]"></span><span class="h-[27%]"></span><span class="h-[31%]"></span><span class="h-[29%]"></span><span class="h-[33%]"></span><span class="h-[26%]"></span><span class="h-[30%]"></span><span class="h-[35%]"></span><span class="h-[28%]"></span><span class="h-[32%]"></span><span class="h-[27%]"></span><span class="h-[30%]"></span><span class="h-[29%]"></span><span class="h-[34%]"></span><span class="h-[31%]"></span><span class="h-[28%]"></span><span class="h-[33%]"></span><span class="h-[30%]"></span><span class="h-[27%]"></span><span class="h-[46%]"></span><span class="h-[58%]"></span><span class="h-[66%]"></span><span class="h-[74%]"></span><span class="h-[82%]"></span><span class="h-[88%]"></span><span class="h-[95%]"></span>
                 </div>
-                <div class="panel-row !pt-[1rem] !px-0 !pb-0">
+                <div class="!pb-0 !pt-[1rem] !px-0 panel-row">
                   <span class="panel-row-sub">7-day p95: 255ms</span>
                   <span class="panel-row-sub">last hour p95: 612ms</span>
                   <span class="panel-row-sub">2.4x</span>
@@ -115,8 +115,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="how-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="how-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="how-heading">Up, but slower. Now you know.</h2>
             <p>
@@ -151,8 +151,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">How the regression check works.</h2>
         </div>
         <ul class="check-list">
@@ -165,7 +165,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="informational-heading">
+      <section class="section site-shell" aria-labelledby="informational-heading">
         <div class="note-band">
           <div>
             <h2 id="informational-heading">An early warning, not a false alarm.</h2>
@@ -177,7 +177,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="payload-heading">
+      <section class="section site-shell" aria-labelledby="payload-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="payload-heading">Alerts that carry their own numbers.</h2>
@@ -204,7 +204,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Performance monitoring, answered.</h2>
@@ -219,8 +219,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

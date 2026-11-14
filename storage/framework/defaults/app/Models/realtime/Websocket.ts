@@ -1,11 +1,16 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Websocket',
   table: 'websockets',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
 
   traits: {
     useTimestamps: true,
@@ -28,7 +33,7 @@ export default defineModel({
       validation: {
         rule: schema.enum(['disconnection', 'error', 'success']),
         message: {
-          in: 'Type must be one of: disconnection, error, success',
+          enum: 'Type must be one of: disconnection, error, success',
         },
       },
       factory: faker => faker.helpers.arrayElement(['success', 'success', 'success', 'disconnection', 'error']),
@@ -67,9 +72,12 @@ export default defineModel({
       order: 4,
       fillable: true,
       validation: {
-        rule: schema.number(),
+        // A Unix timestamp in milliseconds, so a bigint column: `number()`
+        // generated a 32-bit integer that Date.now() overflows on PostgreSQL
+        // and MySQL (stacksjs/stacks#2996).
+        rule: schema.unix(),
         message: {
-          date: 'Time must be a valid timestamp',
+          unix: 'Time must be a valid timestamp',
         },
       },
       factory: faker => faker.date.recent().getTime(),

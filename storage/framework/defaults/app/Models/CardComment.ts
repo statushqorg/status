@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * Card comment for the dashboard Kanban surface.
@@ -21,6 +21,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { erasure: 'keep', basis: 'legitimate_interests', purpose: 'Shared board discussion, attributed to the (anonymized) author' },
     useUuid: true,
     useTimestamps: true,
     useSearch: {
@@ -46,14 +47,12 @@ export default defineModel({
       order: 1,
       fillable: true,
       validation: { rule: schema.number().required() },
-      factory: () => 1,
     },
 
     userId: {
       order: 2,
       fillable: true,
       validation: { rule: schema.number() },
-      factory: () => null,
     },
 
     body: {
@@ -64,5 +63,11 @@ export default defineModel({
     },
   },
 
-  dashboard: { enabled: false },
+  dashboard: {
+    enabled: false,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      body: { input: 'longtext' },
+    },
+  },
 } as const)

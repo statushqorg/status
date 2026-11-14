@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { defineModel, siteOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * A named navigation slot on a site - `main`, `footer`, `portal`. The items
@@ -20,7 +20,13 @@ export default defineModel({
     },
   ],
 
+  // Owned through the site, which belongs to a team, so the owner is the set of
+  // site ids the caller's team owns rather than a single id (stacksjs/stacks#2375).
+  ownership: siteOwnership(),
+
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 3 },
     useTimestamps: true,
     useApi: {
       middleware: ['auth'],

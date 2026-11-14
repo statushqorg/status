@@ -1,5 +1,4 @@
 import { Action } from '@stacksjs/actions'
-import { response } from '@stacksjs/router'
 import TeamMember from '../../Models/TeamMember'
 import { requireTeamId } from '../../lib/teamGuard'
 

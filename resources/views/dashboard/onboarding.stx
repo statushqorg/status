@@ -77,7 +77,7 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
 @include('../partials/app-head.stx')
 @include('../partials/app-nav.stx')
 
-<main class="app-shell max-w-[860px]">
+<main class="max-w-[860px] app-shell">
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"
@@ -96,8 +96,8 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
       </div>
     </header>
 
-    <section class="mt-0 mx-0 mb-[1.5rem]" aria-label="Setup progress">
-      <div class="uptime-bars !h-[12px]">
+    <section class="mb-[1.5rem] mt-0 mx-0" aria-label="Setup progress">
+      <div class="!h-[12px] uptime-bars">
         @foreach (stepsDisplay as step)
           <span class="{{ step.done ? '' : 'unknown' }}" title="Step {{ step.num }} {{ step.done ? 'complete' : 'pending' }}"></span>
         @endforeach
@@ -107,7 +107,7 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
     @foreach (stepsDisplay as step)
       <section class="card">
         <div class="card-head">
-          <h3><span class="sub mono">{{ step.num }}</span> {{ step.title }}</h3>
+          <h3><span class="mono sub">{{ step.num }}</span> {{ step.title }}</h3>
           @if (step.done)
             <data class="pill pill-up" value="done"><span class="dot"></span>Complete</data>
           @endif
@@ -115,8 +115,8 @@ useHead({ title: 'Get set up \u00b7 StatusHQ', meta: [{ name: 'robots', content:
             <data class="pill pill-unknown" value="pending"><span class="dot"></span>Pending</data>
           @endif
         </div>
-        <div class="card-body flex items-center justify-between gap-[1rem] flex-wrap">
-          <p class="m-0 text-[var(--muted)] text-[0.9rem] max-w-[34rem]">{{ step.description }}</p>
+        <div class="flex flex-wrap gap-[1rem] items-center justify-between card-body">
+          <p class="m-0 max-w-[34rem] text-[0.9rem] text-[var(--muted)]">{{ step.description }}</p>
           <StxLink to="{{ step.href }}" class="button {{ step.done ? '' : 'primary' }}">{{ step.done ? 'Review' : 'Start' }}</StxLink>
         </div>
       </section>

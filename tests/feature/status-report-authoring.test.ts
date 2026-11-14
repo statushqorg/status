@@ -33,7 +33,13 @@ describe('Status report authoring (stacksjs/status#1 Phase 12 follow-up)', () =>
   // dashboard update-post exercises the full path (observe -> action ->
   // job -> subscriber email). The wildcard app/Events.ts wiring only runs
   // in the API server process, not under bun test.
-  const observeListener = (e: unknown) => { void SendStatusReportUpdateNotification.handle(e as never) }
+  //
+  // The listener is asynchronous and nothing in the request waits for it: the
+  // write returns its row where it is written, so the response can be back
+  // before the fan-out has sent. Each run is kept so a test can wait for the
+  // notification itself instead of for the timing of the request around it.
+  const notifying: Array<Promise<unknown>> = []
+  const observeListener = (e: unknown) => { notifying.push(Promise.resolve(SendStatusReportUpdateNotification.handle(e as never))) }
 
   beforeAll(async () => {
     await awaitConfig()
@@ -61,7 +67,11 @@ describe('Status report authoring (stacksjs/status#1 Phase 12 follow-up)', () =>
     await StatusPageSubscriber.create({ status_page_id: page.id, email: 'watcher-90009@example.com', unsubscribeToken: 'tok90009', confirmedAt: new Date().toISOString() })
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Let any fan-out still in flight land before the outbox is cleared, so
+    // it cannot arrive in the next test or the next file.
+    await Promise.allSettled(notifying)
+    notifying.length = 0
     CaptureEmailDriver.clear()
   })
 
@@ -120,6 +130,8 @@ describe('Status report authoring (stacksjs/status#1 Phase 12 follow-up)', () =>
     const bumped = await StatusReport.find(report!.id)
     expect(bumped!.status).toBe('monitoring')
 
+    expect(notifying).toHaveLength(1)
+    await Promise.all(notifying)
     const sent = CaptureEmailDriver.all()
     expect(sent).toHaveLength(1)
     expect(sent[0]!.to).toBe('watcher-90009@example.com')

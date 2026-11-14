@@ -55,9 +55,10 @@ import { Middleware } from '@stacksjs/router'
  * **Credentials safety**
  *
  * When `credentials: true`, the spec forbids `Access-Control-Allow-Origin: *`.
- * In that case we echo the request's Origin (only if it matches the
- * configured allow-list) or omit the header entirely — never `*`. This
- * prevents the most common credentials-bypass misconfiguration.
+ * In that case we echo the request's Origin only when it is on an explicit
+ * allow-list (or a predicate accepts it), and omit the header otherwise -
+ * never `*`. A wildcard policy with credentials allows no origin at all,
+ * since reflecting every Origin would hand any site credentialed access.
  *
  * @example
  * ```ts
@@ -147,8 +148,18 @@ function computeAllowOrigin(
   if (!isOriginAllowed(requestOrigin, cfg.origin))
     return null
 
+  // A wildcard policy with credentials allows no origin. The spec forbids
+  // `*` beside `Allow-Credentials`, and echoing the request's Origin instead -
+  // what this did - grants every site on the internet credentialed access:
+  // any page could read a signed-in user's API responses. Name the origins
+  // that may send credentials, or turn credentials off.
+  if (cfg.credentials && cfg.origin === '*') {
+    warnWildcardWithCredentials()
+    return null
+  }
+
   // Credentials mode forbids the literal `*` per the CORS spec — browsers
-  // reject the response if both are present. Echo the actual origin
+  // reject the response if both are present. Echo the matched origin
   // instead so the Allow-Credentials response is usable.
   if (cfg.credentials)
     return requestOrigin
@@ -159,6 +170,15 @@ function computeAllowOrigin(
     return '*'
 
   return requestOrigin
+}
+
+let warnedWildcardWithCredentials = false
+
+function warnWildcardWithCredentials(): void {
+  if (warnedWildcardWithCredentials)
+    return
+  warnedWildcardWithCredentials = true
+  console.warn('[cors] `origin: \'*\'` with `credentials: true` allows no cross-origin request: list the origins that may send credentials in config/cors.ts, or set credentials to false.')
 }
 
 /**
@@ -184,6 +204,21 @@ function appendVary(existing: string | null, token: string): string {
  *   throw buildPreflightResponse(request, resolveCorsConfig())
  * ```
  */
+/**
+ * Which of the headers a preflight asks for the policy allows: those named in
+ * `allowedHeaders` (case-insensitively), or all of them when it holds `*`.
+ * With nothing requested, the configured list.
+ */
+function allowedRequestHeaders(requested: string | null, cfg: ResolvedCorsConfig): string[] {
+  const wanted = (requested ?? '').split(',').map(header => header.trim()).filter(Boolean)
+  if (wanted.length === 0)
+    return cfg.allowedHeaders.filter(header => header !== '*')
+  if (cfg.allowedHeaders.includes('*'))
+    return wanted
+  const allowed = new Set(cfg.allowedHeaders.map(header => header.toLowerCase()))
+  return wanted.filter(header => allowed.has(header.toLowerCase()))
+}
+
 export function buildPreflightResponse(request: Request, cfg: ResolvedCorsConfig): Response {
   const headers = new Headers()
   const requestOrigin = request.headers.get('origin')
@@ -196,7 +231,8 @@ export function buildPreflightResponse(request: Request, cfg: ResolvedCorsConfig
   // shared caches don't blend two clients' answers.
   headers.set('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers')
 
-  if (cfg.credentials)
+  // Credentials are offered only to an origin that is allowed.
+  if (cfg.credentials && allowOrigin !== null)
     headers.set('Access-Control-Allow-Credentials', 'true')
 
   // Echo the requested method if it's in our allow-list; otherwise advertise
@@ -209,13 +245,13 @@ export function buildPreflightResponse(request: Request, cfg: ResolvedCorsConfig
       : cfg.methods
   headers.set('Access-Control-Allow-Methods', methods.join(', '))
 
-  // Echo the requested headers (typically lowercase) — the browser sends
-  // them and the spec allows us to reflect rather than enumerate.
-  const requestedHeaders = request.headers.get('access-control-request-headers')
-  if (requestedHeaders)
-    headers.set('Access-Control-Allow-Headers', requestedHeaders)
-  else if (cfg.allowedHeaders.length > 0)
-    headers.set('Access-Control-Allow-Headers', cfg.allowedHeaders.join(', '))
+  // The requested headers the policy allows. Every requested header used to
+  // be echoed back, so `allowedHeaders` allowed everything: a page could send
+  // any custom header it liked. A `*` entry still allows any header, which
+  // the spec honours only without credentials.
+  const allowedHeaders = allowedRequestHeaders(request.headers.get('access-control-request-headers'), cfg)
+  if (allowedHeaders.length > 0)
+    headers.set('Access-Control-Allow-Headers', allowedHeaders.join(', '))
 
   if (cfg.maxAge > 0)
     headers.set('Access-Control-Max-Age', String(cfg.maxAge))
@@ -248,7 +284,7 @@ export function applyCorsHeaders(request: Request, response: Response, cfg?: Res
     if (allowOrigin !== null)
       response.headers.set('Access-Control-Allow-Origin', allowOrigin)
     response.headers.set('Vary', appendVary(response.headers.get('Vary'), 'Origin'))
-    if (config.credentials)
+    if (config.credentials && allowOrigin !== null)
       response.headers.set('Access-Control-Allow-Credentials', 'true')
     if (config.exposedHeaders.length > 0)
       response.headers.set('Access-Control-Expose-Headers', config.exposedHeaders.join(', '))
@@ -262,7 +298,7 @@ export function applyCorsHeaders(request: Request, response: Response, cfg?: Res
   if (allowOrigin !== null)
     newHeaders.set('Access-Control-Allow-Origin', allowOrigin)
   newHeaders.set('Vary', appendVary(newHeaders.get('Vary'), 'Origin'))
-  if (config.credentials)
+  if (config.credentials && allowOrigin !== null)
     newHeaders.set('Access-Control-Allow-Credentials', 'true')
   if (config.exposedHeaders.length > 0)
     newHeaders.set('Access-Control-Expose-Headers', config.exposedHeaders.join(', '))
@@ -294,7 +330,7 @@ export default new Middleware({
   // actual auth failure).
   priority: 0,
 
-  async handle(request) {
+  handle(request) {
     const cfg = resolveCorsConfig()
 
     // Preflight short-circuit — throwing a Response is the documented way

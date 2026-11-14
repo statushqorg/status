@@ -45,11 +45,14 @@ async function makeUser(email: string, teamName: string): Promise<{ userId: numb
 describe('a dashboard page resolving its session', () => {
   afterAll(async () => {
     for (const id of created.users) {
-      await db.deleteFrom('team_members').where('user_id', '=', id).execute().catch(() => {})
-      await db.deleteFrom('users').where('id', '=', id).execute().catch(() => {})
+      try { await db.deleteFrom('team_members').where('user_id', '=', id).execute() }
+      catch {}
+      try { await db.deleteFrom('users').where('id', '=', id).execute() }
+      catch {}
     }
     for (const id of created.teams)
-      await db.deleteFrom('teams').where('id', '=', id).execute().catch(() => {})
+      try { await db.deleteFrom('teams').where('id', '=', id).execute() }
+      catch {}
   })
 
   test('the cookie stx hands the page resolves to its user and team', async () => {

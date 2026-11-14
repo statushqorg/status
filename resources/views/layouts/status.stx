@@ -24,7 +24,7 @@
          loses to an unlayered rule at any specificity, so without the marks
          the page would render light-on-light in dark mode. --}}
   </head>
-  <body class="min-h-screen bg-gray-50 text-gray-900 antialiased">
+  <body class="min-h-screen antialiased text-gray-900 bg-gray-50">
     {{-- <main> is the stx router's swap target (see layouts/auth.stx for
          the full note). Without it the router found no container and fell
          back to location.href, so the StxLinks between a status page and

@@ -5,10 +5,14 @@ import type {
   GiftCardSummary,
 } from '../../../../app/Actions/Dashboard/Commerce/gift-card-records'
 import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
 import { pushToast } from '../../../../functions/toasts'
 
 interface GiftCardIndexResponse {
   records: GiftCardRecord[]
+  total: number
+  page: number
+  perPage: number
   summary: GiftCardSummary
 }
 
@@ -40,17 +44,11 @@ const emptySummary: GiftCardSummary = {
   statuses: { ACTIVE: 0, USED: 0, EXPIRED: 0, DEACTIVATED: 0 },
   currencies: [],
 }
-const records = state<GiftCardRecord[]>([])
 const summary = state<GiftCardSummary>({ ...emptySummary })
-const search = state('')
 const statusFilter = state('all')
 const enabledFilter = state('all')
 const deliveryFilter = state('all')
 const sort = state('newest')
-const page = state(1)
-const pageSize = 20
-const loading = state(true)
-const loadError = state('')
 const dialogOpen = state(false)
 const dialogMode = state<'add' | 'edit'>('add')
 const editingRecord = state<GiftCardRecord | null>(null)
@@ -60,49 +58,52 @@ const saving = state(false)
 const deleting = state(false)
 const validationErrors = state<Record<string, string>>({})
 
-function filteredRecords(): GiftCardRecord[] {
-  const query = search().trim().toLowerCase()
-  const selectedStatus = statusFilter()
-  const selectedEnabled = enabledFilter()
-  const selectedDelivery = deliveryFilter()
-  return [...records()]
-    .filter((record) => {
-      if (selectedStatus !== 'all' && record.status !== selectedStatus)
-        return false
-      if (selectedEnabled === 'enabled' && !record.isActive)
-        return false
-      if (selectedEnabled === 'disabled' && record.isActive)
-        return false
-      if (selectedDelivery === 'digital' && !record.isDigital)
-        return false
-      if (selectedDelivery === 'physical' && record.isDigital)
-        return false
-      return !query || [
-        record.code,
-        record.recipientName,
-        record.recipientEmail,
-        record.purchaserId,
-        record.currency,
-      ].some(value => value.toLowerCase().includes(query))
-    })
-    .sort((left, right) => {
-      if (sort() === 'code')
-        return left.code.localeCompare(right.code)
-      if (sort() === 'balance')
-        return right.currentBalance - left.currentBalance || left.code.localeCompare(right.code)
-      if (sort() === 'expiry')
-        return left.expiryDate.localeCompare(right.expiryDate) || left.code.localeCompare(right.code)
-      return Number(right.id) - Number(left.id)
-    })
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  newest: { sort: 'created', direction: 'desc' },
+  code: { sort: 'code', direction: 'asc' },
+  balance: { sort: 'balance', direction: 'desc' },
+  expiry: { sort: 'expiry', direction: 'asc' },
 }
 
-function pageCount(): number {
-  return Math.max(1, Math.ceil(filteredRecords().length / pageSize))
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  code: 'code',
+  recipientLabel: 'recipient',
+  currentBalance: 'balance',
+  status: 'status',
+  deliveryLabel: 'delivery',
+  expiryDate: 'expiry',
 }
 
-function visibleRecords(): GiftCardRecord[] {
-  const selectedPage = Math.min(page(), pageCount())
-  return filteredRecords().slice((selectedPage - 1) * pageSize, selectedPage * pageSize)
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218), where
+// this page used to do all of that with the newest 500.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<GiftCardRecord>({
+  fetch: query => dashboardApi<GiftCardIndexResponse>(`/api/dashboard/commerce/gift-cards?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS.newest!,
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ status: statusFilter(), enabled: enabledFilter(), delivery: deliveryFilter() }),
+  onLoad: (result) => {
+    summary.set((result as GiftCardIndexResponse).summary ?? { ...emptySummary })
+  },
+  onError: error => pushToast('error', 'Could not load gift cards', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'gift card' : 'gift cards'}`
 }
 
 function metricCards(): Array<{ label: string, value: string, detail: string }> {
@@ -115,56 +116,13 @@ function metricCards(): Array<{ label: string, value: string, detail: string }> 
   ]
 }
 
+/** Every matching gift card as CSV, built by the server, not just the page shown. */
 function exportHref(): string {
-  const rows = filteredRecords().map(record => [
-    record.code,
-    record.recipientName,
-    record.recipientEmail,
-    record.status,
-    record.isActive ? 'Enabled' : 'Disabled',
-    record.isDigital ? 'Digital' : 'Physical',
-    record.isReloadable ? 'Reloadable' : 'Single use',
-    record.currency,
-    String(record.initialBalance),
-    String(record.currentBalance),
-    record.expiryDate,
-    record.lastUsedDate,
-  ])
-  const escape = (value: string): string => `"${value.replaceAll('"', '""')}"`
-  const csv = [
-    ['Code', 'Recipient', 'Email', 'Status', 'Availability', 'Delivery', 'Reloading', 'Currency', 'Initial balance', 'Current balance', 'Expiry date', 'Last used date'],
-    ...rows,
-  ].map(row => row.map(escape).join(',')).join('\n')
-  return `data:text/csv;charset=utf-8,${encodeURIComponent(`\uFEFF${csv}`)}`
+  return `/api/dashboard/commerce/gift-cards/export?${params()}`
 }
 
-effect(() => {
-  search()
-  statusFilter()
-  enabledFilter()
-  deliveryFilter()
-  sort()
-  page.set(1)
-})
-
-async function loadGiftCards(): Promise<void> {
-  loading.set(true)
-  loadError.set('')
-  try {
-    const data = await dashboardApi<GiftCardIndexResponse>('/api/dashboard/commerce/gift-cards')
-    records.set(Array.isArray(data.records) ? data.records : [])
-    summary.set(data.summary ?? { ...emptySummary })
-    page.set(Math.min(page(), Math.max(1, Math.ceil((data.records?.length || 0) / pageSize))))
-  }
-  catch (error) {
-    loadError.set('Gift cards could not be loaded.')
-    pushToast('error', 'Could not load gift cards', {
-      detail: error instanceof Error ? error.message : String(error),
-    })
-  }
-  finally {
-    loading.set(false)
-  }
+function loadGiftCards(): Promise<void> {
+  return load()
 }
 
 function openAdd(): void {
@@ -256,47 +214,27 @@ async function deleteGiftCard(): Promise<void> {
   }
 }
 
-function previousPage(): void {
-  page.set(Math.max(1, page() - 1))
-}
-
-function nextPage(): void {
-  page.set(Math.min(pageCount(), page() + 1))
-}
-
 onMount(() => {
   void loadGiftCards()
 })
 </script>
 
-<div class="space-y-6">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">Gift Cards</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Manage native GiftCard balances, recipients, delivery, and lifecycle state.</p>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <Button variant="secondary" :loading="loading()" @click="loadGiftCards()"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
-      <Button tag="a" variant="secondary" :href="exportHref()" :download="'gift-cards-' + new Date().toISOString().slice(0, 10) + '.csv'"><span class="h-4 w-4 i-hugeicons-download-04"></span>Export filtered</Button>
-      <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add gift card</Button>
-    </div>
-  </header>
+<div class="flex flex-col gap-6">
+  <PageHeader title="Gift Cards" description="Manage native GiftCard balances, recipients, delivery, and lifecycle state.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadGiftCards()"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" variant="secondary" :href="exportHref()" download><span class="h-4 w-4 i-hugeicons-download-04"></span>Export filtered</Button>
+    <Button @click="openAdd()"><span class="h-4 w-4 i-hugeicons-add-01"></span>Add gift card</Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
 
-  <section aria-label="Gift card metrics" class="grid gap-3 grid-cols-2 lg:grid-cols-4">
-    <template :for="item in metricCards()" :key="item.label">
-      <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
-        <p class="text-gray-500 text-xs dark:text-neutral-400">{{ item.label }}</p>
-        <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p>
-        <p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">{{ item.detail }}</p>
-      </article>
-    </template>
-  </section>
+  <MetricCards label="Gift card metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
 
   <CommerceGiftCardBreakdown :summary="summary()" />
 
-  <section class="space-y-3">
+  <section class="flex flex-col gap-3">
     <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-6">
       <label class="relative sm:col-span-2">
         <span class="sr-only">Search gift cards</span>
@@ -310,15 +248,10 @@ onMount(() => {
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ filteredRecords().length }} matching gift cards</p>
-      <div class="flex gap-2 items-center">
-        <Button variant="secondary" size="sm" :disabled="page() <= 1" @click="previousPage()">Previous</Button>
-        <span class="text-gray-500 text-sm dark:text-neutral-400">Page {{ Math.min(page(), pageCount()) }} of {{ pageCount() }}</span>
-        <Button variant="secondary" size="sm" :disabled="page() >= pageCount()" @click="nextPage()">Next</Button>
-      </div>
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
     </div>
 
-    <CommerceGiftCardsTable :records="visibleRecords()" :loading="loading()" @view="openDetails" @edit="openEdit" @delete="openDelete" />
+    <CommerceGiftCardsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @view="openDetails" @edit="openEdit" @delete="openDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
   </section>
 </div>
 

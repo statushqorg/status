@@ -1,8 +1,8 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { notify } from '@stacksjs/notifications'
 import { response } from '@stacksjs/router'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 import { dashboardOperationalError } from '../dashboard-response'
 
 export default new Action({

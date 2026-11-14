@@ -116,7 +116,9 @@ export default new Action({
     // original body stream here is untouched.
     const rawBody = await request.text()
 
-    let event: Stripe.Event
+    // Typed from the verifier itself: the payments package carries its own
+    // Stripe types, which this app's copy of the SDK does not unify with.
+    let event: Awaited<ReturnType<typeof constructEventAsync>>
     try {
       // Async variant, not `constructEvent`: under Bun the Stripe SDK verifies
       // with SubtleCrypto, which is async-only and throws "SubtleCryptoProvider

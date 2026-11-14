@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="routing-heading">
+      <section class="section site-shell" aria-labelledby="routing-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="routing-heading">Routing is per monitor, not all-or-nothing.</h2>
@@ -118,8 +118,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="delivery-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="delivery-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="delivery-heading">One slow webhook never blocks the page.</h2>
             <p>
@@ -133,7 +133,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             <div class="panel" aria-label="Delivery log example">
               <div class="panel-top">
                 <strong>api.acme.com is down</strong>
-                <span class="pill down"><span class="dot"></span> Critical</span>
+                <span class="down pill"><span class="dot"></span> Critical</span>
               </div>
               <div class="panel-list">
                 <div class="panel-row">
@@ -154,8 +154,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What notifications include.</h2>
         </div>
         <ul class="check-list">
@@ -168,7 +168,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-label="Alert pricing">
+      <section class="section site-shell" aria-label="Alert pricing">
         <div class="note-band">
           <div>
             <h2>Alerts are not a pricing lever.</h2>
@@ -180,7 +180,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="api-heading">
+      <section class="section site-shell" aria-labelledby="api-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="api-heading">Channels are API records too.</h2>
@@ -203,7 +203,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Notifications, answered.</h2>
@@ -218,8 +218,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

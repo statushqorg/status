@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer'
-import { generateKeyPairSync } from 'node:crypto'
+import { createSign, generateKeyPairSync } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { db } from '@stacksjs/database'
 
@@ -20,6 +20,33 @@ const APPLE_EMAIL = 'sso-social-apple-77822@privaterelay.appleid.com'
 
 function b64url(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url')
+}
+
+// The Apple driver verifies an id_token's RS256 signature against the keys
+// Apple publishes at /auth/keys, so a token with a placeholder signature is
+// refused before the app ever reads its claims. These stand in for Apple's
+// signing key: the tests sign with the private half and serve the public
+// half from the mocked keys endpoint.
+const APPLE_KID = 'apple-kid'
+const appleSigningKey = generateKeyPairSync('rsa', { modulusLength: 2048 })
+const appleJwks = { keys: [{ ...appleSigningKey.publicKey.export({ format: 'jwk' }), kid: APPLE_KID, alg: 'RS256', use: 'sig' }] }
+
+function appleIdToken(claims: Record<string, unknown>): string {
+  const signingInput = `${b64url({ alg: 'RS256', kid: APPLE_KID })}.${b64url(claims)}`
+  const signature = createSign('RSA-SHA256').update(signingInput).sign(appleSigningKey.privateKey)
+  return `${signingInput}.${signature.toString('base64url')}`
+}
+
+function appleRoutes(idToken: string): Array<(url: string) => Response | null> {
+  return [
+    (url) => {
+      if (url.startsWith('https://appleid.apple.com/auth/token'))
+        return jsonResponse({ access_token: 'apple-at', token_type: 'Bearer', expires_in: 3600, id_token: idToken })
+      if (url.startsWith('https://appleid.apple.com/auth/keys'))
+        return jsonResponse(appleJwks)
+      return null
+    },
+  ]
 }
 
 /** Decode the (signed but not encrypted) sso-flow cookie payload. */
@@ -271,7 +298,7 @@ describe('SSO callback leg — Apple (form_post)', () => {
     const setCookie = redirect.headers.get('Set-Cookie')!
     const flow = decodeFlowCookie(setCookie)
 
-    const idToken = `${b64url({ alg: 'RS256', kid: 'apple-kid' })}.${b64url({
+    mockRoutes = appleRoutes(appleIdToken({
       iss: 'https://appleid.apple.com',
       aud: 'org.statushq.test',
       exp: Math.floor(Date.now() / 1000) + 600,
@@ -280,15 +307,7 @@ describe('SSO callback leg — Apple (form_post)', () => {
       email: APPLE_EMAIL,
       email_verified: 'true',
       nonce: flow.nonce,
-    })}.${Buffer.from('sig').toString('base64url')}`
-
-    mockRoutes = [
-      (url) => {
-        if (url.startsWith('https://appleid.apple.com/auth/token'))
-          return jsonResponse({ access_token: 'apple-at', token_type: 'Bearer', expires_in: 3600, id_token: idToken })
-        return null
-      },
-    ]
+    }))
 
     const body = new URLSearchParams({
       code: 'apple-code',
@@ -326,7 +345,8 @@ describe('SSO callback leg — Apple (form_post)', () => {
     const setCookie = redirect.headers.get('Set-Cookie')!
     const flow = decodeFlowCookie(setCookie)
 
-    const idToken = `${b64url({ alg: 'RS256' })}.${b64url({
+    // Genuinely signed, so the only thing wrong with it is the nonce.
+    mockRoutes = appleRoutes(appleIdToken({
       iss: 'https://appleid.apple.com',
       aud: 'org.statushq.test',
       exp: Math.floor(Date.now() / 1000) + 600,
@@ -334,15 +354,7 @@ describe('SSO callback leg — Apple (form_post)', () => {
       sub: 'apple-subject-999',
       email: 'replay@privaterelay.appleid.com',
       nonce: 'a-different-nonce',
-    })}.${Buffer.from('sig').toString('base64url')}`
-
-    mockRoutes = [
-      (url) => {
-        if (url.startsWith('https://appleid.apple.com/auth/token'))
-          return jsonResponse({ access_token: 'apple-at', token_type: 'Bearer', expires_in: 3600, id_token: idToken })
-        return null
-      },
-    ]
+    }))
 
     const res = await serverHandle('http://localhost/api/auth/sso/apple/callback', {
       method: 'POST',

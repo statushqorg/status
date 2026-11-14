@@ -1,6 +1,8 @@
 <script server>
+import { buttonVariantClasses } from '../../../../functions/dashboard-button'
+
 interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'warning'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'warning' | 'bare'
   size?: 'xs' | 'sm' | 'md' | 'lg'
   disabled?: boolean
   loading?: boolean
@@ -14,6 +16,8 @@ interface ButtonProps {
   target?: string
   rel?: string
   ariaLabel?: string
+  /** Hover text. An icon-only button shows its `ariaLabel` when this is unset. */
+  title?: string
   type?: string
   form?: string
   class?: string
@@ -31,17 +35,6 @@ const {
   tag = 'button',
   href = '',
 } = defineProps<ButtonProps>()
-
-// Variant classes
-const variantClasses = {
-  primary: 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-600/25 hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-500 dark:hover:to-blue-600',
-  secondary: 'bg-white/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-100 border border-black/10 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-white/15 active:bg-neutral-100 dark:active:bg-white/5',
-  outline: 'bg-transparent text-neutral-700 dark:text-neutral-200 border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/8 active:bg-black/10 dark:active:bg-white/10',
-  ghost: 'bg-transparent text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/8 active:bg-black/10 dark:active:bg-white/12',
-  danger: 'bg-gradient-to-b from-red-500 to-red-600 text-white shadow-sm shadow-red-600/25 hover:from-red-400 hover:to-red-500 active:from-red-600 active:to-red-700',
-  success: 'bg-gradient-to-b from-green-500 to-green-600 text-white shadow-sm shadow-green-600/25 hover:from-green-400 hover:to-green-500 active:from-green-600 active:to-green-700',
-  warning: 'bg-gradient-to-b from-orange-500 to-orange-600 text-white shadow-sm shadow-orange-600/25 hover:from-orange-400 hover:to-orange-500 active:from-orange-600 active:to-orange-700'
-}
 
 // Size classes
 const sizeClasses = {
@@ -71,11 +64,19 @@ const buttonClass = [
     : '',
   customClass,
   fullWidth ? 'w-full' : '',
-  iconOnly ? iconOnlySizes[size] : sizeClasses[size],
-  variantClasses[variant]
+  // `bare` takes neither: its whole point is to impose no box.
+  variant === 'bare' ? '' : (iconOnly ? iconOnlySizes[size] : sizeClasses[size]),
+  buttonVariantClasses[variant]
 ].filter(Boolean).join(' ')
 </script>
 <script client>
+import { buttonVariantToggles } from '../../../../functions/dashboard-button'
+
+// A bound `:variant` changes after the server render; the toggles move the
+// colour with it (stacksjs/stacks#3180).
+const liveVariant = useReactiveProp('variant', 'primary')
+const liveCallerClass = useReactiveProp('class', '')
+const variantToggles = derived(() => buttonVariantToggles(liveVariant(), liveCallerClass()))
 const liveDisabled = useReactiveProp('disabled', false)
 const liveLoading = useReactiveProp('loading', false)
 const livePressed = useReactiveProp('pressed', false)
@@ -86,13 +87,36 @@ const liveRel = useReactiveProp('rel', '')
 const liveType = useReactiveProp('type', 'button')
 const liveForm = useReactiveProp('form', '')
 const liveAriaLabel = useReactiveProp('ariaLabel', '')
+const liveTitle = useReactiveProp('title', '')
+const liveIconOnly = useReactiveProp('iconOnly', false)
+/**
+ * What a pointer sees on hover. An icon-only button has no visible words, so
+ * its accessible label doubles as the tooltip: a row of eye, pencil and trash
+ * icons names each action when hovered instead of leaving it to guesswork.
+ */
+function hoverTitle(): string | undefined {
+  return liveTitle() || (liveIconOnly() ? liveAriaLabel() : '') || undefined
+}
+/**
+ * For a button that opens a menu or a disclosure.
+ *
+ * An arbitrary `aria-*` attribute written on `<Button>` is not forwarded, so a
+ * caller that needs these has to be given them. The column-visibility toggle
+ * in `UI/Table` lost both when it moved off a raw `<button>` - the menu still
+ * worked and a screen reader no longer knew it was a popup, or whether it was
+ * open. See stacksjs/stacks#2926.
+ */
+const liveAriaHasPopup = useReactiveProp('ariaHasPopup', '')
+const liveAriaExpanded = useReactiveProp('ariaExpanded', '')
 </script>
 @if(tag === 'a' || (href && href.length > 0))
     <a
       :href="liveDisabled() || liveLoading() ? undefined : liveHref()"
       :download="liveDownload() || undefined"
       :aria-label="liveAriaLabel() || undefined"
+      :title="hoverTitle()"
       class="{{ buttonClass }}"
+        :class="variantToggles()"
       :target="liveTarget() || undefined"
       :rel="liveRel() || undefined"
       :aria-busy="liveLoading() ? 'true' : 'false'"
@@ -110,7 +134,9 @@ const liveAriaLabel = useReactiveProp('ariaLabel', '')
         :type="liveType()"
         :form="liveForm() || undefined"
         class="{{ buttonClass }}"
+        :class="variantToggles()"
         :aria-label="liveAriaLabel() || undefined"
+        :title="hoverTitle()"
         :aria-busy="liveLoading() ? 'true' : 'false'"
         :aria-pressed="String(livePressed())"
         :disabled="liveDisabled() || liveLoading()"
@@ -125,7 +151,11 @@ const liveAriaLabel = useReactiveProp('ariaLabel', '')
         :type="liveType()"
         :form="liveForm() || undefined"
         class="{{ buttonClass }}"
+        :class="variantToggles()"
         :aria-label="liveAriaLabel() || undefined"
+        :title="hoverTitle()"
+        :aria-haspopup="liveAriaHasPopup() || undefined"
+        :aria-expanded="liveAriaExpanded() || undefined"
         :aria-busy="liveLoading() ? 'true' : 'false'"
         :disabled="liveDisabled() || liveLoading()"
       >

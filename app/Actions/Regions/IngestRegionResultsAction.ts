@@ -93,7 +93,7 @@ export default new Action({
 
       await CheckResult.create({
         monitor_id: monitorId,
-        status,
+        status: status as 'up' | 'down' | 'degraded' | undefined,
         responseTimeMs: r.response_time_ms != null ? Math.round(Number(r.response_time_ms)) : undefined,
         statusCode: r.status_code != null ? Number(r.status_code) : undefined,
         message: typeof r.message === 'string' ? r.message.slice(0, 1000) : '',

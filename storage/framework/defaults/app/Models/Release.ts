@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Release',
@@ -8,6 +8,8 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 5 },
     useUuid: true,
     useTimestamps: true,
     useSearch: {
@@ -59,6 +61,7 @@ export default defineModel({
     notes: {
       order: 4,
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
@@ -85,6 +88,7 @@ export default defineModel({
   },
 
   dashboard: {
+    columns: ['version', 'type', 'status', 'downloads', 'author', 'createdAt'],
     highlight: true,
   },
 } as const)

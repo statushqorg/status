@@ -1,8 +1,8 @@
-import { Action } from '@stacksjs/actions'
-import { Auth, authCookie, consumeMagicLink } from '@stacksjs/auth'
+import { Action } from '@stacksjs/actions/runtime'
+import { Auth, authCookieForBrowserSession, resolveBrowserSessionPolicy, withMagicLink } from '@stacksjs/auth'
 import { config } from '@stacksjs/config'
 import { response } from '@stacksjs/router'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default new Action({
   name: 'MagicLinkConsumeAction',
@@ -20,7 +20,14 @@ export default new Action({
     if (!config.auth.magicLink?.enabled)
       return response.notFound('Magic-link sign-in is not enabled')
 
-    const consumed = await consumeMagicLink(String(request.get('token')))
+    const policy = resolveBrowserSessionPolicy(false)
+    const consumed = await withMagicLink(String(request.get('token')), async grant => ({
+      grant,
+      result: await Auth.loginUsingId(grant.userId, {
+        expiresInMinutes: policy.expiresInMinutes,
+        withRefreshToken: policy.withRefreshToken,
+      }),
+    }))
     if (!consumed.ok) {
       const messages: Record<string, string> = {
         invalid: 'That sign-in link is not valid.',
@@ -33,7 +40,7 @@ export default new Action({
 
     // The same token pack + httpOnly cookie a password login issues, so
     // stxPageAuthMiddleware-gated pages treat passwordless users identically.
-    const result = await Auth.loginUsingId(consumed.userId)
+    const { grant, result } = consumed.value
     if (!result)
       return response.unauthorized('That sign-in link is not valid.')
 
@@ -42,12 +49,12 @@ export default new Action({
       refresh_token: result.refreshToken,
       token_type: 'Bearer',
       expires_in: result.expiresIn,
-      redirect_to: consumed.redirectTo,
+      redirect_to: grant.redirectTo,
       user: {
         id: result.user?.id,
         email: result.user?.email,
         name: result.user?.name,
       },
-    }, { headers: { 'Set-Cookie': authCookie(result.token) } })
+    }, { headers: { 'Set-Cookie': authCookieForBrowserSession(result.token, result.expiresIn) } })
   },
 })

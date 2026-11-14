@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Activity',
@@ -8,6 +8,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { erasure: 'anonymize', basis: 'legitimate_interests', purpose: 'Activity feed' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: {
@@ -77,6 +78,7 @@ export default defineModel({
     properties: {
       required: false,
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
@@ -84,6 +86,7 @@ export default defineModel({
     },
 
     ipAddress: {
+      personal: true,
       required: false,
       fillable: true,
       validation: {
@@ -91,5 +94,9 @@ export default defineModel({
       },
       factory: faker => faker.internet.ip(),
     },
+  },
+
+  dashboard: {
+    columns: ['description', 'type', 'subjectType', 'causer', 'createdAt'],
   },
 } as const)

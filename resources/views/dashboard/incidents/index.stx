@@ -153,7 +153,7 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
     <div class="filter-bar">
       <div class="filter-group">
         <span class="lbl">View</span>
-        <StxLink to="/dashboard/incidents" class="chip active">Incidents</StxLink>
+        <StxLink to="/dashboard/incidents" class="active chip">Incidents</StxLink>
         <StxLink to="/dashboard/status-reports" class="chip">Announcements</StxLink>
       </div>
     </div>
@@ -210,22 +210,22 @@ useHead({ title: 'Incidents \u00b7 StatusHQ', meta: [{ name: 'robots', content: 
     @endif
 
     @if (incidents.length > 0)
-      <section class="card scroll-x" aria-label="Incident list">
+      <section class="scroll-x card" aria-label="Incident list">
         <div class="rows" role="table" aria-label="Incident list">
-          <div class="trow thead cols-incident-log" role="row">
+          <div class="cols-incident-log thead trow" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
             <span class="tcell" role="columnheader">Monitor</span>
-            <span class="tcell num" role="columnheader">Opened</span>
-            <span class="tcell num" role="columnheader">Duration</span>
+            <span class="num tcell" role="columnheader">Opened</span>
+            <span class="num tcell" role="columnheader">Duration</span>
           </div>
           @foreach (incidents as incident)
-            <StxLink class="trow cols-incident-log" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
+            <StxLink class="cols-incident-log trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
               <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
-              <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
-              <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>
-              <span class="tcell num" role="cell"><time>{{ formatDate(incident.started_at) }}</time></span>
-              <span class="tcell num" role="cell">{{ durationLabel(incident.started_at, incident.resolved_at) }}{{ incident.resolved_at ? '' : '+' }}</span>
+              <span class="ellipsis name tcell" role="cell">{{ incident.cause }}</span>
+              <span class="ellipsis sub tcell" role="cell">{{ incident.monitor_name }}</span>
+              <span class="num tcell" role="cell"><time>{{ formatDate(incident.started_at) }}</time></span>
+              <span class="num tcell" role="cell">{{ durationLabel(incident.started_at, incident.resolved_at) }}{{ incident.resolved_at ? '' : '+' }}</span>
             </StxLink>
           @endforeach
         </div>

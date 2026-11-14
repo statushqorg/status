@@ -3,7 +3,7 @@ import { intro, outro } from '@stacksjs/build'
 import { log, runCommand, runCommandSync } from '@stacksjs/cli'
 import { cloud } from '@stacksjs/config'
 import { path } from '@stacksjs/path'
-import { fs, deleteFolder, writeFileSync, readFileSync } from '@stacksjs/storage'
+import { deleteFolder, writeFileSync, readFileSync } from '@stacksjs/storage'
 import { build } from 'bun'
 import { buildDockerImage, useCustomOrDefaultServerConfig } from './src/utils'
 

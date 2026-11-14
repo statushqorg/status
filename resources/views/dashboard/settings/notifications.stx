@@ -117,7 +117,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
       <div class="filter-group">
         <span class="lbl">Settings</span>
         <StxLink to="/dashboard/settings/team" class="chip">Team</StxLink>
-        <StxLink to="/dashboard/settings/notifications" class="chip active">Notifications</StxLink>
+        <StxLink to="/dashboard/settings/notifications" class="active chip">Notifications</StxLink>
         <StxLink to="/dashboard/settings/security" class="chip">Security</StxLink>
         <StxLink to="/dashboard/settings/cloud" class="chip">Cloud</StxLink>
         <StxLink to="/dashboard/settings/billing" class="chip">Billing</StxLink>
@@ -133,7 +133,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     @endif
 
     @if (errorMessage)
-      <div id="chan-form-error" class="flash error" role="alert">{{ errorMessage }}</div>
+      <div id="chan-form-error" class="error flash" role="alert">{{ errorMessage }}</div>
     @endif
 
     @if (channels.length === 0)
@@ -144,18 +144,18 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
     @endif
 
     @if (channels.length > 0)
-      <section class="card scroll-x" aria-label="Notification channels">
+      <section class="scroll-x card" aria-label="Notification channels">
         <div class="rows" role="table" aria-label="Notification channels">
-          <div class="trow thead cols-channels" role="row">
+          <div class="cols-channels thead trow" role="row">
             <span class="tcell" role="columnheader">Type</span>
             <span class="tcell" role="columnheader">Name</span>
             <span class="tcell" role="columnheader">State</span>
-            <span class="tcell num" role="columnheader">Test</span>
+            <span class="num tcell" role="columnheader">Test</span>
           </div>
           @foreach (channels as channel)
-            <div class="trow cols-channels" role="row">
-              <span class="tcell sub" role="cell"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
-              <span class="tcell ellipsis name" role="cell">{{ channel.name }}</span>
+            <div class="cols-channels trow" role="row">
+              <span class="sub tcell" role="cell"><span class="chan-ico">{!! channelIcon(channel.type) !!}</span>{{ channelTypeLabel(channel.type) }}</span>
+              <span class="ellipsis name tcell" role="cell">{{ channel.name }}</span>
               <span class="tcell" role="cell">
                 @if (channel.enabled)
                   <data class="pill pill-up" value="enabled"><span class="dot"></span>Enabled</data>
@@ -164,7 +164,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
                   <data class="pill pill-unknown" value="disabled"><span class="dot"></span>Disabled</data>
                 @endif
               </span>
-              <span class="tcell num" role="cell">
+              <span class="num tcell" role="cell">
                 <form method="POST" action="/api/notification-channel-forms/{{ channel.id }}/test-send">
                   <button type="submit" class="button sm">Send test</button>
                 </form>
@@ -175,7 +175,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
       </section>
     @endif
 
-    <section class="card !mt-[1.25rem]" aria-label="New channel">
+    <section class="!mt-[1.25rem] card" aria-label="New channel">
       <div class="card-head">
         <h2>New channel</h2>
         <span class="sub">Where alerts get routed</span>

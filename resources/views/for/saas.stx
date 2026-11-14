@@ -97,8 +97,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="modules-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="modules-heading">
+        <div class="left section-head">
           <h2 id="modules-heading" class="section-title">Cover the whole surface your customers feel.</h2>
         </div>
         <div class="feature-grid">
@@ -112,7 +112,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="subscribers-heading">
+      <section class="section site-shell" aria-labelledby="subscribers-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="subscribers-heading">Your users subscribe once. Support stops explaining outages.</h2>
@@ -176,8 +176,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="heartbeat-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="heartbeat-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="heartbeat-heading">The billing cron that fails quietly costs the most.</h2>
             <p>
@@ -198,7 +198,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="oss-heading">
+      <section class="section site-shell" aria-labelledby="oss-heading">
         <div class="note-band">
           <div>
             <h2 id="oss-heading">Your incident data is yours.</h2>
@@ -210,7 +210,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">SaaS questions, answered.</h2>

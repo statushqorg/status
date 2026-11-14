@@ -45,7 +45,7 @@ up.
    fixture payload.
 3. **CLI invocation**, for instance `buddy <command>` with a fixture input,
    diffing stdout against a known-good snapshot.
-4. **REPL probe**. `buddy repl` reaches models, config and the query builder
+4. **REPL probe**. `buddy tinker` reaches models, config and the query builder
    directly, which is the fastest loop for an ORM or relationship bug.
 5. **Headless browser script**. `/stacks-browse` drives a real browser over CDP
    and asserts on DOM, console and network with nothing to install.
@@ -177,7 +177,7 @@ time.**
 Tool preference:
 
 1. **REPL or debugger inspection** where the environment supports it. One
-   breakpoint beats ten logs, and `buddy repl` is usually reachable.
+   breakpoint beats ten logs, and `buddy tinker` is usually reachable.
 2. **Targeted logs** at the boundaries that distinguish the hypotheses, via
    `log.debug()` from `@stacksjs/logging`.
 3. Never "log everything and grep".
@@ -245,3 +245,9 @@ Required before declaring done:
 
 > **Fix applied.** Run `/stacks-review` to review it, and `/stacks-retro` when
 > the real lesson is that the environment let the bug hide.
+
+## Upstream provenance
+
+The reviewed source revision and MIT notice are in [NOTICE.md](NOTICE.md) and
+[LICENSE](LICENSE). Read [the Stacks adaptation rules](../stacks-flow/ENGINEERING.md)
+with this workflow. Existing Stacks APIs and supporting helpers remain authoritative.

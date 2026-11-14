@@ -1,12 +1,18 @@
 import { defineModel } from '@stacksjs/orm'
 import { slug } from '@stacksjs/strings'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Category',
   table: 'categories',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
 
   traits: {
     useUuid: true,
@@ -35,21 +41,12 @@ export default defineModel({
   },
 
   hasMany: ['Product'],
-  belongsToMany: {
-    posts: {
-      model: 'Post',
-      table: 'categorizable_models',
-      foreignKey: 'category_id',
-      relatedKey: 'categorizable_id',
-      pivot: {
-        columns: {
-          categorizable_type: { default: 'posts' },
-        },
-        timestamps: true,
-        uniques: [['category_id', 'categorizable_id', 'categorizable_type']],
-      },
-    },
-  },
+
+  // No `belongsToMany.posts` here. Post categories live in the CMS pivot
+  // `categorizable_models`, whose `category_id` holds `categorizables` ids, so
+  // the inverse belongs on Categorizable. Declaring it on this model made the
+  // generator emit `category_id REFERENCES "categories"`, which rejected every
+  // CMS category link once foreign keys were enforced (stacksjs/stacks#2593).
 
   attributes: {
     name: {
@@ -67,6 +64,7 @@ export default defineModel({
     description: {
       order: 2,
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
@@ -104,7 +102,10 @@ export default defineModel({
       order: 5,
       fillable: true,
       validation: {
-        rule: schema.string(),
+        // Another category's id, so a number like the id it points at. As a
+        // string it was a text column, and joining it to categories.id failed
+        // on PostgreSQL with "text = bigint" (stacksjs/stacks#3002).
+        rule: schema.number(),
       },
       factory: () => null, // Most categories won't have a parent
     },
@@ -121,5 +122,9 @@ export default defineModel({
 
   dashboard: {
     highlight: true,
+    // An address that leads to a picture: shown as one.
+    fields: {
+      imageUrl: { format: 'image' },
+    },
   },
 } as const)

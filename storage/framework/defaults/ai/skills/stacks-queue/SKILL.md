@@ -15,6 +15,18 @@ allowed-tools: Read Edit Write Bash Grep Glob
 - Job model: `storage/framework/defaults/app/Models/Job.ts`
 - Failed job model: `storage/framework/defaults/app/Models/FailedJob.ts`
 
+Database reservations record Linux process incarnation ownership. After a
+worker exits, the normal reservation sweep can recover its positively dead
+local reservations before their TTL. Foreign, unsupported and legacy owners
+retain TTL protection. Application leases can share this proof through
+`captureProcessLeaseOwner()` and `processLeaseOwnerStatus(owner)`; only `dead`
+authorizes early recovery, never `unknown`. No custom heartbeat is needed.
+
+Operator commands accept both `--queue name` and `--queue=name`, preserving
+identity values and rejecting a missing queue value before any mutation.
+`queue:clear` and `queue:flush` require `--force` and keep an explicit queue
+filter on the native database delete; unrelated queues stay intact.
+
 ## Source Files
 ```
 queue/src/
@@ -59,11 +71,18 @@ export class Job {
 ```
 
 ### Dispatch Routing
+
+Production defaults to the database driver. An explicit `sync` driver in production
+throws; reserved/unknown drivers also throw. `resolveQueueDriver()` shares this
+policy across both dispatch APIs and workers. For a transactional database job
+intent, `storeJob` from `@stacksjs/queue/utils` inserts immediately on the active
+transaction; its consumer is the normal database queue worker, including retries.
+
 1. Checks `isFaked()` -- if testing, dispatches to FakeQueue
 2. `sync` driver: calls `dispatchNow()` (immediate execution)
 3. `redis` driver: creates `RedisQueue`, calls `queue.add()` with bun-queue options
 4. `database` driver: inserts into `jobs` table with JSON payload
-5. Fallback: `dispatchNow()`
+5. Unsupported/reserved or unknown drivers throw; they do not fall back to sync.
 
 ### dispatchNow() Execution Order
 1. If `handle` is a function: `await this.handle(payload)`
@@ -101,7 +120,7 @@ The `job()` helper loads job modules from `app/Jobs/{name}.ts` via `runJob()`.
 
 ### runJob(name, options)
 Dynamically imports `app/Jobs/{name}.ts` and executes:
-1. `jobConfig.handle(payload)` if handle is a function
+1. `jobConfig.handle(payload, context)` if handle is a function (`context` is what `.withContext()` attached, on every driver)
 2. `runAction(jobConfig.action)` if action is a string
 3. `jobConfig.action()` if action is a function
 4. `jobConfig(payload, context)` if default export is a function
@@ -304,7 +323,7 @@ const wrappedHandler = withEvents('emails', originalHandler)
 
 ### OnQueueEvent Decorator
 Subscribes an **instance method** on `new`, with `this` bound to that instance.
-Declaring the class subscribes nothing, so the class has to be constructed — and
+Declaring the class subscribes nothing, so the class has to be constructed - and
 the instance has to stay referenced, because the global emitter holds listeners
 weakly (a collected listener stops receiving events).
 
@@ -322,7 +341,7 @@ getQueueEvents().unsubscribeListener(myHandler)
 ```
 
 Rejected with a `TypeError` at class-definition time: static methods, fields,
-accessors and whole classes (no instance to bind to — use `onQueueEvent(...)`),
+accessors and whole classes (no instance to bind to - use `onQueueEvent(...)`),
 and legacy `experimentalDecorators` decoration (no construction-time hook).
 
 ### Listener Introspection
@@ -421,7 +440,7 @@ await notifyJobFailed(jobInfo)           // uses global notifier
 ## Queue Testing (testing.ts)
 
 ```typescript
-import { fake, restore, runJob as runTestJob, expectJobToFail } from '@stacksjs/queue'
+import { fake, restore, runTestJob, expectJobToFail } from '@stacksjs/queue'
 
 const fakeQueue = fake()  // sets global FakeQueue singleton
 
@@ -467,6 +486,9 @@ tester.cleanup()  // calls restore()
 Wraps `bun-queue`'s `Queue` class with Stacks-compatible API.
 
 ```typescript
+import { getRedisQueue } from '@stacksjs/queue'
+
+const RedisQueue = await getRedisQueue()
 const queue = new RedisQueue<T>('emails', redisConfig)
 await queue.add(data, options)          // delay/attempts/priority/timeout/backoff
 queue.process(concurrency, handler)     // start processing (one-time call)
@@ -490,7 +512,13 @@ queue.getQueue(): BunQueue<T>           // underlying bun-queue instance
 queue.on(event, handler)                // subscribe to bun-queue events
 ```
 
-### StacksQueueManager
+### Internal driver manager
+
+`StacksQueueManager` lives inside the Redis driver and is not a named public
+package export. Prefer the public `QueueManager`/`getQueueManager` from the
+re-exported bun-queue surface, reading their own types before using them.
+The internal manager has this shape:
+
 ```typescript
 const manager = new StacksQueueManager(connectionConfigs)
 manager.queue('emails')     // get or create RedisQueue by name
@@ -539,7 +567,7 @@ await SendWelcomeEmail.dispatchNow({ email, name })        // bypass queue
 ## config/queue.ts
 ```typescript
 {
-  default: 'sync',  // 'sync' | 'database' | 'redis' | 'sqs' | 'memory'
+  default: env.QUEUE_DRIVER || (env.APP_ENV === 'production' ? 'database' : 'sync'),  // sync | database | redis
   connections: {
     sync: { driver: 'sync' },
     database: { driver: 'database', table: 'jobs', queue: 'default', retryAfter: 90 },
@@ -585,3 +613,25 @@ await SendWelcomeEmail.dispatchNow({ email, name })        // bypass queue
 - `dispatchAfter()` on sync driver uses `setTimeout` to delay then executes immediately
 - Failed jobs table: `uuid`, `connection` ('database'), `queue`, `payload`, `exception` (stack trace), `failed_at`
 - `process.on('unhandledRejection')` and `process.on('uncaughtException')` are set at module load in worker.ts
+
+
+## Dispatch correctness and durable workflows
+
+Read [DURABLE-WORKFLOWS.md](DURABLE-WORKFLOWS.md) for transaction-aware dispatch,
+idempotency, payload serialization, trace/context propagation, persistent batch
+handlers, cooperative progress/cancellation and dead-letter handling.
+
+## Driver evidence
+
+Use `core/config/src/capabilities.ts` as the driver evidence source. Sync is
+inline and not durable. Database has a retained embedded SQLite worker contract;
+other SQL providers require separate queue evidence. Redis has a versioned core
+persistence contract, not a guarantee for every horizontal-scaling/distributed-
+lock option exposed by bun-queue. SQS, memory and beanstalkd are reserved and
+unsupported: dispatch fails loudly. Provisioning an SQS resource during cloud
+deployment does not implement this package's SQS dispatch driver.
+
+All public imports use `@stacksjs/queue`. The old bun-queue subpath does not
+have a complete published runtime entry. `Job` is Stacks' file-based Job;
+`BunJob` is the underlying bun-queue type. `fake()` affects the entire
+process; always call `restore()` in teardown.

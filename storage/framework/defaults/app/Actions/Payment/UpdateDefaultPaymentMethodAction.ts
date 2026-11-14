@@ -1,5 +1,8 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
+import { isBillable } from '@stacksjs/orm'
+import { BILLING_NOT_ENABLED } from '@stacksjs/payments'
 import { response } from '@stacksjs/router'
+import { paymentFailure, paymentMethodReference } from './payment-response'
 
 export default new Action({
   name: 'UpdateDefaultPaymentMethodAction',
@@ -11,8 +14,21 @@ export default new Action({
     if (!user)
       return response.unauthorized('Authentication required')
 
-    const paymentMethod = Number(request.get('paymentMethod'))
+    if (!isBillable(user))
+      return response.error(BILLING_NOT_ENABLED, 503)
 
-    await user?.setDefaultPaymentMethod(paymentMethod)
+    // A local row id or the provider's own id. This answered nothing at all,
+    // so the client waited on an empty response.
+    const paymentMethod = paymentMethodReference(request.get('paymentMethod'))
+    if (paymentMethod === null)
+      return response.json({ message: 'A `paymentMethod` is required.' }, 422)
+
+    try {
+      await user.setDefaultPaymentMethod(paymentMethod)
+      return response.json({ ok: true })
+    }
+    catch (error) {
+      return paymentFailure(error)
+    }
   },
 })

@@ -1,55 +1,69 @@
 <script client>
-import type { DashboardQueryLog, DashboardQueryResponse } from '../../../../functions/queries'
+import type { DashboardQueryCounts, DashboardQueryFilters, DashboardQueryLog, DashboardQueryResponse } from '../../../../functions/queries'
+import { useServerList } from '../../../../functions/dashboard-list'
 import { fetchDashboardQueries } from '../../../../functions/queries'
 
-type QueryRange = 'hour' | 'day' | 'week'
+type QueryRange = DashboardQueryFilters['range']
 type QueryMode = 'all' | 'slow' | 'history'
-type QueryType = DashboardQueryLog['type'] | 'all'
-type QueryStatus = DashboardQueryLog['status'] | 'all'
+type QueryType = DashboardQueryFilters['type']
+type QueryStatus = DashboardQueryFilters['status']
+
+const EMPTY_COUNTS: DashboardQueryCounts = { total: 0, reads: 0, writes: 0, slow: 0, failed: 0, averageDuration: 0 }
 
 const mode = useReactiveProp<QueryMode>('mode', 'all')
+// What the server says about the log beside its page of rows: whether it is
+// on, the slow threshold, the counts the cards show and the connections.
 const data = state<DashboardQueryResponse>({
   enabled: false,
   slowThreshold: 100,
   queries: [],
+  total: 0,
+  page: 1,
+  perPage: 50,
+  counts: EMPTY_COUNTS,
+  connections: [],
 })
 const range = state<QueryRange>(mode() === 'history' ? 'week' : 'day')
 const connection = state('all')
 const type = state<QueryType>('all')
 const status = state<QueryStatus>('all')
-const currentPage = state(1)
-const itemsPerPage = state(50)
-const loading = state(true)
-const loadError = state('')
-
-const rangeHours: Record<QueryRange, number> = {
-  hour: 1,
-  day: 24,
-  week: 168,
-}
-
-const rangedQueries = derived(() => {
-  const cutoff = Date.now() - rangeHours[range()] * 60 * 60 * 1000
-  return data().queries.filter((query) => {
-    const executed = new Date(query.executedAt).getTime()
-    return Number.isFinite(executed) && executed >= cutoff
-  })
+// One page of the log, chosen by the server (stacksjs/stacks#3204): the range,
+// filters and paging are all its work, and useServerList keeps the request
+// order and paging this page used to keep itself. The log has no order to
+// choose, so no sort is sent.
+const {
+  records: queries,
+  page: currentPage,
+  perPage: itemsPerPage,
+  loading,
+  loadError,
+  load,
+  changePage,
+} = useServerList<DashboardQueryLog>({
+  fetch: async (query) => {
+    const result = await fetchDashboardQueries(query)
+    return { ...result, records: result.queries }
+  },
+  filters: () => ({
+    range: range(),
+    // The slow page lists slow queries whatever the status select last held.
+    status: mode() === 'slow' ? 'slow' : status(),
+    type: type(),
+    connection: connection(),
+  }),
+  perPage: 50,
+  onLoad: (result) => {
+    const page = result as DashboardQueryResponse
+    data.set({ ...page, counts: page.counts ?? EMPTY_COUNTS, connections: page.connections ?? [] })
+    // The log answers with what it could not read (logging off, say) beside
+    // whatever rows it has.
+    loadError.set(page.error || '')
+  },
 })
 
-const filteredQueries = derived(() => rangedQueries().filter((query) => {
-  if (mode() === 'slow' && query.status !== 'slow')
-    return false
-  if (connection() !== 'all' && query.connection !== connection())
-    return false
-  if (status() !== 'all' && query.status !== status())
-    return false
-  return type() === 'all' || query.type === type()
-}))
-const totalPages = derived(() => Math.max(1, Math.ceil(filteredQueries().length / itemsPerPage())))
-const visibleQueries = derived(() => {
-  const start = (currentPage() - 1) * itemsPerPage()
-  return filteredQueries().slice(start, start + itemsPerPage())
-})
+const counts = derived(() => data().counts)
+const total = derived(() => counts().total)
+const totalPages = derived(() => Math.max(1, Math.ceil(total() / itemsPerPage())))
 
 const pageTitle = derived(() => mode() === 'slow' ? 'Slow Queries' : mode() === 'history' ? 'Query History' : 'Queries')
 const pageDescription = derived(() => mode() === 'slow'
@@ -58,30 +72,15 @@ const pageDescription = derived(() => mode() === 'slow'
     ? 'Review database work recorded by the native query logger.'
     : 'Inspect query volume and latency recorded by the native database logger.')
 const emptyTitle = derived(() => mode() === 'slow' ? 'No slow queries in this range' : 'No query logs in this range')
-const connections = derived(() => Array.from(new Set(data().queries.map(query => query.connection))).sort())
-const total = derived(() => filteredQueries().length)
-const selectCount = derived(() => filteredQueries().filter(query => query.type === 'SELECT').length)
-const writeCount = derived(() => filteredQueries().filter(query => ['INSERT', 'UPDATE', 'DELETE'].includes(query.type)).length)
-const slowCount = derived(() => filteredQueries().filter(query => query.status === 'slow').length)
-const failedCount = derived(() => filteredQueries().filter(query => query.status === 'failed').length)
-const averageDuration = derived(() => {
-  const rows = filteredQueries()
-  if (rows.length === 0)
-    return '0.00 ms'
-  return `${(rows.reduce((sum, query) => sum + query.duration, 0) / rows.length).toFixed(2)} ms`
-})
+const connections = derived(() => data().connections)
+const averageDuration = derived(() => `${counts().averageDuration.toFixed(2)} ms`)
 
 function setRange(value: QueryRange): void {
   range.set(value)
-  currentPage.set(1)
-}
-
-function resetPage(): void {
-  currentPage.set(1)
 }
 
 function setCurrentPage(page: number): void {
-  currentPage.set(Math.min(Math.max(1, page), totalPages()))
+  changePage(Math.min(Math.max(1, page), totalPages()))
 }
 
 function formatQuery(query: string): string {
@@ -120,20 +119,8 @@ function statusClass(value: DashboardQueryLog['status']): string {
   return 'text-green-700 dark:text-green-300'
 }
 
-async function loadQueries(): Promise<void> {
-  loading.set(true)
-  loadError.set('')
-  try {
-    const result = await fetchDashboardQueries()
-    data.set(result)
-    loadError.set(result.error || '')
-  }
-  catch (error) {
-    loadError.set(error instanceof Error ? error.message : 'Query logs could not be loaded.')
-  }
-  finally {
-    loading.set(false)
-  }
+function loadQueries(): Promise<void> {
+  return load()
 }
 
 onMount(() => {
@@ -141,10 +128,10 @@ onMount(() => {
 })
 </script>
 
-<div class="space-y-6">
+<div class="flex flex-col gap-6">
   <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <h1 class="font-semibold text-2xl text-neutral-900 tracking-tight dark:text-white">{{ pageTitle() }}</h1>
+      <h1 class="font-bold text-2xl text-neutral-900 tracking-tight dark:text-white">{{ pageTitle() }}</h1>
       <p class="mt-1 text-neutral-500 text-sm dark:text-neutral-400">{{ pageDescription() }}</p>
     </div>
     <div class="flex flex-wrap gap-3 items-center">
@@ -165,16 +152,16 @@ onMount(() => {
       <template #value>{{ total() }}</template>
     </StatsCard>
     <StatsCard title="Reads" icon="i-hugeicons-search-01" iconBg="info">
-      <template #value>{{ selectCount() }}</template>
+      <template #value>{{ counts().reads }}</template>
     </StatsCard>
     <StatsCard title="Writes" icon="i-hugeicons-pencil-edit-02" iconBg="success">
-      <template #value>{{ writeCount() }}</template>
+      <template #value>{{ counts().writes }}</template>
     </StatsCard>
     <StatsCard title="Slow" icon="i-hugeicons-time-02" iconBg="warning">
-      <template #value>{{ slowCount() }}</template>
+      <template #value>{{ counts().slow }}</template>
     </StatsCard>
     <StatsCard title="Failed" icon="i-hugeicons-alert-02" iconBg="danger">
-      <template #value>{{ failedCount() }}</template>
+      <template #value>{{ counts().failed }}</template>
     </StatsCard>
     <StatsCard title="Average" icon="i-hugeicons-dashboard-speed-01" iconBg="neutral">
       <template #value>{{ averageDuration() }}</template>
@@ -190,14 +177,12 @@ onMount(() => {
         </div>
         <div class="flex gap-2 items-center">
           <label for="query-connection" class="sr-only">Connection</label>
-          <select id="query-connection" x-model="connection" class="px-3 py-2 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700" @change="resetPage">
+          <select id="query-connection" x-model="connection" class="px-3 py-2 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700">
             <option value="all">All connections</option>
-            <template :for="item in connections()">
-              <option :value="item">{{ item }}</option>
-            </template>
+            <option :for="item in connections()" :value="item">{{ item }}</option>
           </select>
           <label for="query-type" class="sr-only">Query type</label>
-          <select id="query-type" x-model="type" class="px-3 py-2 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700" @change="resetPage">
+          <select id="query-type" x-model="type" class="px-3 py-2 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700">
             <option value="all">All types</option>
             <option value="SELECT">SELECT</option>
             <option value="INSERT">INSERT</option>
@@ -206,7 +191,7 @@ onMount(() => {
             <option value="OTHER">OTHER</option>
           </select>
           <label :if="mode() !== 'slow'" for="query-status" class="sr-only">Query status</label>
-          <select :if="mode() !== 'slow'" id="query-status" x-model="status" class="px-3 py-2 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700" @change="resetPage">
+          <select :if="mode() !== 'slow'" id="query-status" x-model="status" class="px-3 py-2 text-neutral-700 text-sm dark:text-neutral-200 bg-white dark:bg-neutral-800 border border-neutral-300 rounded-lg dark:border-neutral-700">
             <option value="all">All statuses</option>
             <option value="completed">Completed</option>
             <option value="slow">Slow</option>
@@ -218,13 +203,13 @@ onMount(() => {
 
     <div :if="loading()" aria-live="polite" class="p-10 text-center text-neutral-500 text-sm dark:text-neutral-400">Loading query logs</div>
     <div :if="loadError() && !loading()" role="alert" class="p-10 text-center text-red-600 text-sm dark:text-red-300">{{ loadError() }}</div>
-    <div :if="!loading() && !loadError() && filteredQueries().length === 0" class="p-10 text-center">
+    <div :if="!loading() && !loadError() && queries().length === 0" class="p-10 text-center">
       <span class="block mb-3 mx-auto h-8 w-8 text-neutral-400 i-hugeicons-database-02"></span>
       <p class="font-medium text-neutral-900 dark:text-white">{{ emptyTitle() }}</p>
       <p class="mt-1 text-neutral-500 text-sm dark:text-neutral-400">{{ data().enabled ? (mode() === 'slow' ? 'Queries appear here after they exceed the configured threshold.' : 'Queries will appear as the application executes them.') : 'Enable database.queryLogging in config/database.ts to record queries.' }}</p>
     </div>
 
-    <div :if="!loading() && !loadError() && filteredQueries().length > 0" class="overflow-x-auto">
+    <div :if="!loading() && !loadError() && queries().length > 0" class="overflow-x-auto">
       <table class="w-full">
         <thead class="bg-neutral-50 dark:bg-neutral-800/50">
           <tr>
@@ -237,36 +222,34 @@ onMount(() => {
           </tr>
         </thead>
         <tbody class="divide-neutral-100 divide-y dark:divide-neutral-700">
-          <template :for="query in visibleQueries()">
-            <tr>
-              <td class="pl-5 pr-4 py-3.5 max-w-2xl">
-                <div class="flex gap-2 items-start">
-                  <span :class="'inline-flex flex-none items-center px-2 py-0.5 font-semibold text-[10px] rounded ' + typeClass(query.type)">{{ query.type }}</span>
-                  <code class="block break-all font-mono text-neutral-800 text-xs dark:text-neutral-200">{{ formatQuery(query.query) }}</code>
-                </div>
-              </td>
-              <td class="px-4 py-3.5 text-neutral-500 text-sm dark:text-neutral-400">{{ query.connection }}</td>
-              <td class="px-4 py-3.5 font-mono text-neutral-700 text-right text-xs whitespace-nowrap dark:text-neutral-300">{{ formatDuration(query.duration) }}</td>
-              <td class="px-4 py-3.5">
-                <span :class="'font-medium text-xs capitalize ' + statusClass(query.status)">{{ query.status }}</span>
-              </td>
-              <td class="px-4 py-3.5 text-neutral-500 text-right text-xs whitespace-nowrap dark:text-neutral-400">{{ formatDate(query.executedAt) }}</td>
-              <td class="pr-5 py-3.5 text-right">
-                <a :href="queryDetailsPath(query.id)" :aria-label="'View query ' + query.id" class="inline-flex p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md">
-                  <span class="h-4 w-4 i-hugeicons-arrow-right-01"></span>
-                </a>
-              </td>
-            </tr>
-          </template>
+          <tr :for="query in queries">
+            <td class="pl-5 pr-4 py-3.5 max-w-2xl">
+              <div class="flex gap-2 items-start">
+                <span :class="'inline-flex flex-none items-center px-2 py-0.5 font-semibold text-[10px] rounded ' + typeClass(query.type)">{{ query.type }}</span>
+                <code class="block break-all font-mono text-neutral-800 text-xs dark:text-neutral-200">{{ formatQuery(query.query) }}</code>
+              </div>
+            </td>
+            <td class="px-4 py-3.5 text-neutral-500 text-sm dark:text-neutral-400">{{ query.connection }}</td>
+            <td class="px-4 py-3.5 font-mono text-neutral-700 text-right text-xs whitespace-nowrap dark:text-neutral-300">{{ formatDuration(query.duration) }}</td>
+            <td class="px-4 py-3.5">
+              <span :class="'font-medium text-xs capitalize ' + statusClass(query.status)">{{ query.status }}</span>
+            </td>
+            <td class="px-4 py-3.5 text-neutral-500 text-right text-xs whitespace-nowrap dark:text-neutral-400">{{ formatDate(query.executedAt) }}</td>
+            <td class="pr-5 py-3.5 text-right">
+              <a :href="queryDetailsPath(query.id)" :aria-label="'View query ' + query.id" class="inline-flex p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md">
+                <span class="h-4 w-4 i-hugeicons-arrow-right-01"></span>
+              </a>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
 
-    <div :if="!loading() && !loadError() && filteredQueries().length > 0" class="px-5 py-4 border-neutral-200 border-t dark:border-neutral-700">
+    <div :if="!loading() && !loadError() && queries().length > 0" class="px-5 py-4 border-neutral-200 border-t dark:border-neutral-700">
       <Pagination
         :currentPage="currentPage"
         :totalPages="totalPages"
-        :totalItems="filteredQueries().length"
+        :totalItems="total()"
         :itemsPerPage="itemsPerPage"
         showTotalItems
         @page="setCurrentPage"

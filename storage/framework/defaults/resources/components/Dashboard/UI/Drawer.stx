@@ -17,6 +17,7 @@ const sizeClasses = {
 </script>
 
 <script client>
+import { useScrollLock } from '@stacksjs/composables'
 const open = useReactiveProp('isOpen', false)
 const liveClosable = useReactiveProp('closable', true)
 const liveTitle = useReactiveProp('title', '')
@@ -24,7 +25,7 @@ const liveDescription = useReactiveProp('description', '')
 const dialog = useRef<HTMLDialogElement>('dashboardDrawerDialog')
 const activeElement = useActiveElement()
 const scrollLocked = useScrollLock()
-const emit = defineEmits()
+const emit = defineEmits(['close'])
 let restoreFocus: HTMLElement | null = null
 
 function close(): void {
@@ -76,7 +77,7 @@ effect(() => {
   role="dialog"
   aria-modal="true"
   :aria-label="liveTitle() || 'Drawer'"
-  class="fixed inset-0 z-[55] m-0 p-0 h-dvh max-h-none max-w-none w-screen bg-transparent dashboard-drawer-dialog dashboard-modal-layer"
+  class="fixed inset-0 z-[55] m-0 p-0 h-dvh max-h-none max-w-none bg-transparent dashboard-drawer-dialog dashboard-modal-layer"
   @cancel="handleCancel"
 >
   <div class="flex justify-end min-h-full" @click="handleBackdropClick">

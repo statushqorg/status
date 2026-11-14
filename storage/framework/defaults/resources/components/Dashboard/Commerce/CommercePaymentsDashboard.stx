@@ -1,84 +1,101 @@
 <script client>
+import type { PaymentBreakdown } from '../../../../app/Actions/Dashboard/Commerce/commerce-payment-list'
 import type { PaymentRecord, PaymentSummary } from '../../../../app/Actions/Dashboard/Commerce/payment-records'
-import {
-  paymentsToCsv,
-  summarizePayments,
-} from '../../../../app/Actions/Dashboard/Commerce/payment-records'
 import { dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
 import { pushToast } from '../../../../functions/toasts'
 
 interface CommercePaymentsResponse {
   records: PaymentRecord[]
+  total: number
+  page: number
+  perPage: number
+  summary: PaymentSummary
+  breakdown: PaymentBreakdown
+  statuses: string[]
+  methods: string[]
 }
 
-const records = state<PaymentRecord[]>([])
-const search = state('')
+const emptySummary: PaymentSummary = { total: 0, successful: 0, currencies: [], capturedByCurrency: {}, refundedByCurrency: {}, successRate: 0 }
+// The server's answer for the current search, filters and range
+// (stacksjs/stacks#3218): it searches, filters, sorts, pages and summarises
+// every payment, where this page used to do all of that with the newest 500.
+const summary = state<PaymentSummary>({ ...emptySummary })
+const breakdown = state<PaymentBreakdown>({ statuses: [], methods: [], currencies: [] })
+const statusChoices = state<string[]>([])
+const methodChoices = state<string[]>([])
 const statusFilter = state('all')
 const methodFilter = state('all')
 const timeRange = state('30')
 const sort = state('newest')
-const loading = state(true)
-const loadError = state('')
 const detailsRecord = state<PaymentRecord | null>(null)
 const refundRecord = state<PaymentRecord | null>(null)
 const refunding = state(false)
 
-function timestamp(value: string): number {
-  const result = new Date(value.includes('T') ? value : value.replace(' ', 'T')).getTime()
-  return Number.isFinite(result) ? result : 0
+/** The select's four orders, as the server's sort and direction. */
+const SELECT_SORTS: Record<string, { sort: string, direction: 'asc' | 'desc' }> = {
+  newest: { sort: 'created', direction: 'desc' },
+  oldest: { sort: 'created', direction: 'asc' },
+  amount: { sort: 'amount', direction: 'desc' },
+  status: { sort: 'status', direction: 'asc' },
+}
+
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  paymentLabel: 'id',
+  billingLabel: 'billing',
+  amount: 'amount',
+  methodLabel: 'method',
+  statusTone: 'status',
+  createdAt: 'created',
 }
 
 function statuses(): string[] {
-  return [...new Set(records().map(record => record.status).filter(Boolean))].sort()
+  return statusChoices()
 }
 
 function methods(): string[] {
-  return [...new Set(records().map(record => record.method).filter(Boolean))].sort()
+  return methodChoices()
 }
 
-function visibleRecords(): PaymentRecord[] {
-  const query = search().trim().toLowerCase()
-  const selectedStatus = statusFilter()
-  const selectedMethod = methodFilter()
-  const days = timeRange() === 'all' ? 0 : Number(timeRange())
-  const cutoff = days ? Date.now() - days * 86400000 : 0
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218). The
+// range is a filter like the others; "all" is left out, which the server
+// reads as every payment, as it reads days=all.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  params,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<PaymentRecord>({
+  fetch: query => dashboardApi<CommercePaymentsResponse>(`/api/dashboard/commerce/payments?${query}`),
+  defaultSort: () => SELECT_SORTS[sort()] ?? SELECT_SORTS.newest!,
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ days: timeRange(), status: statusFilter(), method: methodFilter() }),
+  onLoad: (result) => {
+    const data = result as CommercePaymentsResponse
+    summary.set(data.summary ?? { ...emptySummary })
+    breakdown.set(data.breakdown ?? { statuses: [], methods: [], currencies: [] })
+    statusChoices.set(Array.isArray(data.statuses) ? data.statuses : [])
+    methodChoices.set(Array.isArray(data.methods) ? data.methods : [])
+  },
+  onError: error => pushToast('error', 'Could not load payments', { detail: error instanceof Error ? error.message : String(error) }),
+})
 
-  return [...records()]
-    .filter((record) => {
-      if (selectedStatus !== 'all' && record.status !== selectedStatus)
-        return false
-      if (selectedMethod !== 'all' && record.method !== selectedMethod)
-        return false
-      if (cutoff && timestamp(record.createdAt) < cutoff)
-        return false
-      return !query || [
-        record.id,
-        record.referenceNumber,
-        record.billingEmail,
-        record.transactionId,
-        record.paymentProvider,
-        record.orderId,
-        record.method,
-        record.status,
-      ].some(value => value.toLowerCase().includes(query))
-    })
-    .sort((left, right) => {
-      if (sort() === 'oldest')
-        return timestamp(left.createdAt) - timestamp(right.createdAt)
-      if (sort() === 'amount')
-        return right.amount - left.amount
-      if (sort() === 'status')
-        return left.status.localeCompare(right.status) || timestamp(right.createdAt) - timestamp(left.createdAt)
-      return timestamp(right.createdAt) - timestamp(left.createdAt)
-    })
-}
-
-function visibleSummary(): PaymentSummary {
-  return summarizePayments(visibleRecords())
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'payment' : 'payments'}`
 }
 
 function metricCards(): Array<{ label: string, value: string, detail: string }> {
-  const current = visibleSummary()
+  const current = summary()
   return [
     { label: 'Transactions', value: String(current.total), detail: 'In the current view' },
     { label: 'Successful', value: String(current.successful), detail: 'Captured at least once' },
@@ -91,30 +108,13 @@ function metricCards(): Array<{ label: string, value: string, detail: string }> 
   ]
 }
 
+/** Every matching payment as CSV, built by the server, not just the page shown. */
 function exportHref(): string {
-  return `data:text/csv;charset=utf-8,${encodeURIComponent(`\uFEFF${paymentsToCsv(visibleRecords())}`)}`
+  return `/api/dashboard/commerce/payments/export?${params()}`
 }
 
-function exportFilename(): string {
-  return `payments-${new Date().toISOString().slice(0, 10)}.csv`
-}
-
-async function loadPayments(): Promise<void> {
-  loading.set(true)
-  loadError.set('')
-  try {
-    const data = await dashboardApi<CommercePaymentsResponse>('/api/dashboard/commerce/payments')
-    records.set(Array.isArray(data.records) ? data.records : [])
-  }
-  catch (error) {
-    loadError.set('Payment records could not be loaded.')
-    pushToast('error', 'Could not load payments', {
-      detail: error instanceof Error ? error.message : String(error),
-    })
-  }
-  finally {
-    loading.set(false)
-  }
+function loadPayments(): Promise<void> {
+  return load()
 }
 
 function openDetails(record: PaymentRecord): void {
@@ -169,50 +169,38 @@ onMount(() => {
 })
 </script>
 
-<div class="space-y-6">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">Payments</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Inspect native Payment records, export the current view, and record confirmed refunds.</p>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <Button variant="secondary" :loading="loading()" @click="loadPayments"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
-      <Button tag="a" :href="exportHref()" :download="exportFilename()"><span class="h-4 w-4 i-hugeicons-download-04"></span>Export current view</Button>
-    </div>
-  </header>
+<div class="flex flex-col gap-6">
+  <PageHeader title="Payments" description="Inspect native Payment records, export the current view, and record confirmed refunds.">
+  <div class="flex flex-wrap gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadPayments"><span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button tag="a" :href="exportHref()" download><span class="h-4 w-4 i-hugeicons-download-04"></span>Export current view</Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
 
-  <section aria-label="Payment metrics" class="grid gap-3 grid-cols-2 lg:grid-cols-4">
-    <template :for="item in metricCards()" :key="item.label">
-      <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
-        <p class="text-gray-500 text-xs dark:text-neutral-400">{{ item.label }}</p>
-        <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p>
-        <p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">{{ item.detail }}</p>
-      </article>
-    </template>
-  </section>
+  <MetricCards label="Payment metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
 
-  <CommercePaymentsBreakdown :records="visibleRecords()" />
+  <CommercePaymentsBreakdown :breakdown="breakdown()" />
 
-  <section class="space-y-3">
+  <section class="flex flex-col gap-3">
     <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
       <label class="relative sm:col-span-2">
         <span class="sr-only">Search payments</span>
         <span class="flex absolute inset-y-0 left-0 items-center pl-3 text-gray-400 pointer-events-none"><span class="h-4 w-4 i-hugeicons-search-01"></span></span>
         <input x-model="search" type="search" placeholder="Search payments" class="pl-9 pr-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700" />
       </label>
-      <label><span class="sr-only">Payment status</span><select x-model="statusFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All statuses</option><template :for="status in statuses()" :key="status"><option :value="status">{{ status }}</option></template></select></label>
-      <label><span class="sr-only">Payment method</span><select x-model="methodFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All methods</option><template :for="method in methods()" :key="method"><option :value="method">{{ method }}</option></template></select></label>
+      <label><span class="sr-only">Payment status</span><select x-model="statusFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All statuses</option><option :for="status in statuses()" :key="status" :value="status">{{ status }}</option></select></label>
+      <label><span class="sr-only">Payment method</span><select x-model="methodFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All methods</option><option :for="method in methods()" :key="method" :value="method">{{ method }}</option></select></label>
       <label><span class="sr-only">Payment time range</span><select x-model="timeRange" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="1">Last 24 hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last year</option><option value="all">All time</option></select></label>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ visibleRecords().length }} matching payments</p>
+      <p class="text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
       <label class="flex gap-2 items-center text-gray-500 text-sm dark:text-neutral-400">Sort<select x-model="sort" class="px-3 py-1.5 text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="amount">Highest amount</option><option value="status">Status</option></select></label>
     </div>
 
-    <CommercePaymentsTable :records="visibleRecords()" :loading="loading()" @view="openDetails" />
+    <CommercePaymentsTable :sort-reset-key="sort()" :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @view="openDetails" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
   </section>
 </div>
 

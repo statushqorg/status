@@ -1,8 +1,10 @@
-import { Action } from '@stacksjs/actions'
-import { db } from '@stacksjs/database'
+import { Action } from '@stacksjs/actions/runtime'
+import { config } from '@stacksjs/config'
+import { db, sqlDateTime } from '@stacksjs/database/runtime'
 import { response } from '@stacksjs/router'
 import { randomUUIDv7 } from 'bun'
 import { readCartCookie, writeCartCookie } from '../../Storefront/CartCookie'
+import { storefrontCurrency } from '../../Storefront/StorefrontMoney'
 
 const CART_COOKIE = 'stacks_cart'
 const COOKIE_OPTS = {
@@ -39,7 +41,8 @@ export default new Action({
     const product = await (db as any)
       .selectFrom('products')
       .where('slug', '=', slug)
-      .where('is_available', '=', 1)
+      // A boolean, not 1: PostgreSQL has no boolean = integer (#3005).
+      .where('is_available', '=', true)
       .selectAll()
       .executeTakeFirst()
 
@@ -64,9 +67,12 @@ export default new Action({
           total_items: 0,
           subtotal: 0,
           total: 0,
-          currency: 'USD',
+          // The store's currency: unit_price and the totals are minor units of it.
+          currency: storefrontCurrency(config.commerce?.currency),
           session_token: token,
           checkout_step: 'cart',
+          // The cart lasts as long as the cookie that finds it (#3017).
+          expires_at: sqlDateTime(new Date(Date.now() + COOKIE_OPTS.maxAge * 1000)),
         })
         .execute()
       // Re-read by session_token: bun-query-builder's `returningAll()`

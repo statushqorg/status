@@ -97,8 +97,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="modules-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="modules-heading">
+        <div class="left section-head">
           <h2 id="modules-heading" class="section-title">The failures that cost a store money.</h2>
         </div>
         <div class="feature-grid">
@@ -112,7 +112,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="funnel-heading">
+      <section class="section site-shell" aria-labelledby="funnel-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="funnel-heading">Monitor the funnel, not just the homepage.</h2>
@@ -186,8 +186,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="crawl-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="crawl-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="crawl-heading">The daily crawl catches what no uptime check can.</h2>
             <p>
@@ -240,7 +240,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="oss-heading">
+      <section class="section site-shell" aria-labelledby="oss-heading">
         <div class="note-band">
           <div>
             <h2 id="oss-heading">Your uptime history is yours.</h2>
@@ -252,7 +252,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Store questions, answered.</h2>

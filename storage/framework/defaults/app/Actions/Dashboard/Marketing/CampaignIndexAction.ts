@@ -1,6 +1,6 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { config } from '@stacksjs/config'
-import { db } from '@stacksjs/database'
+import { db } from '@stacksjs/database/runtime'
 import { Campaign, EmailList } from '@stacksjs/orm'
 import { dashboardOperationalError } from '../dashboard-response'
 import { normalizeCampaigns } from './campaign-records'
@@ -32,7 +32,7 @@ export default new Action({
         db
           .selectFrom('campaign_sends')
           .select(['campaign_id', 'status', db.fn.count('id').as('count')])
-          .groupBy(['campaign_id', 'status'])
+          .groupBy('campaign_id', 'status')
           .execute(),
         db
           .selectFrom('campaign_sends')

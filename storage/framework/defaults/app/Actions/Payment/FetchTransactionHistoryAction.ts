@@ -1,4 +1,4 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { response } from '@stacksjs/router'
 
 export default new Action({
@@ -11,7 +11,7 @@ export default new Action({
     if (!user)
       return response.unauthorized('Authentication required')
 
-    const transactions = await PaymentTransaction.where('user_id', user?.id).get()
+    const transactions = await PaymentTransaction.where('user_id', Number(user.id)).get()
 
     return response.json(transactions)
   },

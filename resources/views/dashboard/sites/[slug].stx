@@ -14,6 +14,7 @@ import { relativeTime, siteHost, siteSlug, statusLabel, statusPillClass } from '
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import { rowsOrEmpty } from '~/app/lib/rows'
 import { scaleLinear } from '@ts-charts/scale'
 import { curveMonotoneX, line } from '@ts-charts/shape'
 // require() destructured these under other names; `import { x as y }`
@@ -100,24 +101,22 @@ const siteServerIds = [...new Set(siteMonitors
   .filter(v => v !== null))]
 
 const siteServerRows = siteServerIds.length
-  ? await db.selectFrom('servers')
+  ? await rowsOrEmpty(() => db.selectFrom('servers')
       .where('id', 'in', siteServerIds)
       .where('team_id', '=', TEAM_ID)
       .select(['id', 'name'])
-      .execute()
-      .catch(() => [])
+      .execute())
   : []
 
 const serverCharts = []
 for (const row of siteServerRows) {
   const serverId = Number(row.id)
-  const sampleRows = await db.selectFrom('server_metric_samples')
+  const sampleRows = await rowsOrEmpty(() => db.selectFrom('server_metric_samples')
     .where('server_id', '=', serverId)
     .where('sampled_at', '>=', since)
     .orderBy('sampled_at', 'asc')
     .selectAll()
-    .execute()
-    .catch(() => [])
+    .execute())
   if (!sampleRows.length)
     continue
 
@@ -222,11 +221,11 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
   @endif
 
   @if (AUTH_USER && siteExists)
-    <p class="crumb !mt-0 !mx-0 !mb-[0.6rem]"><StxLink class="text-[var(--muted)] text-[0.85rem]" to="/dashboard">&larr; Overview</StxLink></p>
+    <p class="!mb-[0.6rem] !mt-0 !mx-0 crumb"><StxLink class="text-[0.85rem] text-[var(--muted)]" to="/dashboard">&larr; Overview</StxLink></p>
 
     <header class="page-head">
       <div>
-        <h1 class="flex items-center gap-[0.6rem]">
+        <h1 class="flex gap-[0.6rem] items-center">
           {{ siteHostName }}
           <data class="{{ stClass(siteStatus) }}" value="{{ siteStatus }}"><span class="dot"></span>{{ stLabel(siteStatus) }}</data>
         </h1>
@@ -237,24 +236,24 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
       </div>
     </header>
 
-    <section class="card scroll-x" aria-label="Checks">
+    <section class="scroll-x card" aria-label="Checks">
       <div class="card-head">
         <h3>Checks</h3>
         <span class="sub">{{ siteMonitors.length }} on this site</span>
       </div>
       <div class="rows" role="table" aria-label="Checks on this site">
-        <div class="trow thead cols-site-checks" role="row">
+        <div class="cols-site-checks thead trow" role="row">
           <span class="tcell" role="columnheader">Status</span>
           <span class="tcell" role="columnheader">Check</span>
           <span class="tcell" role="columnheader">Type</span>
-          <span class="tcell num" role="columnheader">Checked</span>
+          <span class="num tcell" role="columnheader">Checked</span>
         </div>
         @foreach (siteMonitors as monitor)
-          <StxLink class="trow cols-site-checks" role="row" to="/dashboard/monitors/{{ monitor.id }}">
+          <StxLink class="cols-site-checks trow" role="row" to="/dashboard/monitors/{{ monitor.id }}">
             <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
-            <span class="tcell" role="cell"><span class="name ellipsis block">{{ monitor.name }}</span></span>
+            <span class="tcell" role="cell"><span class="block ellipsis name">{{ monitor.name }}</span></span>
             <span class="tcell" role="cell"><span class="tag">{{ typeLabel(monitor.type) }}</span></span>
-            <span class="tcell num" role="cell"><time>{{ agoLabel(monitor.last_checked_at) }}</time></span>
+            <span class="num tcell" role="cell"><time>{{ agoLabel(monitor.last_checked_at) }}</time></span>
           </StxLink>
         @endforeach
       </div>
@@ -299,7 +298,7 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
       </section>
     @endforeach
 
-    <section class="card scroll-x" aria-label="Open incidents">
+    <section class="scroll-x card" aria-label="Open incidents">
       <div class="card-head">
         <h3>Open incidents</h3>
         <span class="sub">{{ openIncidentCount }} open</span>
@@ -314,18 +313,18 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
       @endif
       @if (openIncidents.length > 0)
         <div class="rows" role="table" aria-label="Open incidents on this site">
-          <div class="trow thead cols-incidents" role="row">
+          <div class="cols-incidents thead trow" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
             <span class="tcell" role="columnheader">Check</span>
-            <span class="tcell num" role="columnheader">Opened</span>
+            <span class="num tcell" role="columnheader">Opened</span>
           </div>
           @foreach (openIncidents as incident)
-            <StxLink class="trow cols-incidents" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
+            <StxLink class="cols-incidents trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
               <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
-              <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
-              <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>
-              <span class="tcell num" role="cell"><time>{{ agoLabel(incident.started_at) }}</time></span>
+              <span class="ellipsis name tcell" role="cell">{{ incident.cause }}</span>
+              <span class="ellipsis sub tcell" role="cell">{{ incident.monitor_name }}</span>
+              <span class="num tcell" role="cell"><time>{{ agoLabel(incident.started_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>

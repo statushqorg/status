@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * A phone number that texted STOP. Keyed by NUMBER, not user - the reply
@@ -13,21 +13,16 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
 
-  indexes: [
-    {
-      name: 'sms_opt_outs_phone_unique',
-      columns: ['phone'],
-      unique: true,
-    },
-  ],
 
   traits: {
+    gdpr: { erasure: 'keep', basis: 'legal_obligation', purpose: 'Honouring SMS STOP replies, keyed by phone number' },
     useTimestamps: true,
   },
 
   attributes: {
     /** E.164 where derivable (`+13105550199`). */
     phone: {
+      personal: true,
       required: true,
       order: 1,
       fillable: true,

@@ -8,7 +8,7 @@
   logout form is stamped by csrf-forms.js, loaded in app-head.stx.
 -->
 <nav ref="navRoot" class="app-nav">
-  <div class="app-shell app-nav-inner">
+  <div class="app-nav-inner app-shell">
     {{-- Points at /dashboard, not /. This nav only ever renders on
          post-login dashboard pages, where the logo is the way back to the
          overview — sending a signed-in user out to the marketing landing
@@ -81,7 +81,7 @@
         </form>
       @endif
       @if (!AUTH_USER)
-        <StxLink class="button sm primary" to="/login">Sign in</StxLink>
+        <StxLink class="button primary sm" to="/login">Sign in</StxLink>
       @endif
     </div>
   </div>

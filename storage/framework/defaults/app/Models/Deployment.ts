@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Deployment',
@@ -112,6 +112,12 @@ export default defineModel({
   },
 
   dashboard: {
+    columns: ['commitMessage', 'branch', 'environment', 'status', 'duration', 'createdAt'],
+    // A deploy is timed in seconds, and its address is somewhere to go.
+    fields: {
+      duration: { format: 'duration', unit: 's' },
+      url: { label: 'URL', format: 'link' },
+    },
     highlight: true,
   },
 } as const)

@@ -18,7 +18,7 @@
  * than processing unauthenticated requests.
  */
 
-import { route } from '@stacksjs/router'
+import { clientAddress, route } from '@stacksjs/router'
 import {
   buildUnsubscribeUrl as _ignored, // import-side dep to ensure tree-shake doesn't drop the module
   handleMailgunWebhook,
@@ -53,8 +53,8 @@ function emailConfig(): EmailConfigShape {
 // Unsubscribe — signed-link opt-out (stacksjs/stacks#1880)
 // ============================================================================
 
-route.get('/_stacks/email/unsubscribe/{token}', async (req) => {
-  const params = (req as unknown as { params?: { token?: string } }).params
+async function unsubscribe(req: unknown): Promise<Response> {
+  const params = (req as { params?: { token?: string } }).params
   const token = params?.token ?? ''
   const result = verifyUnsubscribeToken(token)
   if (!result.valid || !result.email) {
@@ -68,7 +68,17 @@ route.get('/_stacks/email/unsubscribe/{token}', async (req) => {
     `You've been unsubscribed. We won't email ${result.email} again.`,
     { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
   )
-}).skipCsrf()
+}
+
+// A person clicking the link in the message.
+route.get('/_stacks/email/unsubscribe/{token}', unsubscribe).skipCsrf()
+
+// The mail client's own unsubscribe button. `buildListUnsubscribeHeaders`
+// sends `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, and RFC 8058 has
+// the client POST that body to the same URL. Only GET was mounted, so the
+// button Gmail and Apple Mail show next to the sender reached no route and
+// nobody was unsubscribed.
+route.post('/_stacks/email/unsubscribe/{token}', unsubscribe).skipCsrf()
 
 // ============================================================================
 // Provider webhooks (stacksjs/stacks#1881)
@@ -94,10 +104,9 @@ route.post('/webhooks/email/postmark', async (req) => {
   }
   const rawBody = await req.text()
   const auth = req.headers.get('authorization')
-  // Bun's Request exposes the client IP via the server's `requestIP` API,
-  // not directly on the request. The framework's enhanced-request layer
-  // surfaces it via _clientIp when available; fall back gracefully.
-  const sourceIp = (req as unknown as { _clientIp?: string })._clientIp
+  // Postmark's address as trusted proxies report it. This read `_clientIp`,
+  // which nothing sets, so a configured `ipAllowlist` refused every delivery.
+  const sourceIp = clientAddress(req) ?? undefined
   const result = await handlePostmarkWebhook(rawBody, auth, sourceIp, {
     username,
     password,

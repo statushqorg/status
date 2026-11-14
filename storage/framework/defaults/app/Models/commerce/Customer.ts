@@ -1,6 +1,6 @@
 import type { Attributes } from '@stacksjs/types'
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Customer',
@@ -9,6 +9,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { erasure: 'anonymize', basis: 'contract', purpose: 'Customer record behind orders and payments' },
     useUuid: true,
     useTimestamps: true,
     useSearch: {
@@ -35,6 +36,7 @@ export default defineModel({
 
   attributes: {
     name: {
+      personal: true,
       order: 1,
       fillable: true,
       validation: {
@@ -48,6 +50,7 @@ export default defineModel({
     },
 
     email: {
+      personal: true,
       unique: true,
       order: 2,
       fillable: true,
@@ -61,6 +64,7 @@ export default defineModel({
     },
 
     phone: {
+      personal: true,
       order: 3,
       fillable: true,
       validation: {
@@ -82,7 +86,8 @@ export default defineModel({
           min: 'Total spent cannot be negative',
         },
       },
-      factory: faker => faker.number.int({ min: 0, max: 2000 }),
+      // Integer minor units: $0 to $5,000.
+      factory: faker => faker.number.int({ min: 0, max: 500000 }),
     },
 
     lastOrder: {
@@ -108,6 +113,7 @@ export default defineModel({
     },
 
     avatar: {
+      personal: true,
       order: 8,
       fillable: true,
       validation: {
@@ -128,5 +134,9 @@ export default defineModel({
 
   dashboard: {
     highlight: true,
+    // Chosen as a file. Its address is what is stored, as before.
+    fields: {
+      avatar: { input: 'upload', accept: 'image/*' },
+    },
   },
 } as const)

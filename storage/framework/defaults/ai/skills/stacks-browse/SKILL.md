@@ -15,6 +15,10 @@ Protocol (CDP) using only Bun's native `Bun.spawn`, `fetch`, and `WebSocket`.
 
 The driver lives at `storage/framework/defaults/ai/skills/stacks-browse/scripts/browse.ts`. Run it with `bun`:
 
+Keep `chrome.ts` beside the driver when copying the standalone skill. It is the
+Chrome executable preparation shared with `@stacksjs/testing/browser` and uses
+only Bun and Node APIs.
+
 ```bash
 bun storage/framework/defaults/ai/skills/stacks-browse/scripts/browse.ts <command> <url> [flags]
 ```
@@ -22,13 +26,20 @@ bun storage/framework/defaults/ai/skills/stacks-browse/scripts/browse.ts <comman
 Every command prints a JSON result. Screenshots are written under `storage/framework/runtime/shots/` by
 default; **Read the PNG** to view it.
 
+Every command accepts `--scale N` for the native device-pixel ratio, defaulting
+to `1`. It must be one positive finite number. The driver applies it before
+navigation, including scenario runs and every responsive or crawl page. To
+qualify Retina behavior, inspect the page's actual `devicePixelRatio`, canvas
+backing dimensions or resolution media query; a requested value alone is not
+evidence. Scenario reports include the requested `scale`.
+
 ## Browser discovery (no install step)
 
 The driver finds a browser at runtime in this order, and falls through to the next if one
 won't launch:
 
 1. `$BROWSE_BROWSER` (explicit override — set to an absolute browser path)
-2. PATH: `chromium`, `google-chrome`, `brave-browser`, `microsoft-edge`, …
+2. PATH: `google-chrome-stable`, `google-chrome`, `chromium`, `chromium-browser`, `brave-browser`, `microsoft-edge`, …
 3. macOS app bundles (Google Chrome, Chromium, Brave, Edge)
 4. A Chromium binary already cached on disk (e.g. under `~/Library/Caches/ms-playwright`) —
    the **binary only** is borrowed; Playwright is never imported.
@@ -36,6 +47,8 @@ won't launch:
 A candidate is validated with `--version` before use, so a dead wrapper (e.g. a Homebrew
 shim pointing at an uninstalled `.app`) is skipped automatically. If none launch, it tells
 you to `brew install --cask chromium` or set `BROWSE_BROWSER`.
+
+Startup waits up to 15 seconds for the running browser's valid DevTools port. An exited process or expired deadline fails launch; page readiness and scenario assertions have separate budgets.
 
 ## Default Stacks dev URLs
 
@@ -88,6 +101,8 @@ Full-page screenshot at each breakpoint and a horizontal-overflow check:
 | Wide | 1920 | 1080 |
 
 Reports `horizontalOverflowPx` per breakpoint (0 = no overflow). Shots in `storage/framework/runtime/shots/responsive/`.
+Overflow is measured against the requested device width, so mobile Chrome's
+automatic viewport expansion cannot hide a page wider than the device.
 
 ### Monitor (console + network)
 ```bash
@@ -104,6 +119,7 @@ Extracts headings, links (`text -> href`), buttons, forms (action + field count)
 ### Scenario (stateful SPA interactions)
 ```bash
 bun storage/framework/defaults/ai/skills/stacks-browse/scripts/browse.ts scenario <url> \
+  --scale 2 \
   --step '{"action":"click","selector":"button[data-open]"}' \
   --step '{"action":"focus","selector":"input[name=name]"}' \
   --step '{"action":"evaluate","expression":"window.__stxDevtools?.stats()"}' \
@@ -115,8 +131,20 @@ bun storage/framework/defaults/ai/skills/stacks-browse/scripts/browse.ts scenari
 ```
 
 Steps run in order within one isolated browser page, preserving reactive STX state and SPA navigation. Supported actions are `click`, `fill`, `focus`, `press`, `wait`, `evaluate`, and `assert`. Each step is a JSON object passed through a repeatable `--step` flag. Click and focus steps may include `text` to select the matching control from their CSS selector. They scroll matched controls into view before interacting, including controls inside horizontal overflow regions. Evaluate steps run a JavaScript expression in the isolated page and return its serialized value, which is useful for inspecting STX signals and DevTools state between interactions. The command reports every completed step, the final URL and page text, console messages, console exceptions, failed requests, and an optional screenshot. It exits nonzero when the scenario assertion, evaluation, browser console, or network fails.
+On a failed step, execution stops and the report retains its number and error,
+the completed steps, final page state and requested screenshot.
+If final page or screenshot collection fails, the report keeps the completed
+steps and available console/network observations, sets the missing result to
+`null`, and records its phase and error in `collectionErrors`. The command still
+exits nonzero. A missing capture does not qualify an older raster as evidence.
 Use `{"action":"assert","selector":"...","absent":true}` to verify that an element is missing or hidden after an interaction.
 Use `{"action":"assert","selector":"button","text":"Save","focused":true}` to verify keyboard focus and focus restoration.
+`press` sends native virtual key codes for Enter, Escape, Tab, the arrow keys,
+Home, End, PageUp, PageDown, Backspace, Delete and Insert. Focus a scrollable
+region before pressing its navigation keys to exercise browser scrolling;
+an evaluated assignment to `scrollTop` does not verify keyboard input.
+Unsupported named keys fail the scenario instead of reporting a successful press.
+For asynchronous results, use `{"action":"assert","selector":"button","text":"Sound on","timeoutMs":2000}`. This observes the actual visible result until it matches or the bounded budget expires. Ordinary assertions remain immediate. Only assertions accept `timeoutMs`, an integer from 0 to 30000; protocol and evaluation failures are not retried.
 
 ### Crawl (whole-site browser audit)
 ```bash
@@ -145,7 +173,7 @@ When testing a Stacks app, check:
 - **Auth flow** — `/login`, `/register`
 - **CMS/blog** — `/blog`, post detail pages, `/blog/feed.xml`, `/blog/sitemap.xml`
 - **STX components** — do custom components render server-side?
-- **Crosswind CSS** — utility classes generating styles?
+- **ts-css CSS** — utility classes generating styles?
 - **Links** — run `snapshot` and verify hrefs resolve (no `/blog/index`, no `/api/blog/*` 404s).
 
 ## Rules

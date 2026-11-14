@@ -21,7 +21,7 @@ i18n/src/
 ├── translator.ts         # I18n class, global API (t, tc, te, tm)
 ├── formatter.ts          # Locale-aware formatting (dates, numbers, currency, lists)
 ├── loader.ts             # File-based translation loader (JSON, YAML, JS/TS)
-└── pluralization.ts      # CLDR plural rules for 25+ languages
+└── pluralization.ts      # CLDR plural rules, from the runtime's Intl.PluralRules
 ```
 
 ## Core Types
@@ -101,14 +101,13 @@ tc('items', 5)    // '5 items'
 
 ### Supported Languages
 
-| Rule | Languages |
-|------|-----------|
-| One/Other | en, de, nl, es, it, pt, sv, da, no, fi, el, he, hu, tr |
-| French (0-1=one) | fr |
-| No plural | zh, ja, ko, vi, th, id, ms |
-| One/Few/Many/Other | ru, uk, pl |
-| One/Few/Other | cs, sk |
-| Full (zero/one/two/few/many/other) | ar, cy |
+Every language the runtime's CLDR data covers, through `Intl.PluralRules`,
+for the full locale (`pt` counts 0 as `one`, `pt-PT` does not). A language it
+has no data for says `other` for every number; `hasPluralRule(locale)` tells
+you which. `addPluralRule(locale, rule)` overrides a language. The rules were
+a hand-written table of 33 languages until it turned out to leave out Catalan,
+Croatian, Serbian, Bulgarian and `nb` (they said `other` for 1) and to get
+Hebrew's `two` and Latvian's `zero` wrong.
 
 ```typescript
 import { getPluralCategory, addPluralRule, hasPluralRule } from '@stacksjs/i18n'
@@ -175,7 +174,32 @@ const all = await loader.load()
 const fr = await loader.loadLocale('fr', 'messages.yml')
 ```
 
-## Locale Files
+## Request and generated-type integration
+
+`ensureLocalesLoaded()` loads the application's locale files once and applies
+`config.app.locale` and fallbackLocale. `resolveRequestLocale(request)` chooses
+the STX locale header/prefix, locale query parameter, locale cookie,
+Accept-Language, then the default. `applyRequestLocale(request)` loads and
+sets the global translator. These are framework integration primitives; a
+global `setLocale` remains singleton state and is not a promise of concurrent
+async request isolation. Use an explicit `createI18n()` instance when independent
+operations must keep different locales.
+
+`createLocaleSwitchResponse(request, localeCode, config)` sets a locale cookie
+and redirects to an equivalent localized path. `stripLocalePrefix` and
+`localizePath` share its path rules. The default locale remains unprefixed;
+other supported locales receive their prefix. Wire the handler through a real
+route rather than only changing a client string.
+
+The package re-exports the ts-i18n disk/codegen surface as
+`loadTranslationsFromDisk`, `generateI18nTypes`, `generateI18nTypesFromModule`,
+`generateI18nSampleConfig`, `writeI18nOutputs`, and `createSimpleTranslator`.
+This codegen is separate from runtime `loadTranslations(messages)`; choose
+the right operation rather than passing disk options to the runtime merge.
+Tests in `core/i18n/tests/bootstrap.test.ts`, `loader.test.ts`, and
+`scaffolded-locales.test.ts` retain request/loading evidence.
+
+## Locale file example
 
 ```yaml
 # locales/en.yml
@@ -189,10 +213,10 @@ default:
 ```
 
 ## Gotchas
-- **Dual API** — instance-based (`createI18n()`) and global (`t()`) both exist. Global uses a singleton
-- **YAML parsed with Bun.YAML** — not a third-party parser
-- **Missing keys return the key itself** — not an error, not empty string
-- **Pluralization uses `|` separator** — not ICU MessageFormat
-- **CLDR rules are built-in** — no external data needed, 25+ languages hardcoded
-- **HTML escaping is opt-in** — `escapeValues: true` in config
-- **Formatting uses Intl APIs** — delegates to `Intl.DateTimeFormat`, `Intl.NumberFormat`, etc.
+- **Dual API** - instance-based (`createI18n()`) and global (`t()`) both exist. Global uses a singleton
+- **YAML parsed with Bun.YAML** - not a third-party parser
+- **Missing keys return the key itself** - not an error, not empty string
+- **Pluralization uses `|` separator** - not ICU MessageFormat
+- **CLDR rules come from the runtime** - `Intl.PluralRules`, no data shipped and no table to fall out of date
+- **HTML escaping is opt-in** - `escapeValues: true` in config
+- **Formatting uses Intl APIs** - delegates to `Intl.DateTimeFormat`, `Intl.NumberFormat`, etc.

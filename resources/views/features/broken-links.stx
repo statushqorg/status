@@ -83,7 +83,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="crawl-heading">
+      <section class="section site-shell" aria-labelledby="crawl-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="crawl-heading">Nobody clicks every link after a deploy.</h2>
@@ -114,8 +114,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                   <div class="panel-row-meta"><span>found on /</span></div>
                 </div>
               </div>
-              <div class="panel-body !pt-[0.5rem]">
-                <div class="panel-row !p-0">
+              <div class="!pt-[0.5rem] panel-body">
+                <div class="!p-0 panel-row">
                   <span class="panel-row-sub">184 pages crawled</span>
                   <span class="panel-row-sub">2 broken links</span>
                   <span class="panel-row-sub">1 mixed content</span>
@@ -126,8 +126,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="mixed-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="mixed-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="mixed-heading">Mixed content breaks the padlock.</h2>
             <p>
@@ -162,7 +162,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="bundle-heading">
+      <section class="section site-shell" aria-labelledby="bundle-heading">
         <div class="note-band">
           <div>
             <h2 id="bundle-heading">Three features. One monitor. One price.</h2>
@@ -174,8 +174,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What the crawl covers.</h2>
         </div>
         <ul class="check-list">
@@ -188,7 +188,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="sitemap-heading">
+      <section class="section site-shell" aria-labelledby="sitemap-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="sitemap-heading">Your sitemap makes promises. The crawl keeps them honest.</h2>
@@ -224,7 +224,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Broken link monitoring, answered.</h2>
@@ -239,8 +239,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

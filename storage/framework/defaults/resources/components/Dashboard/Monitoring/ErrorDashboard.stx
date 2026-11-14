@@ -1,8 +1,8 @@
-<div class="p-6 space-y-6">
+<div class="flex flex-col gap-6 p-6">
 
   <PageHeader title="Error Tracking" description="Monitor and manage application errors. Similar errors are grouped together." />
 
-  <div :show="hasStats" class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+  <div :show="hasStats" class="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
     <StatsCard title="Total Errors" icon="i-hugeicons-bug-01" iconBg="primary">
       <template #value>{{ totalErrorsLabel() }}</template>
     </StatsCard>
@@ -23,45 +23,47 @@
     </StatsCard>
   </div>
 
+  <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadGroups()">Retry</Button></div>
+
   <Card padding="none">
     <template #header>
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="font-semibold text-lg text-neutral-900 dark:text-white">Issues</h2>
         <div class="flex flex-col gap-3 sm:flex-row">
           <div class="w-full sm:w-64">
-            <Input v-model:value="searchQuery" ariaLabel="Search errors" placeholder="Search errors..." size="sm" @input="resetFilterPage">
+            <Input v-model:value="searchQuery" ariaLabel="Search errors" placeholder="Search errors..." size="sm">
               <template #iconLeft>
                 <div class="h-4 w-4 i-hugeicons-search-01"></div>
               </template>
             </Input>
           </div>
           <div class="w-full sm:w-40">
-            <Select v-model:value="statusFilter" :options="statusOptions" ariaLabel="Error status" placeholder="" size="sm" @change="resetFilterPage" />
+            <Select v-model:value="statusFilter" :options="statusOptions" ariaLabel="Error status" placeholder="" size="sm" />
           </div>
           <div class="w-full sm:w-40">
-            <Select v-model:value="typeFilter" :options="typeOptions" ariaLabel="Error type" placeholder="" size="sm" @change="resetFilterPage" />
+            <Select v-model:value="typeFilter" :options="typeOptions" ariaLabel="Error type" placeholder="" size="sm" />
           </div>
         </div>
       </div>
     </template>
 
     <ErrorTable
-      :errors="paginatedErrors"
+      :errors="filteredErrors"
+      :loading="loading()"
+      :total="groupTotal"
+      :currentPage="groupPage"
+      :perPage="groupPerPage"
       :emptyTitle="emptyTitle"
       :emptyDescription="emptyDescription"
-      :sortColumn="sortBy"
-      :sortDirection="sortOrder"
-      @sort="handleSort"
       @row-click="viewError"
       @resolve="handleResolveError"
       @ignore="handleIgnoreError"
       @unresolve="handleUnresolveError"
       @delete="openDeleteModal"
+      @page-change="changeGroupPage"
+      @page-size-change="changeGroupPageSize"
+      @sort="changeGroupSort"
     />
-
-    <template #footer>
-      <Pagination :currentPage="currentPage" :totalPages="totalPages" :totalItems="totalFiltered" :itemsPerPage="itemsPerPage" showTotalItems @page="setCurrentPage" />
-    </template>
   </Card>
 
   <Modal :isOpen="isDetailModalOpen()" :title="detailTitle" size="lg" @close="closeDetailModal">
@@ -153,7 +155,9 @@
 </div>
 
 <script client>
-import { useErrors } from '../../../../functions/monitoring/errors'
+import { useServerList } from '../../../../functions/dashboard-list'
+import { fetchErrorGroupPage, useErrors } from '../../../../functions/monitoring/errors'
+import { pushToast } from '../../../../functions/toasts'
 
 interface ErrorGroup {
   id?: string | number
@@ -166,15 +170,47 @@ interface ErrorGroup {
   stack?: string | null
 }
 
-const { groupedErrors, errorStats, fetchGroupedErrors, fetchErrorStats, resolveErrorGroup, ignoreErrorGroup, unresolveErrorGroup, deleteErrorGroup } = useErrors()
+const { errorStats, fetchErrorStats, resolveErrorGroup, ignoreErrorGroup, unresolveErrorGroup, deleteErrorGroup } = useErrors()
 
-const searchQuery = state('')
 const statusFilter = state('')
 const typeFilter = state('')
-const sortBy = state('last_seen')
-const sortOrder = state<'asc' | 'desc'>('desc')
-const currentPage = state(1)
-const itemsPerPage = state(10)
+
+/** Every recorded type, from the server: a page alone would list only its own. */
+const types = state<string[]>([])
+
+// The groups are one page, searched, filtered and sorted by the server
+// (stacksjs/stacks#3195); useServerList keeps the request order, paging,
+// header sort and search debounce this page used to keep itself. Unsorted is
+// most recently seen first, which the server reads as last_seen descending.
+const {
+  records,
+  total: groupTotal,
+  page: groupPage,
+  perPage: groupPerPage,
+  search: searchQuery,
+  loading,
+  loadError,
+  load,
+  changePage: changeGroupPage,
+  changePageSize: changeGroupPageSize,
+  changeSort: changeGroupSort,
+} = useServerList<ErrorGroup>({
+  fetch: async (query) => {
+    const result = await fetchErrorGroupPage(query)
+    return { ...result, records: result.groups as unknown as ErrorGroup[] }
+  },
+  defaultSort: { sort: 'last_seen', direction: 'desc' },
+  // The table's sortable columns are named as the server sorts them.
+  columnSorts: { type: 'type', count: 'count', status: 'status', last_seen: 'last_seen' },
+  filters: () => ({ status: statusFilter(), type: typeFilter() }),
+  perPage: 10,
+  searchParam: 'search',
+  onLoad: (result) => {
+    const page = result as { types?: string[] }
+    types.set(Array.isArray(page.types) ? page.types : [])
+  },
+  onError: error => pushToast('error', 'Could not load errors', { detail: error instanceof Error ? error.message : String(error) }),
+})
 
 const selectedError = state<ErrorGroup | null>(null)
 const isDetailModalOpen = state(false)
@@ -189,7 +225,7 @@ const statusOptions = [
 ]
 
 function errorList(): ErrorGroup[] {
-  return (groupedErrors.value as ErrorGroup[]) || []
+  return records()
 }
 
 function statsValue(): { total?: number, unresolved?: number, last_24h?: number, resolved?: number, trend?: number } | null {
@@ -203,62 +239,24 @@ const last24hLabel = derived(() => String(statsValue()?.last_24h ?? 0))
 const resolvedStatsLabel = derived(() => String(statsValue()?.resolved ?? 0))
 const trendValue = derived(() => statsValue()?.trend ?? 0)
 
-const typeOptions = derived(() => {
-  const types = new Set(errorList().map(e => e.type))
-  return [
-    { value: '', label: 'All Types' },
-    ...Array.from(types).map(type => ({ value: type, label: type })),
-  ]
-})
+/** Every recorded type, from the server: a page alone would list only its own. */
+const typeOptions = derived(() => [
+  { value: '', label: 'All Types' },
+  ...types().map(type => ({ value: type, label: type })),
+])
 
-const filteredErrors = derived(() => {
-  const list = errorList()
-  const q = searchQuery().toLowerCase()
-  const status = statusFilter()
-  const type = typeFilter()
-  const sb = sortBy()
-  const so = sortOrder()
-  return list
-    .filter((error) => {
-      const matchesSearch = !q
-        || error.type.toLowerCase().includes(q)
-        || error.message.toLowerCase().includes(q)
-      const matchesStatus = !status || error.status === status
-      const matchesType = !type || error.type === type
-      return matchesSearch && matchesStatus && matchesType
-    })
-    .sort((a, b) => {
-      let comparison = 0
-      if (sb === 'type')
-        comparison = a.type.localeCompare(b.type)
-      else if (sb === 'count')
-        comparison = a.count - b.count
-      else if (sb === 'last_seen')
-        comparison = new Date(a.last_seen).getTime() - new Date(b.last_seen).getTime()
-      else if (sb === 'first_seen')
-        comparison = new Date(a.first_seen).getTime() - new Date(b.first_seen).getTime()
-      return so === 'asc' ? comparison : -comparison
-    })
-})
+/** The page the server chose; its search, filters and order are already applied. */
+const filteredErrors = derived(() => errorList())
 
-const paginatedErrors = derived(() => {
-  const start = (currentPage() - 1) * itemsPerPage()
-  return filteredErrors().slice(start, start + itemsPerPage())
-})
-
-const totalFiltered = derived(() => filteredErrors().length)
-const totalPages = derived(() => Math.max(1, Math.ceil(filteredErrors().length / itemsPerPage())))
+function loadGroups(): Promise<void> {
+  return load()
+}
 
 const hasFilters = derived(() => searchQuery() !== '' || (statusFilter() ?? '') !== '' || (typeFilter() ?? '') !== '')
 const emptyTitle = derived(() => hasFilters() ? 'No matching errors' : 'No errors found')
 const emptyDescription = derived(() => hasFilters() ? 'Try adjusting your filters' : 'Your application is running smoothly!')
 
 const hasSelectedError = derived(() => selectedError() !== null)
-
-function setCurrentPage(page: number | CustomEvent<number>): void {
-  const nextPage = typeof page === 'number' ? page : page.detail
-  currentPage.set(Math.min(Math.max(1, nextPage), totalPages()))
-}
 const selectedIsUnresolved = derived(() => selectedError()?.status === 'unresolved')
 const selectedIsResolvedOrIgnored = derived(() => {
   const s = selectedError()?.status
@@ -281,16 +279,6 @@ function eventValue<T>(value: T | CustomEvent<T>): T {
   return value instanceof CustomEvent ? value.detail : value
 }
 
-function resetFilterPage(): void {
-  currentPage.set(1)
-}
-
-function handleSort(value: { column: string, direction: 'asc' | 'desc' } | CustomEvent<{ column: string, direction: 'asc' | 'desc' }>): void {
-  const sort = eventValue(value)
-  sortBy.set(sort.column)
-  sortOrder.set(sort.direction)
-}
-
 function viewError(value: ErrorGroup | CustomEvent<ErrorGroup>): void {
   const error = eventValue(value)
   selectedError.set(error)
@@ -304,24 +292,42 @@ function closeDetailModal(): void {
 
 async function handleResolveError(value: ErrorGroup | CustomEvent<ErrorGroup>): Promise<void> {
   const error = eventValue(value)
-  await resolveErrorGroup(error.type, error.message)
-  await fetchErrorStats()
+  // Only a write that landed moves the group: this used to mark it resolved
+  // whatever the server answered (stacksjs/stacks#3194).
+  if (!await resolveErrorGroup(error.type, error.message)) {
+    pushToast('error', 'Could not resolve this error')
+    return
+  }
+  // Reread the groups too: the table does not see a status changed in place.
+  await Promise.all([loadGroups(), fetchErrorStats()])
   if (isDetailModalOpen() && selectedError())
     selectedError.update(e => e ? { ...e, status: 'resolved' } : e)
 }
 
 async function handleIgnoreError(value: ErrorGroup | CustomEvent<ErrorGroup>): Promise<void> {
   const error = eventValue(value)
-  await ignoreErrorGroup(error.type, error.message)
-  await fetchErrorStats()
+  // Only a write that landed moves the group: this used to mark it ignored
+  // whatever the server answered (stacksjs/stacks#3194).
+  if (!await ignoreErrorGroup(error.type, error.message)) {
+    pushToast('error', 'Could not ignore this error')
+    return
+  }
+  // Reread the groups too: the table does not see a status changed in place.
+  await Promise.all([loadGroups(), fetchErrorStats()])
   if (isDetailModalOpen() && selectedError())
     selectedError.update(e => e ? { ...e, status: 'ignored' } : e)
 }
 
 async function handleUnresolveError(value: ErrorGroup | CustomEvent<ErrorGroup>): Promise<void> {
   const error = eventValue(value)
-  await unresolveErrorGroup(error.type, error.message)
-  await fetchErrorStats()
+  // Only a write that landed moves the group: this used to mark it unresolved
+  // whatever the server answered (stacksjs/stacks#3194).
+  if (!await unresolveErrorGroup(error.type, error.message)) {
+    pushToast('error', 'Could not reopen this error')
+    return
+  }
+  // Reread the groups too: the table does not see a status changed in place.
+  await Promise.all([loadGroups(), fetchErrorStats()])
   if (isDetailModalOpen() && selectedError())
     selectedError.update(e => e ? { ...e, status: 'unresolved' } : e)
 }
@@ -367,8 +373,12 @@ async function confirmDelete(): Promise<void> {
   const target = errorToDelete()
   if (!target)
     return
-  await deleteErrorGroup(target.type, target.message)
-  await fetchErrorStats()
+  if (!await deleteErrorGroup(target.type, target.message)) {
+    pushToast('error', 'Could not delete this error')
+    return
+  }
+  // Reread the groups too: the table does not see a status changed in place.
+  await Promise.all([loadGroups(), fetchErrorStats()])
   closeDeleteModal()
 }
 
@@ -388,6 +398,6 @@ function formatDate(date: string): string {
 }
 
 onMount(async () => {
-  await Promise.all([fetchGroupedErrors(), fetchErrorStats()])
+  await Promise.all([loadGroups(), fetchErrorStats()])
 })
 </script>

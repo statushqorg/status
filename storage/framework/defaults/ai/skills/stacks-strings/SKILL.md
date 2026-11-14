@@ -16,15 +16,15 @@ allowed-tools: Read Edit Write Bash Grep Glob
 ## Architecture
 
 The package re-exports from these submodules:
-- `case.ts` — case conversion functions (camelCase, pascalCase, snakeCase, etc.)
-- `pluralize.ts` — English pluralization/singularization with rule engine
-- `slug.ts` — URL slug generation with extensive character map
-- `utils.ts` — random strings, template interpolation, slash, prefix/suffix, truncate, detect-indent, detect-newline
-- `macro.ts` — `Str` and `str` facade objects
-- `validators.ts` — re-exports from `is.ts` (native string validators)
-- `sponge-case.ts` — random upper/lower case
-- `swap-case.ts` — swap upper/lower case
-- `title-case.ts` — intelligent title case with small word handling
+- `case.ts` - case conversion functions (camelCase, pascalCase, snakeCase, etc.)
+- `pluralize.ts` - English pluralization/singularization with rule engine
+- `slug.ts` - URL slug generation with extensive character map
+- `utils.ts` - random strings, template interpolation, slash, prefix/suffix, truncate, detect-indent, detect-newline
+- `macro.ts` - `Str` and `str` facade objects
+- `validators.ts` - re-exports from `is.ts` (native string validators)
+- `sponge-case.ts` - random upper/lower case
+- `swap-case.ts` - swap upper/lower case
+- `title-case.ts` - intelligent title case with small word handling
 
 The top-level `index.ts` does:
 ```typescript
@@ -64,28 +64,28 @@ interface PascalCaseOptions extends CaseOptions {
 ### Functions
 
 ```typescript
-camelCase('hello world')        // 'helloWorld'  — first word lowercase, rest capitalized
-pascalCase('hello world')       // 'HelloWorld'  — all words capitalized
-snakeCase('hello world')        // 'hello_world' — alias for noCase with '_' delimiter
-kebabCase('hello world')        // 'hello-world' — alias for noCase with '-' delimiter
-constantCase('hello world')     // 'HELLO_WORLD' — all uppercase with '_' delimiter
-trainCase('hello world')        // 'Hello-World' — capitalCase with '-' delimiter
-dotCase('hello world')          // 'hello.world' — noCase with '.' delimiter
-pathCase('hello world')         // 'hello/world' — noCase with '/' delimiter
-sentenceCase('hello world')     // 'Hello world' — first word capitalized, rest lowercase
-capitalCase('hello world')      // 'Hello World' — all words capitalized, space delimiter
-noCase('helloWorld')            // 'hello world' — lowercase with space delimiter
-pascalSnakeCase('hello world')  // 'Hello_World' — capitalCase with '_' delimiter
-paramCase('hello world')        // 'hello-world' — alias for kebabCase
+camelCase('hello world')        // 'helloWorld'  - first word lowercase, rest capitalized
+pascalCase('hello world')       // 'HelloWorld'  - all words capitalized
+snakeCase('hello world')        // 'hello_world' - alias for noCase with '_' delimiter
+kebabCase('hello world')        // 'hello-world' - alias for noCase with '-' delimiter
+constantCase('hello world')     // 'HELLO_WORLD' - all uppercase with '_' delimiter
+trainCase('hello world')        // 'Hello-World' - capitalCase with '-' delimiter
+dotCase('hello world')          // 'hello.world' - noCase with '.' delimiter
+pathCase('hello world')         // 'hello/world' - noCase with '/' delimiter
+sentenceCase('hello world')     // 'Hello world' - first word capitalized, rest lowercase
+capitalCase('hello world')      // 'Hello World' - all words capitalized, space delimiter
+noCase('helloWorld')            // 'hello world' - lowercase with space delimiter
+pascalSnakeCase('hello world')  // 'Hello_World' - capitalCase with '_' delimiter
+paramCase('hello world')        // 'hello-world' - alias for kebabCase
 ```
 
 ### Special Case Functions
 
 ```typescript
-spongeCase('hello world')       // 'hElLo wOrLd' — random upper/lower per character
+spongeCase('hello world')       // 'hElLo wOrLd' - random upper/lower per character
 spongeCase('hello', 'en')       // accepts optional locale
 
-swapCase('Hello')               // 'hELLO' — swaps each character's case
+swapCase('Hello')               // 'hELLO' - swaps each character's case
 swapCase('Hello', 'en')         // accepts optional locale
 ```
 
@@ -100,9 +100,9 @@ interface TitleCaseOptions {
   locale?: string | string[]
   sentenceCase?: boolean                 // only capitalize first word + after terminators
   sentenceTerminators?: Set<string>      // default: '.', '!', '?'
-  titleTerminators?: Set<string>         // default: '.', '!', '?', ':', '"', "'", '"'
+  titleTerminators?: Set<string>         // default: '.', '!', '?', ':', '"', "'", and a closing curly quote (U+201D)
   smallWords?: Set<string>               // words not capitalized (see SMALL_WORDS)
-  wordSeparators?: Set<string>           // default: '---', '--', '-', '---', '/'
+  wordSeparators?: Set<string>           // default: em dash (U+2014), en dash (U+2013), '-', horizontal bar (U+2015), '/'
 }
 ```
 
@@ -164,13 +164,13 @@ The pluralization engine preserves the case pattern of the input word:
 
 Two slug functions with different defaults:
 
-### `slug(str, options?)` — Simple slug (strict + lowercase by default)
+### `slug(str, options?)` - Simple slug (strict + lowercase by default)
 ```typescript
 slug('Hello World')              // 'hello-world'
 slug('Hello World', { lower: false })  // 'Hello-World'
 ```
 
-### `slugify(str, options?)` — Full-featured slug
+### `slugify(str, options?)` - Full-featured slug
 ```typescript
 slugify('Hello World!')          // 'Hello-World!'  (not strict/lowercase by default)
 slugify('Hello World!', { lower: true, strict: true })  // 'hello-world'
@@ -196,13 +196,17 @@ Extensive built-in character map covering:
 - Vietnamese diacritics
 - Currency symbols ($, EUR, GBP, YEN, etc.)
 - Special characters (trademark, copyright, etc.)
+- Any dash (hyphen, en dash, em dash, figure dash) separates words, as in ts-slug
+- `slug()` keeps ASCII only, which suits identifiers such as a cloud resource name. For a
+  content URL use `slugify` or `uniqueSlug` from `@stacksjs/slug` (ts-slug), which keeps
+  the letters of a script it cannot romanize: `日本茶` stays `日本茶` there and is `""` here
 
 ### Locale Support
 Locale-specific character mappings for: `bg`, `de`, `es`, `fr`, `pt`, `uk`, `vi`, `da`, `nb`, `it`, `nl`, `sv`.
 
 ```typescript
-slugify('AE', { locale: 'de' })  // 'AE' (German)
-slugify('AE')                     // 'A'  (default)
+slugify('Ä', { locale: 'de' })  // 'AE' (German character map)
+slugify('Ä')                     // 'A'  (default character map)
 ```
 
 ### Extending the Character Map
@@ -213,7 +217,7 @@ extendCharMap({ 'EUR': 'EUR', 'GBP': 'GBP' })
 ## String Utilities
 
 ```typescript
-capitalize('hello world')                  // 'Hello world' — first char upper, rest lower
+capitalize('hello world')                  // 'Hello world' - first char upper, rest lower
 lowercase('HELLO')                         // 'hello'
 slash('path\\to\\file')                    // 'path/to/file'
 ensurePrefix('https://', 'google.com')     // 'https://google.com'
@@ -241,7 +245,7 @@ Native TypeScript implementations (no external validator dependency). All accept
 ### Core Validators
 ```typescript
 isEmail('user@example.com')               // true -- regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-isStrongPassword('Abc123!@#')             // true -- min 8 chars, upper, lower, digit, symbol
+isStrongPassword('Abc123!@#')             // true -- min 8 chars, upper, lower, digit, symbol (any non-letter, non-number)
 isAlphanumeric('abc123')                  // true -- /^[a-zA-Z0-9]+$/
 isAlpha('abcdef')                         // true -- /^[a-zA-Z]+$/
 isNumeric('123')                          // true -- /^[0-9]+$/ (whole numbers only)
@@ -256,16 +260,16 @@ isBase64('SGVsbG8=')                      // true -- btoa(atob(x)) === x
 isBase32('MFZWI===')                      // true -- /^[A-Z2-7]+=*$/
 isAscii('hello')                          // true -- /^[\x00-\x7F]*$/
 isJSON('{"key":"value"}')                 // true -- JSON.parse succeeds
-isHSL('hsl(0, 100%, 50%)')               // true
+isHSL('hsl(0, 100%, 50%)')               // true -- comma syntax: hsl(hue, saturation%, lightness%)
 isMimeType('text/html')                   // true -- /^[a-z]+\/[a-z0-9\-+.]+$/i
-isDataURI('data:text/plain;base64,...')   // true
-isJWT('eyJhbGciOi...')                    // true -- 3 dot-separated base64url segments
+isDataURI('data:text/plain;base64,...')   // true -- RFC 2397: the media type and ;base64 are both optional
+isJWT('eyJhbGciOiJIUzI1NiJ9.e30.c2ln')   // true -- shape check only, not signature verification
 ```
 
 ### Network Validators
 ```typescript
 isIP('192.168.1.1')                       // true -- IPv4 and IPv6
-isIPRange('192.168.1.0/24')               // true -- CIDR notation (IPv4: 0-32, IPv6: 0-128)
+isIPRange('192.168.1.0/24')               // true -- CIDR notation, a whole-number prefix (IPv4: 0-32, IPv6: 0-128)
 isMACAddress('00:11:22:33:44:55')         // true -- colon or hyphen separated
 isFQDN('example.com')                     // true -- fully qualified domain name
 ```
@@ -282,7 +286,7 @@ isISSN('0378-5955')                        // true -- mod 11 check
 
 ### Geographic Validators
 ```typescript
-isLatLong('40.7128,-74.0060')             // true -- lat: -90..90, long: -180..180
+isLatLong('40.7128,-74.0060')             // true -- plain decimal numbers; lat: -90..90, long: -180..180
 isLatitude('40.7128')                     // true
 isLongitude('-74.0060')                   // true
 isPostalCode('12345')                     // true -- US, UK, Canada, generic formats
@@ -291,14 +295,14 @@ isPostalCode('12345')                     // true -- US, UK, Canada, generic for
 ### Phone, Identity, Date Validators
 ```typescript
 isMobilePhone('+1234567890')              // true -- international format, min 7 digits
-isUUID('550e8400-e29b-41d4-a716...')      // true -- v1-v5
-isISO8601('2024-01-01T00:00:00Z')         // true -- with Date validity check
+isUUID('550e8400-e29b-41d4-a716-446655440000') // true -- versions 1-8 (RFC 9562), nil and max; full value required
+isISO8601('2024-01-01T00:00:00Z')         // true -- the day must exist in its month; any number of fraction digits
 isIdentityCard('AB123456')                // true -- generic 5-20 alphanumeric
 isISRC('USRC17607839')                    // true
 isISO31661Alpha2('US')                    // true
 isISO31661Alpha3('USA')                   // true
 validateUsername('user123')               // true -- alias for isAlphanumeric
-isHash('abc123...', 'md5')               // true -- supports md5(32), sha1(40), sha256(64), sha384(96), sha512(128)
+isHash('d41d8cd98f00b204e9800998ecf8427e', 'md5') // true -- exact algorithm length required
 isByteLength('hello', { min: 1, max: 10 }) // true
 isFullWidth('\uFF21')                     // true
 isHalfWidth('a')                          // true
@@ -404,13 +408,36 @@ interface PluralizeOptions { count?, inclusive? }
 ```
 
 ## Gotchas
-- Case conversion uses Unicode-aware word boundary detection (`\p{Ll}`, `\p{Lu}`) -- handles international characters
+- Case conversion uses Unicode-aware word boundary detection (`\p{Ll}`, `\p{Lu}`) -- handles international characters.
+  Combining marks stay with their letter and digits from any script are kept, so `kebabCase('नमस्ते दुनिया')`
+  is `'नमस्ते-दुनिया'`
+- `truncate(str, length, end)` never returns more than `length` characters, `end` included; with a `length`
+  shorter than `end` it returns as much of `end` as fits. It and `mask` count code points, so an emoji is one
+  character and is never cut in half
 - `slug()` calls `slugify()` under the hood but defaults to `{ lower: true, strict: true }`; `slugify()` defaults to `{ lower: false, strict: false }`
 - `pascalCase` and `camelCase` accept `PascalCaseOptions` with `mergeAmbiguousCharacters` to control number-prefixed word handling
 - All case functions support `prefixCharacters`/`suffixCharacters` to preserve leading/trailing non-word characters
 - `pluralize()` is both a function AND an object with methods -- `pluralize.plural()`, `pluralize.singular()`, etc.
-- The `random()` function uses `Math.random()`, not crypto -- fine for IDs but not for security tokens
-- `isNumeric()` only matches whole numbers (`/^\d+$/`), not floats -- use parseFloat for float checking
+- `random()` uses crypto.getRandomValues and fails if that facility is absent.
+  A caller still owns the alphabet/length and storage/expiry of its token; the
+  helper is not a complete authentication-token workflow.
+- `isNumeric()` only matches unsigned digit strings (`/^\d+$/`), not floats.
+  Use a numeric validator and full input validation for a request; parseFloat
+  accepts a numeric prefix and is not a complete validity check.
 - `isURL()` requires `http:` or `https:` protocol -- rejects other protocols and bare domains
 - The `Str` facade does NOT include validators -- only case, utility, and pluralization methods
-- `helpers.ts` only exports `toString()` which returns `Object.prototype.toString.call(v)`
+- `helpers.ts` exports `toString()` (Object.prototype.toString, not ordinary
+  string coercion) and `mask(value, character, index, length?)`. Mask supports
+  a negative starting index and uses the first character of its mask string.
+  Index and explicit length must be safe integers, otherwise it throws RangeError.
+  Negative integer lengths mask nothing. Coordinates count Unicode code points.
+
+## CSV exports
+
+Import `csvCell` and `toCsv` from `@stacksjs/strings/csv` for RFC 4180 exports.
+`toCsv(headers, rows, { bom: true })` adds a UTF-8 BOM and writes CRLF lines.
+Quotes, commas, carriage returns and newlines are escaped. Text beginning
+with a spreadsheet formula operator (including leading whitespace) is
+prefixed with an apostrophe by default; numbers, including negatives, retain
+their numeric value. `{ spreadsheetSafe: false }` explicitly disables that
+policy for machine-oriented exports.

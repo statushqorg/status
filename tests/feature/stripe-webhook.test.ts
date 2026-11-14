@@ -23,9 +23,12 @@ function signed(payload: string, secret = WEBHOOK_SECRET) {
   return `t=${t},v1=${v1}`
 }
 
-function subscriptionEvent(subId: string, status: string) {
+// Every event carries its own id, as Stripe's do: the payments package
+// remembers handled ids and answers a redelivery without running the handlers
+// again, so two events sharing one id are one event delivered twice.
+function subscriptionEvent(subId: string, status: string, eventId = `evt_${subId}`) {
   return JSON.stringify({
-    id: `evt_${subId}`,
+    id: eventId,
     type: 'customer.subscription.created',
     data: {
       object: {
@@ -84,7 +87,7 @@ describe('Stripe webhook (stacksjs/status#1 Phase 9 — import-crash regression)
   })
 
   test('a subsequent event for the same subscription updates in place (single row)', async () => {
-    const body = subscriptionEvent('sub_created_90011', 'canceled')
+    const body = subscriptionEvent('sub_created_90011', 'canceled', 'evt_sub_created_90011_canceled')
     const res = await featureTest().withHeaders({ 'stripe-signature': signed(body) }).post('/api/billing-forms/webhook', body)
     expect(res.status).toBe(200)
 

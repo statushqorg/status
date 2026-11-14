@@ -1,3 +1,28 @@
+<script server>
+/**
+ * A development tool: it lists scenarios that throw on purpose. The routes
+ * that fill it (`/test-error/*`, TestErrorAction) are only mounted for a local
+ * deployment, but the view fallback served this file on its own, so every
+ * deployed app answered 200 at /errors/tester with an empty "Error Page
+ * Tester" shell. Same gate as those routes.
+ */
+import { isLocalDeployment } from '@stacksjs/env'
+
+/*
+ * Handed in by TestErrorAction's renderTemplate call, which spreads its
+ * `context` into the template scope - there is no `context` variable here.
+ * Undefined when the view fallback serves this file on its own. Read into a
+ * differently named list: a local `const scenarios = ...` shadows the injected
+ * one and the page lists nothing.
+ */
+declare const scenarios: Array<{ title: string, description: string, status: number, href: string }> | undefined
+
+if (!isLocalDeployment())
+  notFound()
+
+const scenarioList = typeof scenarios !== 'undefined' && Array.isArray(scenarios) ? scenarios : []
+</script>
+
 <div class="mx-auto px-6 py-12 max-w-3xl">
   <h1 class="mb-2 font-semibold text-3xl text-neutral-950 dark:text-white">Error Page Tester</h1>
   <p class="mb-8 text-neutral-500 text-sm dark:text-neutral-400">
@@ -5,7 +30,7 @@
   </p>
 
   <div class="grid gap-3">
-    @foreach(scenarios as scenario)
+    @foreach(scenarioList as scenario)
     <a
       href="{{ scenario.href }}"
       class="block p-4 bg-white dark:bg-white/[2%] border border-neutral-200 rounded-lg dark:border-white/10 hover:border-rose-500 transition-colors"

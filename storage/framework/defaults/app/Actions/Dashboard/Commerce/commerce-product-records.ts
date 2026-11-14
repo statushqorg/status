@@ -1,9 +1,13 @@
+import { moneyInputError, parseMoneyInput } from '@stacksjs/commerce/money'
 import { commerceTimestamp } from './commerce-record'
 
 export interface CommerceProductRecord {
   id: string
   name: string
+  /** The storefront address, /products/{slug} (stacksjs/stacks#3005). */
+  slug: string
   description: string
+  /** Integer minor units of the store currency (1999 is $19.99 in USD). */
   price: number
   imageUrl: string
   isAvailable: boolean
@@ -58,6 +62,76 @@ export interface ProductReviewSummary {
   approved: number
   pending: number
   averageRating: number
+}
+
+/**
+ * The product form as the dashboard dialog holds it: every field is the text
+ * the person typed, including the price in MAJOR units (`"19.99"`).
+ */
+export interface ProductFormFields {
+  name: string
+  slug: string
+  description: string
+  price: string
+  imageUrl: string
+  isAvailable: boolean
+  inventoryCount: string
+  preparationTime: string
+  allergens: string
+  nutritionalInfo: string
+  categoryId: string
+  manufacturerId: string
+}
+
+/** What the dialog sends to `POST`/`PATCH /api/dashboard/commerce/products`. */
+export interface ProductWritePayload {
+  name: string
+  slug: string
+  description: string
+  /** Integer minor units, never a decimal (stacksjs/stacks#2851). */
+  price: number
+  imageUrl: string
+  isAvailable: boolean
+  inventoryCount: number
+  preparationTime: number
+  allergens: string
+  nutritionalInfo: string
+  categoryId: number | null
+  manufacturerId: number | null
+}
+
+/** One minor unit (a cent in USD): the Product model's `price` minimum. */
+export const MIN_PRODUCT_PRICE = 1
+
+/** Why a typed price cannot be saved in `currency`, or `''` when it can. */
+export function productPriceInputError(price: string, currency: string): string {
+  return moneyInputError(price, currency, { min: MIN_PRODUCT_PRICE })
+}
+
+/**
+ * The dialog's fields as the payload the products API stores.
+ *
+ * The one place a typed price becomes the stored integer: `"19.99"` in USD is
+ * `1999`, by string arithmetic, so the dashboard writes the same unit the
+ * catalog importer and order totals read. Throws `PriceFormatError` for a
+ * price `productPriceInputError` would reject.
+ */
+export function productWritePayload(form: ProductFormFields, currency: string): ProductWritePayload {
+  const allergens = form.allergens.split(',').map(item => item.trim()).filter(Boolean)
+  return {
+    name: form.name.trim(),
+    slug: form.slug.trim(),
+    description: form.description.trim(),
+    price: parseMoneyInput(form.price, currency, { min: MIN_PRODUCT_PRICE }),
+    imageUrl: form.imageUrl.trim(),
+    isAvailable: form.isAvailable,
+    inventoryCount: Number(form.inventoryCount),
+    preparationTime: Number(form.preparationTime),
+    allergens: JSON.stringify(allergens),
+    nutritionalInfo: form.nutritionalInfo.trim() || '{}',
+    categoryId: form.categoryId ? Number(form.categoryId) : null,
+    manufacturerId: form.manufacturerId ? Number(form.manufacturerId) : null,
+  }
 }
 
 function value(record: any, ...keys: string[]): unknown {
@@ -216,6 +290,7 @@ export function normalizeCommerceProductRecord(
   return {
     id,
     name: requiredText(value(product, 'name'), source, 'name'),
+    slug: requiredText(value(product, 'slug'), source, 'slug'),
     description: optionalText(value(product, 'description'), source, 'description'),
     price: number(value(product, 'price'), source, 'price', { min: 0 }),
     imageUrl: optionalText(value(product, 'image_url', 'imageUrl'), source, 'image_url'),
@@ -283,9 +358,14 @@ export function summarizeCommerceProducts(records: CommerceProductRecord[]): Com
 }
 
 export function summarizeProductReviews(records: any[]): ProductReviewSummary {
-  const ratings = records.map((record, index) =>
-    number(value(record, 'rating'), `Review ${index + 1}`, 'rating', { min: 1, max: 5 }),
-  )
+  // A review can be words without stars; it counts toward the total, not the
+  // average.
+  const ratings = records.flatMap((record, index) => {
+    const rating = value(record, 'rating')
+    return rating === null || rating === undefined
+      ? []
+      : [number(rating, `Review ${index + 1}`, 'rating', { min: 1, max: 5 })]
+  })
   const approved = records.filter((record, index) =>
     boolean(value(record, 'is_approved', 'isApproved'), `Review ${index + 1}`, 'is_approved'),
   ).length

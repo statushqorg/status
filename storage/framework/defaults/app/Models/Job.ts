@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Job',
@@ -28,6 +28,11 @@ export default defineModel({
 
     payload: {
       fillable: true,
+      // `text`, not the default varchar(255): a job's serialized envelope is
+      // far longer, and on Postgres every dispatch failed with "value too long
+      // for type character varying(255)". SQLite ignores the length, which is
+      // how it went unnoticed.
+      type: 'text',
       validation: {
         rule: schema.string().required(),
       },
@@ -65,5 +70,9 @@ export default defineModel({
       },
       factory: () => null,
     },
+  },
+
+  dashboard: {
+    columns: ['queue', 'attempts', 'availableAt', 'reservedAt', 'createdAt'],
   },
 } as const)

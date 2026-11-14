@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { defineModel, siteOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * A real CMS page: a block document served publicly at `path` on its site.
@@ -27,6 +27,10 @@ export default defineModel({
       unique: true,
     },
   ],
+
+  // Owned through the site, which belongs to a team, so the owner is the set of
+  // site ids the caller's team owns rather than a single id (stacksjs/stacks#2375).
+  ownership: siteOwnership(),
 
   traits: {
     useUuid: true,
@@ -200,6 +204,13 @@ export default defineModel({
         },
       },
       factory: faker => faker.number.int({ min: 0, max: 100 }),
+    },
+  },
+
+  dashboard: {
+    // Prose, asked for in a box with room for it.
+    fields: {
+      metaDescription: { input: 'longtext' },
     },
   },
 } as const)

@@ -1,6 +1,6 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
-import { db } from '@stacksjs/database'
+import { Action } from '@stacksjs/actions/runtime'
+import { db } from '@stacksjs/database/runtime'
 import { transaction } from '@stacksjs/orm'
 import { response } from '@stacksjs/router'
 import { dashboardOperationalError } from '../dashboard-response'
@@ -54,7 +54,7 @@ export default new Action({
             poster: payload.poster,
             status: payload.status,
             author_id: payload.authorId,
-            is_featured: payload.featured ? 1 : 0,
+            is_featured: Boolean(payload.featured),
             published_at: publishedAtFor(payload.status, existing.published_at, timestamp()),
             updated_at: timestamp(),
           } as any)

@@ -66,8 +66,8 @@ useHead({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="audiences-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="audiences-heading">
+        <div class="left section-head">
           <h2 id="audiences-heading" class="section-title">Pick your team.</h2>
         </div>
         <div class="feature-grid two">

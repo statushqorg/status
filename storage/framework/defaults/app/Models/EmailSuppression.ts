@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'EmailSuppression',
@@ -15,17 +15,27 @@ export default defineModel({
     },
   ],
 
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
+
   traits: {
+    gdpr: { subject: { email: 'email' }, erasure: 'keep', basis: 'legal_obligation', purpose: 'Honouring bounces and complaints, which needs the address it suppresses' },
     useTimestamps: true,
     useApi: {
       uri: 'email-suppressions',
       routes: ['index', 'show', 'destroy'],
-      middleware: ['auth'],
+      // Reads stay as they were; writes need an admin.
+      // a suppression entry is a compliance record - deleting one re-enables mail to someone who bounced or opted out,
+      // so `auth` alone let any signed-in caller do it (stacksjs/stacks#2412).
+      middleware: { read: ['auth'], write: ['auth', 'role:admin'] },
     },
   },
 
   attributes: {
     email: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {

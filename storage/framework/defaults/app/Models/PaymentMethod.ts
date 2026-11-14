@@ -1,7 +1,7 @@
 import { defineModel } from '@stacksjs/orm'
 import { collect } from '@stacksjs/collections'
 
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'PaymentMethod', // defaults to the sanitized file name
@@ -11,6 +11,7 @@ export default defineModel({
   belongsTo: ['User'],
   hasMany: ['PaymentTransaction'],
   traits: {
+    gdpr: { erasure: 'anonymize', basis: 'contract', purpose: 'Saved payment methods' },
     useSeeder: {
       count: 5,
     },
@@ -31,6 +32,7 @@ export default defineModel({
     },
 
     lastFour: {
+      personal: true,
       fillable: true,
       validation: {
         rule: schema.number().required(),
@@ -43,11 +45,12 @@ export default defineModel({
     },
 
     brand: {
+      personal: true,
       fillable: true,
       validation: {
         rule: schema.string().required().max(50),
         message: {
-          number: 'brand must be a number',
+          string: 'brand must be a string',
           required: 'brand is required',
         },
       },
@@ -55,11 +58,12 @@ export default defineModel({
     },
 
     expMonth: {
+      personal: true,
       fillable: true,
       validation: {
         rule: schema.number().required(),
         message: {
-          string: 'exp_month must be a number',
+          number: 'exp_month must be a number',
           required: 'exp_month is required',
         },
       },
@@ -67,11 +71,12 @@ export default defineModel({
     },
 
     expYear: {
+      personal: true,
       fillable: true,
       validation: {
         rule: schema.number().required(),
         message: {
-          string: 'exp_year must be a number',
+          number: 'exp_year must be a number',
           required: 'exp_year is required',
         },
       },

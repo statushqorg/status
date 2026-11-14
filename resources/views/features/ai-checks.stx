@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="gap-heading">
+      <section class="section site-shell" aria-labelledby="gap-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="gap-heading">The failures that pass every uptime check.</h2>
@@ -93,7 +93,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             <div class="panel" aria-label="AI check results example">
               <div class="panel-top">
                 <strong>AI checks &middot; yourcompany.com</strong>
-                <span class="pill down"><span class="dot"></span> 1 failing</span>
+                <span class="down pill"><span class="dot"></span> 1 failing</span>
               </div>
               <div class="panel-list">
                 <div class="panel-row">
@@ -114,8 +114,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="how-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="how-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="how-heading">Fetch, strip, ask. Nothing exotic.</h2>
             <p>
@@ -139,8 +139,8 @@ FAIL. The plans section renders
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What AI checks include.</h2>
         </div>
         <ul class="check-list">
@@ -153,7 +153,7 @@ FAIL. The plans section renders
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="honest-heading">
+      <section class="section site-shell" aria-labelledby="honest-heading">
         <div class="note-band">
           <div>
             <h2 id="honest-heading">One honest requirement: a model behind it.</h2>
@@ -165,7 +165,7 @@ FAIL. The plans section renders
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">AI checks, answered.</h2>
@@ -180,8 +180,8 @@ FAIL. The plans section renders
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

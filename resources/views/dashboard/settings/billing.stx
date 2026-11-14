@@ -118,7 +118,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
         <StxLink to="/dashboard/settings/notifications" class="chip">Notifications</StxLink>
         <StxLink to="/dashboard/settings/security" class="chip">Security</StxLink>
         <StxLink to="/dashboard/settings/cloud" class="chip">Cloud</StxLink>
-        <StxLink to="/dashboard/settings/billing" class="chip active">Billing</StxLink>
+        <StxLink to="/dashboard/settings/billing" class="active chip">Billing</StxLink>
       </div>
     </div>
 
@@ -132,7 +132,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
       <div class="flash" role="status">Subscription cancelled. You'll stay on Pro until the current billing period ends, then drop to Free.</div>
     @endif
     @if (ERROR)
-      <div class="flash error" role="alert">{{ ERROR === 'no_owner' ? 'This team has no active owner to bill.' : ERROR === 'no_active_subscription' ? 'No active subscription to cancel.' : ERROR }}</div>
+      <div class="error flash" role="alert">{{ ERROR === 'no_owner' ? 'This team has no active owner to bill.' : ERROR === 'no_active_subscription' ? 'No active subscription to cancel.' : ERROR }}</div>
     @endif
 
     <section class="card" aria-label="Current plan">
@@ -141,29 +141,29 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
         <span class="sub">{{ currentPlan === 'self-hosted' ? 'No limits' : (currentPlan === 'pro' ? '$' + PAID_PLAN_PRICE_USD + '/mo' : '$0/mo') }}</span>
       </div>
       <div class="card-body">
-        <p class="mt-0 mx-0 mb-[1.15rem] [font-family:var(--font-display)] text-[1.35rem] font-semibold">{{ planLabel }}</p>
+        <p class="mb-[1.15rem] mt-0 mx-0 font-semibold text-[1.35rem] [font-family:var(--font-display)]">{{ planLabel }}</p>
 
         <div class="mb-[0.9rem]">
-          <div class="flex justify-between gap-[1rem] mb-[0.4rem] text-[var(--muted)] text-[0.8rem]">
+          <div class="flex gap-[1rem] justify-between mb-[0.4rem] text-[0.8rem] text-[var(--muted)]">
             <span>Monitors</span>
             <span class="mono">{{ monitorCount }} / {{ limitLabel(limits.monitors) }}</span>
           </div>
-          <div class="h-[6px] rounded-[999px] bg-[var(--surface-2)] overflow-hidden">
+          <div class="overflow-hidden h-[6px] bg-[var(--surface-2)] rounded-[999px]">
             <div style="height: 100%; border-radius: 999px; background: var(--accent); width: {{ usagePct(monitorCount, limits.monitors) }}%;"></div>
           </div>
         </div>
 
         <div class="mb-[0.9rem]">
-          <div class="flex justify-between gap-[1rem] mb-[0.4rem] text-[var(--muted)] text-[0.8rem]">
+          <div class="flex gap-[1rem] justify-between mb-[0.4rem] text-[0.8rem] text-[var(--muted)]">
             <span>Status pages</span>
             <span class="mono">{{ statusPageCount }} / {{ limitLabel(limits.statusPages) }}</span>
           </div>
-          <div class="h-[6px] rounded-[999px] bg-[var(--surface-2)] overflow-hidden">
+          <div class="overflow-hidden h-[6px] bg-[var(--surface-2)] rounded-[999px]">
             <div style="height: 100%; border-radius: 999px; background: var(--accent); width: {{ usagePct(statusPageCount, limits.statusPages) }}%;"></div>
           </div>
         </div>
 
-        <p class="m-0 text-[var(--muted)] text-[0.8rem]">Minimum check interval: <span class="mono">{{ limits.checkIntervalFloorSeconds }}s</span></p>
+        <p class="m-0 text-[0.8rem] text-[var(--muted)]">Minimum check interval: <span class="mono">{{ limits.checkIntervalFloorSeconds }}s</span></p>
       </div>
     </section>
 
@@ -173,7 +173,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
           <h2>Manage subscription</h2>
         </div>
         <div class="card-body">
-          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem]">
+          <p class="mb-[1rem] mt-0 mx-0 text-[0.9rem] text-[var(--muted)]">
             @if (subscription && subscription.ends_at)
               Cancels at the end of the current billing period.
             @else
@@ -194,7 +194,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
           <span class="sub">${{ PAID_PLAN_PRICE_USD }}/mo</span>
         </div>
         <div class="card-body">
-          <ul class="mt-0 mx-0 mb-[1.15rem] pl-[1.1rem] text-[var(--muted)] text-[0.9rem] leading-[1.7]">
+          <ul class="mb-[1.15rem] mt-0 mx-0 pl-[1.1rem] leading-[1.7] text-[0.9rem] text-[var(--muted)]">
             <li>{{ PLAN_LIMITS.pro.monitors }} monitors (vs {{ PLAN_LIMITS.free.monitors }} on Free)</li>
             <li>{{ PLAN_LIMITS.pro.statusPages }} status pages (vs {{ PLAN_LIMITS.free.statusPages }} on Free)</li>
             <li>Checks as often as every {{ PLAN_LIMITS.pro.checkIntervalFloorSeconds }}s</li>
@@ -212,7 +212,7 @@ useHead({ title: 'Billing \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'n
           <h2>Self-hosted</h2>
         </div>
         <div class="card-body">
-          <p class="m-0 text-[var(--muted)] text-[0.9rem]">
+          <p class="m-0 text-[0.9rem] text-[var(--muted)]">
             This is your own install, so there are no plan limits. Monitor as much as your
             server can handle. Billing is inactive because no payment provider is configured.
           </p>

@@ -238,8 +238,8 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
     </dl>
 
     <section aria-label="Sites">
-      <div class="mt-6 mb-4 flex items-baseline justify-between gap-4">
-        <h3 class="m-0 font-display text-[1.05rem] font-semibold">Sites</h3>
+      <div class="flex gap-4 items-baseline justify-between mb-4 mt-6">
+        <h3 class="m-0 font-display font-semibold text-[1.05rem]">Sites</h3>
         <span class="sub">{{ siteCount }} tracked &middot; pick one to view its checks</span>
       </div>
       @if (siteCount === 0)
@@ -253,14 +253,14 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
       @if (siteCount > 0)
         <div class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
           @foreach (sites as site)
-            <StxLink class="group relative flex flex-col gap-3 overflow-hidden rounded-card border border-subtle bg-surface p-4 pl-5 text-inherit no-underline transition duration-150 hover:-translate-y-0.5 hover:border-strong hover:shadow-[0_16px_34px_-20px_rgba(11,15,13,0.32)]" to="/dashboard/sites/{{ site.slug }}">
+            <StxLink class="flex overflow-hidden relative flex-col gap-3 p-4 pl-5 no-underline text-inherit bg-surface border border-subtle rounded-card hover:border-strong hover:shadow-[0_16px_34px_-20px_rgba(11,15,13,0.32)] duration-150 transition group hover:-translate-y-0.5" to="/dashboard/sites/{{ site.slug }}">
               <span class="absolute inset-y-0 left-0 w-[3px] {{ site.railClass }}" aria-hidden="true"></span>
               <div class="flex items-center justify-between">
                 <data class="{{ site.pillClass }}" value="{{ site.status }}"><span class="dot"></span>{{ site.statusLabel }}</data>
-                <svg class="h-[18px] w-[18px] -translate-x-1 text-muted opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg>
+                <svg class="h-[18px] w-[18px] text-muted opacity-0 group-hover:opacity-100 duration-150 transition group-hover:translate-x-0 -translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"/></svg>
               </div>
-              <div class="font-display text-lg font-semibold leading-tight [overflow-wrap:anywhere]">{{ site.host }}</div>
-              <div class="flex items-center gap-1.5 text-[0.82rem] text-muted">
+              <div class="font-display font-semibold leading-tight text-lg [overflow-wrap:anywhere]">{{ site.host }}</div>
+              <div class="flex gap-1.5 items-center text-[0.82rem] text-muted">
                 <span class="font-semibold text-fg">{{ site.count }} check{{ site.count === 1 ? '' : 's' }}</span>
                 <span aria-hidden="true">&middot;</span>
                 <span><time>{{ site.checkedLabel }}</time></span>
@@ -268,11 +268,11 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
             </StxLink>
           @endforeach
         </div>
-        <StxLink to="/dashboard/monitors" class="mt-4 inline-block text-[0.85rem] font-semibold text-accent">View all {{ monitorCount }} monitors &rarr;</StxLink>
+        <StxLink to="/dashboard/monitors" class="inline-block mt-4 font-semibold text-[0.85rem] text-accent">View all {{ monitorCount }} monitors &rarr;</StxLink>
       @endif
     </section>
 
-    <section class="card scroll-x" aria-label="Open incidents">
+    <section class="scroll-x card" aria-label="Open incidents">
       <div class="card-head">
         <h3>Open incidents</h3>
         <span class="sub">{{ openIncidentCount }} open</span>
@@ -287,25 +287,25 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
       @endif
       @if (openIncidents.length > 0)
         <div class="rows" role="table" aria-label="Open incidents">
-          <div class="trow thead cols-incidents" role="row">
+          <div class="cols-incidents thead trow" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Cause</span>
             <span class="tcell" role="columnheader">Monitor</span>
-            <span class="tcell num" role="columnheader">Opened</span>
+            <span class="num tcell" role="columnheader">Opened</span>
           </div>
           @foreach (openIncidents as incident)
-            <StxLink class="trow cols-incidents" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
+            <StxLink class="cols-incidents trow" role="row" to="/dashboard/monitors/{{ incident.monitor_id }}">
               <span class="tcell" role="cell"><data class="{{ incidentPill(incident.status) }}" value="{{ incident.status }}"><span class="dot"></span>{{ incidentLabel(incident.status) }}</data></span>
-              <span class="tcell ellipsis name" role="cell">{{ incident.cause }}</span>
-              <span class="tcell sub ellipsis" role="cell">{{ incident.monitor_name }}</span>
-              <span class="tcell num" role="cell"><time>{{ agoLabel(incident.started_at) }}</time></span>
+              <span class="ellipsis name tcell" role="cell">{{ incident.cause }}</span>
+              <span class="ellipsis sub tcell" role="cell">{{ incident.monitor_name }}</span>
+              <span class="num tcell" role="cell"><time>{{ agoLabel(incident.started_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>
       @endif
     </section>
 
-    <section class="card scroll-x" aria-label="Status pages">
+    <section class="scroll-x card" aria-label="Status pages">
       <div class="card-head">
         <h3>Status pages</h3>
         <span class="sub">{{ statusPageCount }} total</span>
@@ -323,16 +323,16 @@ useHead({ title: 'Overview · StatusHQ', meta: [{ name: 'robots', content: 'noin
       @endif
       @if (statusPageCount > 0)
         <div class="rows" role="table" aria-label="Status pages">
-          <div class="trow thead cols-status-pages-brief" role="row">
+          <div class="cols-status-pages-brief thead trow" role="row">
             <span class="tcell" role="columnheader">Name</span>
             <span class="tcell" role="columnheader">Route</span>
-            <span class="tcell num" role="columnheader">Visibility</span>
+            <span class="num tcell" role="columnheader">Visibility</span>
           </div>
           @foreach (statusPages as page)
-            <StxLink class="trow cols-status-pages-brief" role="row" to="/dashboard/status-pages/{{ page.id }}">
-              <span class="tcell ellipsis name" role="cell">{{ page.title }}</span>
-              <span class="tcell sub ellipsis" role="cell">/status/{{ page.slug }}</span>
-              <span class="tcell num" role="cell"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Public' : 'Hidden' }}</data></span>
+            <StxLink class="cols-status-pages-brief trow" role="row" to="/dashboard/status-pages/{{ page.id }}">
+              <span class="ellipsis name tcell" role="cell">{{ page.title }}</span>
+              <span class="ellipsis sub tcell" role="cell">/status/{{ page.slug }}</span>
+              <span class="num tcell" role="cell"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Public' : 'Hidden' }}</data></span>
             </StxLink>
           @endforeach
         </div>

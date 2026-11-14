@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * One position fix from a courier's device.
@@ -22,6 +22,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { subject: { via: 'Courier' }, erasure: 'delete', basis: 'contract', purpose: 'Courier location history' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: { count: 0 },
@@ -31,6 +32,7 @@ export default defineModel({
 
   attributes: {
     latitude: {
+      personal: true,
       order: 1,
       required: true,
       fillable: true,
@@ -45,6 +47,7 @@ export default defineModel({
     },
 
     longitude: {
+      personal: true,
       order: 2,
       required: true,
       fillable: true,

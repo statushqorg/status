@@ -41,7 +41,7 @@ export default new Action({
         const member = await TeamMember.create({
           teamId: authTeamId,
           invitedEmail: email,
-          role,
+          role: role as 'member' | 'admin' | 'owner' | null | undefined,
           status: 'pending',
           invitedAt: new Date().toISOString(),
         })

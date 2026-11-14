@@ -5,19 +5,13 @@
     "jsx": "preserve",
     "lib": ["esnext"],
     "moduleDetection": "force",
-    "baseUrl": ".",
     "module": "esnext",
     "moduleResolution": "bundler",
     "paths": {
-      "@stacksjs/*": ["../node_modules/@stacksjs/*/dist"],
-      "stacks/*": ["../node_modules/@stacksjs/*/dist"],
-      "buddy": ["../node_modules/@stacksjs/buddy/dist/index.js"],
-      "buddy/*": ["../node_modules/@stacksjs/buddy/dist/*"],
       "Actions/*": ["../app/Actions/*"],
       "Jobs/*": ["../app/Jobs/*"],
       "./app/*": ["../app/*"], // it's outside the dist folder
-      "~/*": ["../*"],
-      "../../../env": ["../storage/framework/env.ts"]
+      "~/*": ["../*"]
     },
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,

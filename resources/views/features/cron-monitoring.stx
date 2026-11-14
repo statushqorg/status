@@ -83,7 +83,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="invert-heading">
+      <section class="section site-shell" aria-labelledby="invert-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="invert-heading">Monitoring, inverted: the job reports to us.</h2>
@@ -98,7 +98,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             <div class="panel" aria-label="Scheduled task monitors example">
               <div class="panel-top">
                 <strong>Scheduled tasks</strong>
-                <span class="pill down"><span class="dot"></span> 1 overdue</span>
+                <span class="down pill"><span class="dot"></span> 1 overdue</span>
               </div>
               <div class="panel-list">
                 <div class="panel-row">
@@ -119,8 +119,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="oneline-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="oneline-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="oneline-heading">Integration is one line at the end of the script.</h2>
             <p>
@@ -144,8 +144,8 @@ curl -fsS https://statushq.org/api/ping/9f2ac81d54e04b7f</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What cron monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -158,7 +158,7 @@ curl -fsS https://statushq.org/api/ping/9f2ac81d54e04b7f</pre></div>
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="anywhere-heading">
+      <section class="section site-shell" aria-labelledby="anywhere-heading">
         <div class="note-band">
           <div>
             <h2 id="anywhere-heading">If it can make an HTTP request, it can check in.</h2>
@@ -170,7 +170,7 @@ curl -fsS https://statushq.org/api/ping/9f2ac81d54e04b7f</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Cron monitoring, answered.</h2>
@@ -185,8 +185,8 @@ curl -fsS https://statushq.org/api/ping/9f2ac81d54e04b7f</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

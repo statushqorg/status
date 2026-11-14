@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Error',
@@ -15,6 +15,8 @@ export default defineModel({
   ],
 
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 10 },
     useTimestamps: true,
   },
 
@@ -32,6 +34,7 @@ export default defineModel({
 
     message: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string().required(),
         message: {
@@ -43,6 +46,7 @@ export default defineModel({
 
     stack: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
         message: {
@@ -52,19 +56,41 @@ export default defineModel({
       factory: faker => faker.system.filePath(),
     },
 
+    /**
+     * The HTTP status the error carried, and only that.
+     *
+     * It used to mean two things: the factory seeds an HTTP status while
+     * `resolveGroup` wrote 1 and `ignoreGroup` wrote 2 into the same column
+     * to mean resolved and ignored. So resolving an error destroyed its
+     * status, and a seeded error could never read as resolved because no
+     * factory row is ever 1 (stacksjs/stacks#2923). Triage now lives in
+     * `resolution`.
+     */
     status: {
       fillable: true,
       validation: {
         rule: schema.number(),
         message: {
-          string: 'status must be a number',
+          number: 'status must be a number',
         },
       },
       factory: faker => faker.number.int({ min: 400, max: 500 }),
     },
 
+    /** Where this error sits in triage. Separate from `status`, see above. */
+    resolution: {
+      required: true,
+      fillable: true,
+      default: 'unresolved',
+      validation: {
+        rule: schema.enum(['unresolved', 'resolved', 'ignored']),
+      },
+      factory: () => 'unresolved',
+    },
+
     additional_info: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
         message: {
@@ -73,5 +99,9 @@ export default defineModel({
       },
       factory: faker => faker.lorem.paragraph(),
     },
+  },
+
+  dashboard: {
+    columns: ['type', 'message', 'status', 'createdAt'],
   },
 } as const)

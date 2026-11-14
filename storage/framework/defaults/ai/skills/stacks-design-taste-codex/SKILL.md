@@ -1,6 +1,6 @@
 ---
 name: stacks-design-taste-codex
-description: Use when you need the stricter, Codex-oriented variant of stacks-design-taste for premium / anti-slop Stacks frontend work - award-level landing pages, portfolios, heroes, and marketing sections that demand high layout variance, deterministic scroll-driven motion, strict AIDA structure, wide editorial typography, and gapless bento grids. Ships stx + Crosswind + composables, tuned for the OpenAI Codex CLI as well as Claude Code.
+description: Use when you need the stricter, Codex-oriented variant of stacks-design-taste for premium / anti-slop Stacks frontend work - award-level landing pages, portfolios, heroes, and marketing sections that demand high layout variance, deterministic scroll-driven motion, strict AIDA structure, wide editorial typography, and gapless bento grids. Ships stx + ts-css + composables, tuned for the OpenAI Codex CLI as well as Claude Code.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -8,11 +8,11 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Design Taste (Codex): Award-Level Design Engineering
 
-Related skills: [stacks-design-taste](../stacks-design-taste) (the flagship anti-slop skill this refines), [stacks-design-soft](../stacks-design-soft), [stacks-design-minimalist](../stacks-design-minimalist), [stacks-design-brutalist](../stacks-design-brutalist), [stacks-image-to-code](../stacks-image-to-code), [stacks-stx](../stacks-stx) (templating, directives, signals, SSR/hydration), [stacks-crosswind](../stacks-crosswind) (utilities, dark mode, theming), [stacks-ui](../stacks-ui) (Craft native + headless components, Transition).
+Related skills: [stacks-design-taste](../stacks-design-taste) (the flagship anti-slop skill this refines), [stacks-design-soft](../stacks-design-soft), [stacks-design-minimalist](../stacks-design-minimalist), [stacks-design-brutalist](../stacks-design-brutalist), [stacks-image-to-code](../stacks-image-to-code), [stacks-stx](../stacks-stx) (templating, directives, signals, SSR/hydration), [stacks-ts-css](../stacks-ts-css) (utilities, dark mode, theming), [stacks-ui](../stacks-ui) (Craft native + headless components, Transition).
 
 > This is the **stricter, Codex/GPT-oriented sibling** of [stacks-design-taste](../stacks-design-taste). It **composes with, and does not replace,** the flagship. Where the flagship reads the room and picks a direction, this variant clamps the dials higher, enforces AIDA page structure, forces real layout variance, and prescribes deterministic scroll-driven motion.
 > **It defers to the flagship for shared rules** (the three dials, the full AI-Tells catalogue, the em-dash ban, the redesign protocol, the glassmorphism appendix). It does NOT restate all of them. When a rule here says "see the flagship," go read that section there rather than expecting a copy.
-> Everything is built with **stx** templates + **Crosswind** utilities + **stx composables**. No JSX, no external motion library. Stacks ships NO motion library: never import `motion/react`, `gsap`, or `framer-motion`.
+> Everything is built with **stx** templates + **ts-css** utilities + **stx composables**. No JSX, no external motion library. Stacks ships NO motion library: never import `motion/react`, `gsap`, or `framer-motion`.
 > Zero em-dashes anywhere in the output. Use the regular hyphen `-`. (Flagship Section 9.G, non-negotiable.)
 
 ---
@@ -121,7 +121,7 @@ The flagship hero discipline (fits initial viewport, `pt-24` top-padding cap, `m
 
 ## 4. THE GAPLESS BENTO GRID (strict)
 
-* **Zero empty space in grids:** LLMs leave blank dead cells. Apply Crosswind `grid-flow-dense` (`grid-auto-flow: dense`) on every bento grid, and mathematically verify that `col-span-*` and `row-span-*` values interlock with no missing corner or void.
+* **Zero empty space in grids:** LLMs leave blank dead cells. Apply ts-css `grid-flow-dense` (`grid-auto-flow: dense`) on every bento grid, and mathematically verify that `col-span-*` and `row-span-*` values interlock with no missing corner or void.
 * **Exact cell count:** a bento grid has EXACTLY as many cells as you have content for. 3 items -> 3 cells, 5 items -> 5 cells (flagship BENTO CELL COUNT RULE). Never paste a blank tile to fill.
 * **Card restraint:** 3 to 5 intentional, well-styled cells beat 8 messy ones. Fill them with a mix of real imagery, dense typography, or CSS effects.
 * **Background diversity:** at least 2-3 cells need real visual variation (a real image, a brand-appropriate gradient that is NOT AI-purple, a pattern, a tinted fill), never 6 white-on-white text cards (flagship Section 4.7).
@@ -142,7 +142,7 @@ Retarget map (source GSAP paradigm -> Stacks mechanic):
 | Horizontal scroll hijack | pinned sticky viewport + `scroll()` timeline panning the track (Section 5.B) |
 | Image scale-and-fade on scroll | CSS `view()` timeline animating `transform: scale()` + `opacity` |
 | Scrubbing text reveal | word `<span>`s with per-word `view()` timeline scrubbing `opacity` |
-| Hover physics | Crosswind `group-hover:scale-105 transition-transform duration-700 ease-out` inside `overflow-hidden` |
+| Hover physics | ts-css `group-hover:scale-105 transition-transform duration-700 ease-out` inside `overflow-hidden` |
 
 Motion must be motivated (flagship Section: hierarchy, storytelling, feedback, or state transition, articulable in one sentence) and honor `prefers-reduced-motion` for anything above `MOTION_INTENSITY 3`. Marquees: max one per page.
 
@@ -156,7 +156,7 @@ Motion must be motivated (flagship Section: hierarchy, storytelling, feedback, o
 
 **Card stacking:** cards overlap and stack from the bottom as the user scrolls - a real sticky-stack, not a sequential reveal list (Section 5.A).
 
-The full canonical skeletons live in the flagship: **sticky-stack (Section 5.A), horizontal-pan (Section 5.B), scroll-reveal stagger with `useIntersectionObserver` (Section 5.C), pointer/magnetic via `useMouse()` -> CSS custom property inside an `effect` (Section 5.D), and Forbidden Animation Patterns (Section 5.E)**. Use them as written. This variant only adds the extra deterministic paradigms below.
+The full canonical skeletons live in the flagship: **sticky-stack (Section 5.A), horizontal-pan (Section 5.B), scroll-reveal stagger with `useIntersectionObserver` (Section 5.C), pointer/magnetic via `useMouse()` -> CSS custom property in its subscription callback (Section 5.D), and Forbidden Animation Patterns (Section 5.E)**. Use them as written. This variant only adds the extra deterministic paradigms below.
 
 ### 5.A Scale-and-fade on scroll - canonical skeleton (pure CSS `view()` timeline)
 
@@ -221,22 +221,22 @@ Split the paragraph into word `<span>`s (via a `@foreach` over pre-split words i
 
 Critical points: the words are split server-side, the reveal is a pure CSS `view()` timeline staggered by `--i`, and reduced motion shows all words immediately. No library, no scroll listener.
 
-For pointer / magnetic physics, drive a CSS custom property from `useMouse()` inside an `effect` exactly as the flagship Section 5.D skeleton shows. Never write signal state per pointer or scroll frame.
+For pointer / magnetic physics, drive a CSS custom property from `useMouse()` in its subscription callback exactly as the flagship Section 5.D skeleton shows. Never write signal state per pointer or scroll frame.
 
 ### 5.C Forbidden (hard bans, same as flagship 5.E)
 
 * `window.addEventListener('scroll', ...)` - banned. Use CSS scroll-driven animations or `useIntersectionObserver` / `useElementVisibility`.
-* Bare `window.*` / `document.*` / `var` in any stx `<script>` - banned. Use composables (`useEventListener`, `useWindow`, `useResizeObserver`, `useMouse`, `useScroll`, `useParallax`, `usePreferredReducedMotion`).
-* `requestAnimationFrame` loops that write signal state on every frame - banned. Drive one CSS custom property per frame from inside an `effect`, or let a CSS timeline do it.
+* Bare `window.*` / `document.*` / `var` in any stx `<script>` - banned. Use composables (`useEventListener`, `useWindowSize`, `useResizeObserver`, `useMouse`, `useScroll`, `useParallax`, `usePreferredReducedMotion`).
+* `requestAnimationFrame` loops that write signal state on every frame - banned. Drive one CSS custom property per frame from in its subscription callback, or let a CSS timeline do it.
 * Custom scroll-progress math written into signal state - banned. Use a `scroll()` timeline, or `useScroll()` reading into a CSS var.
 
-Allowed composables are the flagship's list PLUS `useScroll` (scroll progress), `useParallax` (parallax offset), and `usePreferredReducedMotion` (reduced-motion signal, the composable form of `useMediaQuery('(prefers-reduced-motion: reduce)')`). Do NOT invent any others; if you need something else, use plain CSS / a standard web API through a composable and defer to [stacks-composables](../stacks-composables).
+Allowed composables are the flagship's list PLUS `useScroll` (scroll state), `useParallax` (device-orientation parallax), and `usePreferredReducedMotion` (reduced-motion signal, the composable form of `useMediaQuery('(prefers-reduced-motion: reduce)')`). Do NOT invent any others; if you need something else, use plain CSS / a standard web API through a composable and defer to [stacks-composables](../stacks-composables).
 
 ---
 
 ## 6. COMPONENT ARSENAL AND CREATIVITY
 
-Select components from this arsenal per the seeded selection (Section 2). All are stx + Crosswind + composables / CSS, never a JS library.
+Select components from this arsenal per the seeded selection (Section 2). All are stx + ts-css + composables / CSS, never a JS library.
 
 * **Inline typography images:** embed small pill-shaped images directly INSIDE massive headings. Example: `I shape <span class="inline-block mx-2 h-10 w-24 bg-center bg-cover rounded-full align-middle" style="background-image: url({{ shot }})"></span> digital spaces.` (Interpolation is `{{ }}`; `class` is the attribute; the inline style uses a CSS `url(...)`.)
 * **Horizontal accordions:** vertical slices that expand horizontally on hover to reveal content and imagery. Reach for Stacks UI `Disclosure` when the state must be controllable; pure CSS `:hover` width transition otherwise.

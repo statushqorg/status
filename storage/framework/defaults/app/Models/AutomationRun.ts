@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'AutomationRun',
@@ -21,6 +21,10 @@ export default defineModel({
     idempotencyKey: { required: true, fillable: true, validation: { rule: schema.string().max(255) }, factory: faker => faker.string.uuid() },
     startedAt: { required: false, fillable: true, validation: { rule: schema.timestamp() }, factory: () => null },
     finishedAt: { required: false, fillable: true, validation: { rule: schema.timestamp() }, factory: () => null },
-    error: { required: false, fillable: true, validation: { rule: schema.string() }, factory: () => null },
+    error: { type: 'text', required: false, fillable: true, validation: { rule: schema.string() }, factory: () => null },
+  },
+
+  dashboard: {
+    columns: ['automation', 'status', 'subjectType', 'startedAt', 'finishedAt'],
   },
 } as const)

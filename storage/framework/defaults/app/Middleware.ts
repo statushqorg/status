@@ -4,8 +4,9 @@ import { defineMiddleware } from '@stacksjs/router'
  * The application's middleware aliases.
  *
  * Aliases may be used instead of class names to conveniently assign middleware
- * to routes and groups. Each one names a class under `app/Middleware/`, or one
- * of the framework defaults behind it, and the name is checked.
+ * to API routes, route groups, and stx pages through `definePageMeta`. Each one
+ * names a class under `app/Middleware/`, or one of the framework defaults
+ * behind it, and the name is checked.
  *
  * This map is MERGED over the framework defaults rather than replacing them,
  * so an alias the framework adds later is available here without an edit.
@@ -34,6 +35,7 @@ export default defineMiddleware({
   'abilities': 'Abilities',
   'can': 'Can',
   'throttle': 'Throttle',
+  'honeypot': 'Honeypot',
   'signed': 'Signed',
   'env': 'Env',
   'env:local': 'EnvLocal',

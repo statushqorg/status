@@ -177,7 +177,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
     </header>
 
     @if (errorCode && errorLabel(errorCode))
-      <div id="mw-form-error" class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
+      <div id="mw-form-error" class="error flash" role="alert">{{ errorLabel(errorCode) }}</div>
     @endif
 
     @if (justSaved)
@@ -185,7 +185,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
     @endif
 
     @if (attachedMonitors.length === 0 && win.status !== 'completed' && win.status !== 'cancelled')
-      <div class="flash error" role="alert">
+      <div class="error flash" role="alert">
         This window covers no monitors, so it will announce itself to subscribers but suppress no alerts. Attach the monitors going down below.
       </div>
     @endif
@@ -240,7 +240,7 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
       </div>
     </section>
 
-    <section class="card !mt-[1.25rem]" aria-label="Covered monitors">
+    <section class="!mt-[1.25rem] card" aria-label="Covered monitors">
       <div class="card-head">
         <h3>Covered monitors</h3>
         <span class="sub">{{ attachedMonitors.length }} attached</span>
@@ -253,10 +253,10 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @if (attachedMonitors.length > 0)
           <div class="rows" role="table" aria-label="Covered monitors">
             @foreach (attachedMonitors as m)
-              <div class="trow cols-window-monitors" role="row">
-                <span class="tcell ellipsis name" role="cell">{{ m.name }}</span>
-                <span class="tcell sub" role="cell">{{ m.type }}</span>
-                <span class="tcell num" role="cell">
+              <div class="cols-window-monitors trow" role="row">
+                <span class="ellipsis name tcell" role="cell">{{ m.name }}</span>
+                <span class="sub tcell" role="cell">{{ m.type }}</span>
+                <span class="num tcell" role="cell">
                   <form method="POST" action="/api/maintenance-forms/{{ win.id }}/monitors/remove">
                     <input type="hidden" name="monitor_id" value="{{ m.id }}" />
                     <button type="submit" class="button sm">Remove</button>
@@ -284,16 +284,16 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
         @endif
 
         @if (availableMonitors.length === 0 && teamMonitors.length > 0)
-          <p class="help !mt-[1rem]">Every monitor on this team is already covered.</p>
+          <p class="!mt-[1rem] help">Every monitor on this team is already covered.</p>
         @endif
 
         @if (teamMonitors.length === 0)
-          <p class="help !mt-[1rem]">This team has no monitors yet. <StxLink to="/dashboard/monitors/new">Create one</StxLink> first.</p>
+          <p class="!mt-[1rem] help">This team has no monitors yet. <StxLink to="/dashboard/monitors/new">Create one</StxLink> first.</p>
         @endif
       </div>
     </section>
 
-    <section class="card !mt-[1.25rem]" aria-label="Upcoming occurrences">
+    <section class="!mt-[1.25rem] card" aria-label="Upcoming occurrences">
       <div class="card-head">
         <h3>Occurrences</h3>
         <span class="sub">Next {{ HORIZON_DAYS }} days</span>
@@ -305,23 +305,23 @@ useHead({ title: (win ? `${win.title} · Maintenance` : 'Maintenance') + ' · St
 
         @if (occurrences.length > 0)
           <div class="rows" role="table" aria-label="Upcoming occurrences">
-            <div class="trow thead cols-occurrences" role="row">
+            <div class="cols-occurrences thead trow" role="row">
               <span class="tcell" role="columnheader">Starts (UTC)</span>
               <span class="tcell" role="columnheader">Ends (UTC)</span>
             </div>
             @foreach (occurrences as occ)
-              <div class="trow cols-occurrences" role="row">
-                <span class="tcell sub" role="cell">{{ fmt(occ.startMs) }}</span>
-                <span class="tcell sub" role="cell">{{ fmt(occ.endMs) }}</span>
+              <div class="cols-occurrences trow" role="row">
+                <span class="sub tcell" role="cell">{{ fmt(occ.startMs) }}</span>
+                <span class="sub tcell" role="cell">{{ fmt(occ.endMs) }}</span>
               </div>
             @endforeach
           </div>
-          <p class="help !mt-[0.75rem]">Expanded with the same function the suppression path uses, so what you see here is exactly what will be suppressed.</p>
+          <p class="!mt-[0.75rem] help">Expanded with the same function the suppression path uses, so what you see here is exactly what will be suppressed.</p>
         @endif
       </div>
     </section>
 
-    <section class="card !mt-[1.25rem]" aria-label="Delete window">
+    <section class="!mt-[1.25rem] card" aria-label="Delete window">
       <div class="card-head">
         <h3>Delete</h3>
       </div>

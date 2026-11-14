@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'UsageEvent',
@@ -20,5 +20,9 @@ export default defineModel({
     idempotencyKey: { required: true, fillable: true, validation: { rule: schema.string().max(255) }, factory: faker => faker.string.uuid() },
     metadata: { required: false, fillable: true, validation: { rule: schema.json() }, factory: () => JSON.stringify({}) },
     occurredAt: { required: true, fillable: true, validation: { rule: schema.timestamp() }, factory: () => new Date().toISOString() },
+  },
+
+  dashboard: {
+    columns: ['meter', 'quantity', 'team', 'occurredAt'],
   },
 } as const)

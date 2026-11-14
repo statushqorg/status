@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 
 /**
  * CLI Setup
@@ -33,7 +33,7 @@ export default new Action({
       git clone https://github.com/stacksjs/stacks.git $1
       cd $1
       # Run the pantry-install script
-      "./storage/framework/scripts/pantry-install"
+      "./storage/framework/scripts/pantry-install" || exit $?
 
       echo "Project $1 has been created. Please open a new terminal, run 'bun run dev' to start the server."
 
@@ -58,24 +58,52 @@ fi
 cd $PROJECT_ROOT
 # Run the pantry-install script
 if [[ $* == *--verbose* ]]; then
-  "$SCRIPT_PATH"
+  "$SCRIPT_PATH" || exit $?
   # bun ./storage/framework/core/buddy/src/cli.ts setup --verbose
 else
-  "$SCRIPT_PATH" > /dev/null 2>&1
+  "$SCRIPT_PATH" > /dev/null || exit $?
   # bun ./storage/framework/core/buddy/src/cli.ts setup
 fi
 
-# Create a named pipe
-mkfifo /tmp/mypipe
+# Each run owns a private directory for its named pipe, so two runs never read
+# or delete each other's stream, and nothing outlives this one. The directory is
+# removed on success, on failure and when the run is interrupted.
+PIPE_DIR="$(mktemp -d "\${TMPDIR:-/tmp}/stacks-install.XXXXXX")" || exit 1
+PIPE="$PIPE_DIR/setup.pipe"
+SETUP_PID=""
+LOGGER_PID=""
+cleanup() {
+  if [ -n "$SETUP_PID" ]; then kill -TERM -- "-$SETUP_PID" 2>/dev/null; wait "$SETUP_PID" 2>/dev/null; fi
+  if [ -n "$LOGGER_PID" ]; then kill -TERM -- "-$LOGGER_PID" 2>/dev/null; wait "$LOGGER_PID" 2>/dev/null; fi
+  rm -rf "$PIPE_DIR"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 
-# Run the command, send output to both the console and the pipe
-bun $CLI_PATH setup | tee /tmp/mypipe &
+mkfifo "$PIPE" || exit 1
 
-# Read from the pipe, add timestamps, and append to the file
-while IFS= read -r line; do echo "$(date '+[%Y-%m-%d %H:%M:%S]') $line"; done < /tmp/mypipe >> $LOG_PATH
+# Run the command, send output to both the console and the pipe. It gets its own
+# process group (job control) so an interrupted run can stop all of it, and
+# pipefail keeps the setup's own exit status rather than tee's.
+set -m
+# Keep the reader in its own group too. Bash defers a trap while waiting for a
+# foreground timestamp command; waiting for background jobs is interruptible.
+( while IFS= read -r line; do echo "$(date '+[%Y-%m-%d %H:%M:%S]') $line"; done < "$PIPE" >> "$LOG_PATH" ) &
+LOGGER_PID=$!
+( set -o pipefail; bun "$CLI_PATH" setup | tee "$PIPE" ) &
+SETUP_PID=$!
+set +m
 
-# Remove the named pipe
-rm /tmp/mypipe
+# Report the setup's exit status, not the cleanup's
+wait "$SETUP_PID"
+STATUS=$?
+SETUP_PID=""
+wait "$LOGGER_PID"
+LOGGER_STATUS=$?
+LOGGER_PID=""
+if [ "$STATUS" -eq 0 ]; then STATUS=$LOGGER_STATUS; fi
+exit "$STATUS"
 `
 
     return setupScriptContents

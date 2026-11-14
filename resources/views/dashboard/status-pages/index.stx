@@ -85,7 +85,7 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
     </header>
 
     @if (limitError)
-      <div class="flash error" role="alert">
+      <div class="error flash" role="alert">
         <span>Status page limit reached for the current plan. Upgrade to add more.</span>
       </div>
     @endif
@@ -117,29 +117,29 @@ useHead({ title: 'Status pages \u00b7 StatusHQ', meta: [{ name: 'robots', conten
     @endif
 
     @if (statusPages.length > 0)
-      <section class="card scroll-x" aria-label="Status pages">
+      <section class="scroll-x card" aria-label="Status pages">
         <div class="rows" role="table" aria-label="Status pages">
-          <div class="trow thead cols-status-pages" role="row">
+          <div class="cols-status-pages thead trow" role="row">
             <span class="tcell" role="columnheader">Name</span>
             <span class="tcell" role="columnheader">Route</span>
             <span class="tcell" role="columnheader">Custom domain</span>
             <span class="tcell" role="columnheader">Access</span>
-            <span class="tcell num" role="columnheader">Visibility</span>
+            <span class="num tcell" role="columnheader">Visibility</span>
           </div>
           @foreach (statusPages as page)
-            <StxLink class="trow cols-status-pages" role="row" to="/dashboard/status-pages/{{ page.id }}">
-              <span class="tcell ellipsis name" role="cell">{{ page.title }}</span>
-              <span class="tcell sub ellipsis" role="cell">/status/{{ page.slug }}</span>
-              <span class="tcell sub ellipsis" role="cell">{{ page.custom_domain || '--' }}</span>
-              <span class="tcell sub" role="cell">{{ accessLabel(page.access_type) }}</span>
-              <span class="tcell num" role="cell"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Live' : 'Hidden' }}</data></span>
+            <StxLink class="cols-status-pages trow" role="row" to="/dashboard/status-pages/{{ page.id }}">
+              <span class="ellipsis name tcell" role="cell">{{ page.title }}</span>
+              <span class="ellipsis sub tcell" role="cell">/status/{{ page.slug }}</span>
+              <span class="ellipsis sub tcell" role="cell">{{ page.custom_domain || '--' }}</span>
+              <span class="sub tcell" role="cell">{{ accessLabel(page.access_type) }}</span>
+              <span class="num tcell" role="cell"><data class="{{ page.is_public ? 'pill pill-up' : 'pill pill-unknown' }}" value="{{ page.is_public }}"><span class="dot"></span>{{ page.is_public ? 'Live' : 'Hidden' }}</data></span>
             </StxLink>
           @endforeach
         </div>
       </section>
     @endif
 
-    <section class="card !mt-[1.25rem]" aria-label="Create status page">
+    <section class="!mt-[1.25rem] card" aria-label="Create status page">
       <div class="card-head">
         <h3>New status page</h3>
       </div>

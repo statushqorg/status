@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Subscription', // defaults to the sanitized file name
@@ -8,6 +8,9 @@ export default defineModel({
   autoIncrement: true, // defaults to true
   belongsTo: ['User'],
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 10 },
+    gdpr: { erasure: 'keep', basis: 'legal_obligation', purpose: 'Billing records' },
     useUuid: true,
   },
   attributes: {
@@ -67,7 +70,7 @@ export default defineModel({
       validation: {
         rule: schema.number().required(),
         message: {
-          string: 'unit_price must be a number',
+          number: 'unit_price must be a number',
           required: 'unit_price is required',
         },
       },
@@ -149,5 +152,9 @@ export default defineModel({
         return date.toISOString().slice(0, 19).replace('T', ' ')
       },
     },
+  },
+
+  dashboard: {
+    columns: ['plan', 'type', 'providerStatus', 'quantity', 'user', 'endsAt'],
   },
 } as const)

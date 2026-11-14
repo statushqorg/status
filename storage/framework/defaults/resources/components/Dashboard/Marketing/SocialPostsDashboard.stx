@@ -34,8 +34,6 @@ const statusFilter = state('all')
 const platformFilter = state('all')
 const authorFilter = state('all')
 const sort = state('newest')
-const page = state(1)
-const perPage = 10
 const dialogOpen = state(false)
 const dialogMode = state<'add' | 'edit'>('add')
 const editingRecord = state<SocialPostRecord | null>(null)
@@ -69,23 +67,13 @@ function filteredRecords(): SocialPostRecord[] {
     })
 }
 
-function visibleRecords(): SocialPostRecord[] {
-  const start = (page() - 1) * perPage
-  return filteredRecords().slice(start, start + perPage)
+/**
+ * What the table is showing: a change returns it to the first page, as this
+ * page's own pager did before the table took over paging.
+ */
+function viewKey(): string {
+  return JSON.stringify([search(), statusFilter(), platformFilter(), authorFilter(), sort()])
 }
-
-function totalPages(): number {
-  return Math.max(1, Math.ceil(filteredRecords().length / perPage))
-}
-
-effect(() => {
-  search()
-  statusFilter()
-  platformFilter()
-  authorFilter()
-  sort()
-  page.set(1)
-})
 
 async function loadPosts(): Promise<void> {
   loading.set(true)
@@ -97,8 +85,6 @@ async function loadPosts(): Promise<void> {
     records.set(data.records)
     users.set(data.users)
     summary.set(data.summary)
-    if (page() > totalPages())
-      page.set(totalPages())
   }
   catch (error) {
     loadError.set(error instanceof Error ? error.message : String(error))
@@ -186,53 +172,38 @@ async function deletePost(): Promise<void> {
   }
 }
 
-function previousPage(): void {
-  if (page() > 1)
-    page.set(page() - 1)
-}
-
-function nextPage(): void {
-  if (page() < totalPages())
-    page.set(page() + 1)
-}
-
 onMount(() => {
   void loadPosts()
 })
 </script>
 
-<div class="space-y-6">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">Social posts</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Create and schedule SocialPost records with persisted User ownership and platform metrics.</p>
-    </div>
-    <div class="flex gap-2">
-      <Button :loading="loading()" variant="secondary" @click="loadPosts()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
-      <Button @click="openAdd()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add post</Button>
-    </div>
-  </header>
+<div class="flex flex-col gap-6">
+  <PageHeader title="Social posts" description="Create and schedule SocialPost records with persisted User ownership and platform metrics.">
+  <div class="flex gap-2">
+    <Button :loading="loading()" variant="secondary" @click="loadPosts()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button @click="openAdd()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add post</Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" role="alert" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadPosts()">Retry</Button></div>
   <div :if="summary().failed > 0" class="flex gap-3 items-start p-4 text-red-800 text-sm dark:text-red-200 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span class="shrink-0 mt-0.5 h-5 w-5 i-hugeicons-alert-02"></span><p>{{ summary().failed }} {{ summary().failed === 1 ? 'post has' : 'posts have' }} a failed status and may need review.</p></div>
 
   <section aria-label="Social post metrics" class="grid gap-3 grid-cols-2 lg:grid-cols-4">
-    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Social posts</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().total }}</p><p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">{{ summary().published }} published, {{ summary().drafts }} drafts</p></article>
-    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Scheduled</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().scheduled }}</p><p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">Persisted schedule times</p></article>
-    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Reach</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().reach.toLocaleString() }}</p><p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">Recorded platform reach</p></article>
-    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Engagement</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().engagement.toLocaleString() }}</p><p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">Likes, shares, and comments</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Social posts</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().total }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">{{ summary().published }} published, {{ summary().drafts }} drafts</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Scheduled</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().scheduled }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Persisted schedule times</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Reach</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().reach.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Recorded platform reach</p></article>
+    <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">Engagement</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ summary().engagement.toLocaleString() }}</p><p class="mt-1 text-gray-500 text-xs dark:text-neutral-500">Likes, shares, and comments</p></article>
   </section>
 
-  <section class="space-y-3">
+  <section class="flex flex-col gap-3">
     <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
       <label><span class="sr-only">Search social posts</span><input x-model="search" type="search" placeholder="Search social posts" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
       <label><span class="sr-only">Filter social status</span><select x-model="statusFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All statuses</option><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="published">Published</option><option value="failed">Failed</option></select></label>
       <label><span class="sr-only">Filter platform</span><select x-model="platformFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All platforms</option><option value="twitter">Twitter</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="linkedin">LinkedIn</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option></select></label>
-      <label><span class="sr-only">Filter owner</span><select x-model="authorFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All owners</option><option value="">Unassigned</option><template :for="user in users()" :key="user.id"><option :value="user.id">{{ user.name }}</option></template></select></label>
+      <label><span class="sr-only">Filter owner</span><select x-model="authorFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="all">All owners</option><option value="">Unassigned</option><option :for="user in users()" :key="user.id" :value="user.id">{{ user.name }}</option></select></label>
       <label><span class="sr-only">Sort social posts</span><select x-model="sort" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700"><option value="newest">Newest</option><option value="scheduled">Latest schedule</option><option value="reach">Most reach</option><option value="engagement">Most engagement</option></select></label>
     </div>
-    <SocialPostsTable :records="visibleRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" />
-    <div :if="filteredRecords().length > perPage" class="flex items-center justify-between"><p class="text-gray-500 text-sm dark:text-neutral-400">Page {{ page() }} of {{ totalPages() }}</p><div class="flex gap-2"><Button :disabled="page() === 1" variant="secondary" @click="previousPage()">Previous</Button><Button :disabled="page() === totalPages()" variant="secondary" @click="nextPage()">Next</Button></div></div>
+    <SocialPostsTable :sort-reset-key="sort()" :page-reset-key="viewKey()" :records="filteredRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" />
   </section>
 </div>
 

@@ -151,8 +151,8 @@ useHead({
       </section>
 
       @foreach (groups as group)
-        <section class="site-shell section" aria-labelledby="group-{{ group.id }}">
-          <div class="section-head left">
+        <section class="section site-shell" aria-labelledby="group-{{ group.id }}">
+          <div class="left section-head">
             <h2 id="group-{{ group.id }}" class="section-title">{{ group.title }}</h2>
           </div>
           <div class="feature-grid">
@@ -167,7 +167,7 @@ useHead({
         </section>
       @endforeach
 
-      <section class="site-shell section" aria-labelledby="oss-heading">
+      <section class="section site-shell" aria-labelledby="oss-heading">
         <div class="note-band">
           <div>
             <h2 id="oss-heading">Open source, no asterisks.</h2>

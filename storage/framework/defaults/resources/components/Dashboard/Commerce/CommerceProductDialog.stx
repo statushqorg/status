@@ -1,7 +1,13 @@
 <script client>
+import { formErrorMessages, slugify } from '../../../../functions/dashboard-form'
 import type {
   CommerceProductRecord,
   ProductOption,
+} from '../../../../app/Actions/Dashboard/Commerce/commerce-product-records'
+import { minorToInput, moneyInputStep } from '@stacksjs/commerce/money'
+import {
+  productPriceInputError,
+  productWritePayload,
 } from '../../../../app/Actions/Dashboard/Commerce/commerce-product-records'
 
 const open = useReactiveProp('open', false)
@@ -12,10 +18,13 @@ const manufacturers = useReactiveProp('manufacturers', [] as ProductOption[])
 const currency = useReactiveProp('currency', 'USD')
 const busy = useReactiveProp('busy', false)
 const errors = useReactiveProp('errors', {} as Record<string, string>)
-const emit = defineEmits()
+const emit = defineEmits(['submit', 'close'])
 const name = state('')
+const slug = state('')
 const description = state('')
-const price = state('1')
+// The price as typed, in major units ("19.99"). It is stored as integer
+// minor units (1999), converted once in `productWritePayload`.
+const price = state('')
 const imageUrl = state('')
 const isAvailable = state(true)
 const inventoryCount = state('0')
@@ -25,6 +34,9 @@ const manufacturerId = state('')
 const allergens = state('')
 const nutritionalInfo = state('{}')
 let hydrationKey = ''
+// The slug follows the name until someone edits it, and an existing product
+// keeps the one it has: changing it would break links to it.
+let slugTouched = false
 
 effect(() => {
   if (!open()) {
@@ -37,8 +49,10 @@ effect(() => {
     return
   hydrationKey = key
   name.set(current?.name || '')
+  slug.set(current?.slug || '')
+  slugTouched = Boolean(current?.slug)
   description.set(current?.description || '')
-  price.set(String(current?.price ?? 1))
+  price.set(current ? minorToInput(current.price, currency()) : '')
   imageUrl.set(current?.imageUrl || '')
   isAvailable.set(current?.isAvailable ?? true)
   inventoryCount.set(String(current?.inventoryCount ?? 0))
@@ -48,6 +62,22 @@ effect(() => {
   allergens.set(current?.allergens.join(', ') || '')
   nutritionalInfo.set(current?.nutritionalInfoRaw || '{}')
 })
+
+effect(() => {
+  if (!open() || slugTouched)
+    return
+  slug.set(slugify(name()))
+})
+
+function markSlugTouched(): void {
+  slugTouched = true
+}
+
+function normalizeSlug(): void {
+  const normalized = slugify(slug())
+  if (normalized !== slug())
+    slug.set(normalized)
+}
 
 function nutritionValid(): boolean {
   const raw = nutritionalInfo().trim()
@@ -62,14 +92,17 @@ function nutritionValid(): boolean {
   }
 }
 
+function priceError(): string {
+  return productPriceInputError(price(), currency())
+}
+
 function valid(): boolean {
-  const parsedPrice = Number(price())
   const parsedInventory = Number(inventoryCount())
   const parsedPreparation = Number(preparationTime())
   return Boolean(
     name().trim()
-    && Number.isFinite(parsedPrice)
-    && parsedPrice >= 1
+    && slugify(slug())
+    && !priceError()
     && Number.isFinite(parsedInventory)
     && parsedInventory >= 0
     && Number.isInteger(parsedInventory)
@@ -83,27 +116,24 @@ function valid(): boolean {
 function submit(): void {
   if (!valid())
     return
-  const allergenValues = allergens().split(',').map(value => value.trim()).filter(Boolean)
-  emit('submit', {
-    name: name().trim(),
-    description: description().trim(),
-    price: Number(price()),
-    imageUrl: imageUrl().trim(),
+  emit('submit', productWritePayload({
+    name: name(),
+    slug: slugify(slug()),
+    description: description(),
+    price: price(),
+    imageUrl: imageUrl(),
     isAvailable: isAvailable(),
-    inventoryCount: Number(inventoryCount()),
-    preparationTime: Number(preparationTime()),
-    allergens: JSON.stringify(allergenValues),
-    nutritionalInfo: nutritionalInfo().trim() || '{}',
-    categoryId: categoryId() ? Number(categoryId()) : null,
-    manufacturerId: manufacturerId() ? Number(manufacturerId()) : null,
-  })
+    inventoryCount: inventoryCount(),
+    preparationTime: preparationTime(),
+    allergens: allergens(),
+    nutritionalInfo: nutritionalInfo(),
+    categoryId: categoryId(),
+    manufacturerId: manufacturerId(),
+  }, currency()))
 }
 
 function errorMessages(): string[] {
-  return Object.entries(errors()).map(([field, message]) => {
-    const fieldLabel = field.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ')
-    return `${fieldLabel.charAt(0).toUpperCase()}${fieldLabel.slice(1)}: ${message}`
-  })
+  return formErrorMessages(errors())
 }
 </script>
 
@@ -116,17 +146,20 @@ function errorMessages(): string[] {
 >
     <form id="product-form" @submit.prevent="submit">
         <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
-          <template :for="message in errorMessages()" :key="message"><li>{{ message }}</li></template>
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
         </ul>
         <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
           <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Name</span><input x-model="name" type="text" maxlength="100" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
+          <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Slug</span><input x-model="slug" type="text" maxlength="255" required spellcheck="false" class="mt-1 px-3 py-2 w-full font-mono text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" @input="markSlugTouched" @blur="normalizeSlug" /><span class="block mt-1 text-gray-500 text-xs dark:text-neutral-500">The storefront address, /products/{{ slug() || 'slug' }}.</span></label>
           <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Description</span><textarea x-model="description" rows="3" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"></textarea></label>
-          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Price ({{ currency() }})</span><input x-model="price" type="number" min="1" step="0.01" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
+          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Price ({{ currency() }})</span><input x-model="price" type="number" min="0" :step="moneyInputStep(currency())" inputmode="decimal" required :aria-invalid="price() !== '' && priceError() !== ''" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /><span :if="price() !== '' && priceError()" class="block mt-1 text-red-600 text-xs dark:text-red-400">{{ priceError() }}</span></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Inventory count</span><input x-model="inventoryCount" type="number" min="0" step="1" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Preparation time (minutes)</span><input x-model="preparationTime" type="number" min="1" step="1" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
-          <label class="flex gap-3 items-center self-end px-3 py-2 min-h-10 bg-gray-50 dark:bg-neutral-900/60 border border-gray-200 rounded-md dark:border-neutral-700"><input x-model="isAvailable" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded" /><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Available for commerce</span></label>
-          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Category</span><select x-model="categoryId" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"><option value="">Unassigned category</option><template :for="option in categories()" :key="option.id"><option :value="option.id">{{ option.label }}</option></template></select></label>
-          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Manufacturer</span><select x-model="manufacturerId" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"><option value="">Unassigned manufacturer</option><template :for="option in manufacturers()" :key="option.id"><option :value="option.id">{{ option.label }}</option></template></select></label>
+          <div class="self-end px-3 py-2 min-h-10 bg-gray-50 dark:bg-neutral-900/60 border border-gray-200 rounded-md dark:border-neutral-700">
+            <Toggle v-model:checked="isAvailable" label="Available for commerce" labelPosition="left" />
+          </div>
+          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Category</span><select x-model="categoryId" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"><option value="">Unassigned category</option><option :for="option in categories()" :key="option.id" :value="option.id">{{ option.label }}</option></select></label>
+          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Manufacturer</span><select x-model="manufacturerId" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"><option value="">Unassigned manufacturer</option><option :for="option in manufacturers()" :key="option.id" :value="option.id">{{ option.label }}</option></select></label>
           <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Image URL</span><input x-model="imageUrl" type="url" placeholder="Optional persisted asset URL" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Allergens</span><input x-model="allergens" type="text" placeholder="Comma-separated, for example: Gluten, Soy" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Nutritional information (JSON object)</span><textarea x-model="nutritionalInfo" rows="4" spellcheck="false" :aria-invalid="!nutritionValid()" class="mt-1 px-3 py-2 w-full font-mono text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"></textarea><span :if="!nutritionValid()" class="block mt-1 text-red-600 text-xs dark:text-red-400">Enter a valid JSON object.</span></label>

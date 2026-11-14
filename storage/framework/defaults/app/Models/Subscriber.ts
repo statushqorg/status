@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Subscriber',
@@ -10,6 +10,7 @@ export default defineModel({
   hasMany: ['SubscriberEmail', 'EmailListSubscriber', 'CampaignSend'],
 
   traits: {
+    gdpr: { subject: { email: 'email' }, erasure: 'anonymize', basis: 'consent', purpose: 'Newsletter subscription' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: {
@@ -31,6 +32,7 @@ export default defineModel({
 
   attributes: {
     email: {
+      personal: true,
       unique: true,
       required: true,
       fillable: true,
@@ -85,5 +87,11 @@ export default defineModel({
       },
       factory: () => null,
     },
+  },
+
+  dashboard: {
+    columns: ['email', 'status', 'source', 'user', 'createdAt'],
+    // The row of numbers above the list: subscribed, unsubscribed, new.
+    regions: { listTop: 'DataStatCards' },
   },
 } as const)

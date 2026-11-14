@@ -58,7 +58,7 @@ export default new Action({
         return back('last_owner')
     }
 
-    await member.update({ role })
+    await member.update({ role: role as 'member' | 'admin' | 'owner' | null | undefined })
 
     return back()
   },

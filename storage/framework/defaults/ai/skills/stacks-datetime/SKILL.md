@@ -1,6 +1,6 @@
 ---
 name: stacks-datetime
-description: Use when working with dates and times in Stacks - the DateTime class with Carbon-like API (add/sub, comparison, formatting, start/end of day/month/year), date parsing, format tokens, or timezone handling. Covers @stacksjs/datetime.
+description: Use when working with dates and times in Stacks - the DateTime class with Carbon-like API (add/sub, comparison, formatting, start/end of day/month/year), date parsing, format tokens, timezone handling, wall-clock times in a named zone across DST, or YYYY-MM-DD calendar dates (today in a zone, day arithmetic, ISO weeks). Covers @stacksjs/datetime.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -24,10 +24,14 @@ export { parse } from './parse'
 export { format as dateFormat } from './format'  // convenience alias
 ```
 
-Three source files:
-- `now.ts` — `DateTime` class and `now()` helper
-- `format.ts` — standalone `format()` function with token-based formatting and timezone support
-- `parse.ts` — standalone `parse()` function with token-based parsing
+Source files:
+- `now.ts` - `DateTime` class and `now()` helper
+- `format.ts` - standalone `format()` function with token-based formatting and timezone support
+- `parse.ts` - standalone `parse()` function with token-based parsing
+- `zone.ts` - wall clock in a named zone to an instant and back (`zonedTimeToUtc`, `isoInZone`, `zoneOffsetMinutes`)
+- `calendar.ts` - `addCalendarMonths` and the `YYYY-MM-DD` helpers (`todayIn`, `addDays`, `daysBetween`, `startOfIsoWeek`, `isCalendarDate`, `isTimeZone`, `minutesUntil`)
+- `local.ts` - `localDateTime` (site and organization clocks)
+- `schedule.ts` - recurrences, coverage and local reporting periods
 
 ## DateTime Class (`now.ts`)
 
@@ -122,6 +126,9 @@ Implementation details:
 - `addSeconds/Minutes/Hours` use millisecond arithmetic on timestamp
 - `addDays` uses `Date.setDate()` (handles month boundaries correctly)
 - `addMonths` uses `Date.setMonth()` (handles year boundaries)
+- Month/year arithmetic inherits native overflow behavior. For a business
+  calendar month that must clamp January 31 to February's last day, use the
+  exported `addCalendarMonths(date, count, { utc? })` helper instead.
 - `addYears` uses `Date.setFullYear()`
 - All `sub*` methods delegate to `add*(-n)`
 
@@ -229,7 +236,9 @@ parse('2024-06-15 10:30 +0530', 'YYYY-MM-DD HH:mm Z') // Date with timezone offs
 **Without format string**:
 - Date-only ISO strings (YYYY-MM-DD) are parsed as LOCAL time, not UTC -- this is a deliberate fix for the native Date behavior where `new Date('2024-06-15')` treats it as UTC causing day shifts
 - All other strings use native `new Date()` parsing
-- Throws on invalid dates
+- Rejects unparseable native dates. Calendar fields can normalize through native
+  Date, so use validation for strict rejection of impossible dates such as
+  February 31 rather than treating this parser as a validation boundary.
 
 **With format string**:
 - Builds a regex from the format tokens and extracts named groups
@@ -240,7 +249,84 @@ parse('2024-06-15 10:30 +0530', 'YYYY-MM-DD HH:mm Z') // Date with timezone offs
 - Z token: parses +HHMM offset, constructs UTC time and adjusts
 - Throws if the format doesn't match the input string
 
-## `now()` Helper
+## Named-zone instants and calendar months
+
+The root additionally exports `zoneOffsetMinutes(instant, timeZone)`,
+`zonedTimeToUtc(wallClock, timeZone)`, `isoInZone(instant, timeZone)` and
+`addCalendarMonths(date, count, { utc? })`. A wall-clock string has no supplied
+offset; the named IANA zone converts it into an instant. `isoInZone` retains
+that zone's offset in serialized output rather than merely displaying a date.
+`addCalendarMonths` clones and clamps the day; ordinary `DateTime.addMonths`
+preserves native Date overflow instead. Do not interchange those contracts.
+Calendar-month clamping keeps literal early years in local and UTC mode and throws
+RangeError for an out-of-range result. A zero-month shift preserves the exact instant.
+Named-zone conversion rejects impossible calendar and clock fields before applying
+DST disambiguation. Era-aware offsets support year zero and BCE instants; `isoInZone`
+retains seconds for expanded ISO years.
+
+`zonedTimeToUtc` resolves DST edges the same way in every zone (RFC 5545 and
+Temporal's `'compatible'` rule):
+
+| Wall clock | Zone | Result | Why |
+|---|---|---|---|
+| `2026-10-25T02:30` | `Europe/Berlin` | `2026-10-25T00:30:00Z` (`+02:00`) | Repeated hour: the EARLIER instant |
+| `2026-11-01T01:30` | `America/New_York` | `2026-11-01T05:30:00Z` (`-04:00`) | Repeated hour: the EARLIER instant |
+| `2026-03-29T02:30` | `Europe/Berlin` | `2026-03-29T01:30:00Z`, shown as `03:30+02:00` | Skipped: read with the offset before the gap |
+| `2026-03-08T02:30` | `America/New_York` | `2026-03-08T07:30:00Z`, shown as `03:30-04:00` | Skipped: read with the offset before the gap |
+
+Releases up to 0.75.228 returned the LATER instant of a repeated hour in zones
+at or east of UTC (Berlin, London, Sydney) while New York got the earlier one.
+
+```typescript
+import { zonedTimeToUtc } from '@stacksjs/datetime'
+
+zonedTimeToUtc('2026-10-01T20:00:00', 'America/New_York').toISOString() // '2026-10-02T00:00:00.000Z'
+zonedTimeToUtc('2026-10-25T02:30', 'Europe/Berlin').toISOString()       // '2026-10-25T00:30:00.000Z'
+```
+
+## Calendar dates (`YYYY-MM-DD` strings)
+
+A date column, a training day or a membership period is a day on a calendar,
+not an instant. Keep it a `YYYY-MM-DD` string: these helpers do their arithmetic
+on the UTC calendar (every day 24 hours, whatever the server zone) and only meet
+a time zone where a real clock is involved (`todayIn`, `minutesUntil`). Source:
+`src/calendar.ts`.
+
+```typescript
+import { addDays, daysBetween, isCalendarDate, isTimeZone, minutesUntil, startOfIsoWeek, todayIn } from '@stacksjs/datetime'
+
+isCalendarDate('2026-02-31')          // false (a type guard; also rejects '2026-2-3')
+isTimeZone('Europe/Berlin')           // true  (a type guard; '' and unknown zones are false)
+todayIn('Pacific/Auckland', now)      // the date there, e.g. '2026-10-19' while UTC is on the 18th
+addDays('2026-12-31', 1)              // '2027-01-01'
+daysBetween('2026-10-18', '2026-10-25') // 7 (signed: negative when the second is earlier)
+startOfIsoWeek('2026-10-18')          // '2026-10-12' (the Monday; a Sunday belongs to the week before)
+
+// Real minutes from now until 09:00 on a date in a zone, correct across DST:
+minutesUntil('2026-10-25', '09:00', 'Europe/Berlin', new Date('2026-10-24T22:00:00Z')) // 600, not 540
+```
+
+- Every helper throws `RangeError` for an impossible date, a malformed clock
+  time (`HH:mm` or `HH:mm:ss`, 00-23 hours), an unknown zone or an invalid
+  instant. Validate input with `isCalendarDate` / `isTimeZone` first.
+- `todayIn` takes one zone. To fall back (a site's zone, then its
+  organization's, then UTC) use `localDateTime(now, ...zones).date`.
+- `minutesUntil` keeps the seconds of `now` as a fraction; round where you
+  display or compare. Negative once the moment has passed.
+- `addDays` refuses a result past 9999-12-31.
+- `todayIn` returns canonical dates from 0000 through 9999 and rejects BCE or expanded-year dates.
+
+### Reading `DATE` columns: `parseSqlDate` (`@stacksjs/database`)
+
+Drivers return a `DATE` column as a JS `Date`, at UTC midnight (Bun's Postgres
+driver) or at the host's local midnight (others). `date.toISOString().slice(0, 10)`
+is only right for the first: on a host east of UTC a local-midnight `Date` moves
+to the day before. `parseSqlDate(value)` from `@stacksjs/database` returns the
+stored `YYYY-MM-DD` either way (local midnight reads local fields, anything else
+UTC fields), keeps the date part of strings, and returns null for missing,
+invalid or impossible input. It sits beside `parseSqlDateTime`.
+
+## Current-time helper example
 
 ```typescript
 import { now } from '@stacksjs/datetime'
@@ -267,3 +353,41 @@ now().startOfMonth().toDateString()    // first of current month
 - `endOfMonth()` uses the `new Date(year, month + 1, 0)` trick to find the last day
 - Application timezone should be configured in `config/app.ts`
 - Prefer `@stacksjs/datetime` over raw `Date` for framework consistency
+
+## Site and organization clocks
+
+`localDateTime(instant, ...timeZones)` resolves the first valid named zone, then
+UTC, and returns `{ date, time, timeZone }` from one instant. Supply site and
+organization zones in that order. Missing/invalid zones fall through; an
+invalid instant throws. The output uses YYYY-MM-DD and HH:mm and is suitable
+for comparing local schedule dates and end times, not for elapsed durations.
+
+## Recurrences, coverage and local reporting periods
+
+The pure schedule entry exports parseWeeklySchedule, expandWeeklySchedule,
+clockMinutes, addClockMinutes and timeWindowsCover. Recurrence validation
+rejects invalid weekday entries; expansion refuses excessive ranges and
+midnight-crossing durations instead of silently truncating them. Adjacent
+windows can cover one continuous slot. ScheduleInputError carries status 422.
+Every supplied availability window is validated before checking coverage, even
+when an earlier valid window already covers the slot.
+
+localDateRange(from, to, ...zones) converts inclusive calendar days to an
+exclusive-end UTC instant range in a selected valid zone, including DST days.
+Its supported reporting dates are 0101-01-01 through 9999-12-30; unsupported
+boundaries raise ScheduleInputError rather than normalizing to another year.
+netHoursBetween(start, end, breaks) retains full precision; apply display or
+monetary rounding at the final boundary. It performs duration arithmetic,
+not jurisdiction-specific compensation or overtime decisions.
+
+localTimeSpan(date, start, end, ...zones) converts a clock interval, including
+next-day ends, to actual instants for cross-site/overnight overlap checks.
+Equal endpoints and non-positive DST-normalized intervals are rejected.
+
+## Conflicts across location clocks
+
+Convert each appointment using `localTimeSpan(date, start, end, ...zones)` and compare
+with `timeSpansOverlap(first, second)`. Intervals are half-open, so adjacent sessions
+do not conflict. Query neighboring local dates before comparing: simultaneous
+appointments can belong to different calendar dates in different zones. Never
+compare local clock strings from separate locations directly.

@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Automation',
@@ -19,5 +19,9 @@ export default defineModel({
     trigger: { required: true, fillable: true, validation: { rule: schema.json() }, factory: () => JSON.stringify({ type: 'subscriber_joined' }) },
     graph: { required: true, fillable: true, validation: { rule: schema.json() }, factory: () => JSON.stringify({ nodes: [], edges: [] }) },
     publishedAt: { required: false, fillable: true, validation: { rule: schema.timestamp() }, factory: () => null },
+  },
+
+  dashboard: {
+    columns: ['name', 'status', 'version', 'team', 'publishedAt'],
   },
 } as const)

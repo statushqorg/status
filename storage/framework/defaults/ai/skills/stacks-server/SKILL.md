@@ -20,7 +20,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 ```
 core/server/src/
 ├── index.ts               # Re-exports: config, controllers/base, imports, maintenance
-├── config.ts              # config() factory — maps ServerOptions.type to host/port
+├── config.ts              # config() factory - maps ServerOptions.type to host/port
 ├── config-production.ts   # Minimal env-based config for compiled production binaries
 ├── imports.ts             # Auto-import system: scan models/jobs/controllers, register bun plugin
 ├── maintenance.ts         # Laravel-like maintenance mode (down/up/bypass)
@@ -29,80 +29,51 @@ core/server/src/
 
 server/
 ├── src/
-│   ├── index.ts           # Bun.serve() entry point — HTTP + WebSocket + job worker
+│   ├── index.ts           # Bun.serve() HTTP entry and one-shot queue worker
 │   └── utils.ts           # Docker build helpers (cleanCopy, buildDockerImage, useCustomOrDefaultServerConfig)
 ├── build.ts               # Full build pipeline: bundle server + app, post-process, optionally build Docker
 ├── dev                    # Shell script for local/remote Docker dev (mounts volumes)
 ├── Dockerfile             # Multi-stage Bun Docker image (oven/bun:1.3.10)
-├── package.json           # stacks-server v0.70.23
+├── package.json           # stacks-server package
 ├── tsconfig.json          # Extends core tsconfig
 ├── tsconfig.docker.json   # Docker-specific tsconfig with path aliases
 ├── .dockerignore          # Excludes Dockerfile, .git, node_modules, etc.
 └── .gitignore             # Excludes app/, config/, dist/, storage/ (build artifacts)
 ```
 
+
 ## Server Entry Point (server/src/index.ts)
 
-The runtime server uses `Bun.serve()` directly. It handles two modes based on environment variables:
+The HTTP runtime delegates fetch requests to serverResponse from
+`@stacksjs/router/runtime`. It has no WebSocket upgrade handlers. Realtime
+clients connect to the separate authenticated broadcast server described by
+`stacks-realtime`.
 
-### HTTP Server Mode (default)
-```typescript
-import type { Server, ServerWebSocket } from 'bun'
+PORT defaults to 3000; APP_ENV production/prod disables development mode.
+Production enables reusePort for replacement instances on supported platforms.
+SIGTERM stops accepting connections and drains in-flight requests, with a
+SHUTDOWN_GRACE_MS deadline (default fifteen seconds). Supervisors still own
+restart and deploy health-gating policy.
 
-const server = Bun.serve({
-  port: Number(process.env.PORT) || 3000,
-  development: process.env.APP_ENV?.toLowerCase() !== 'production',
-
-  async fetch(request: Request, server: Server<any>): Promise<Response | undefined> {
-    // Attempt WebSocket upgrade first
-    if (server.upgrade(request)) return
-
-    // Delegate to the Stacks router
-    return serverResponse(request)
-  },
-
-  websocket: {
-    open(_ws: ServerWebSocket): void {},
-    message(_ws: ServerWebSocket, _message: string): void {},
-    close(_ws: ServerWebSocket, _code: number, _reason?: string): void {},
-  },
-})
-```
-
-Key details:
-- `serverResponse()` is imported from `@stacksjs/router` and handles all route matching, middleware, and response generation
-- WebSocket upgrade is attempted before HTTP routing
-- `development` mode is enabled when `APP_ENV` is not `production` or `prod`
-- SIGINT handler gracefully exits the process
-
-### Queue Worker Mode
-When `QUEUE_WORKER` env var is set, the same entry point runs a single job instead of starting the HTTP server:
-
-```typescript
-if (process.env.QUEUE_WORKER) {
-  const jobName = process.env.JOB.replace(/\.ts$/, '').replace(/[^a-zA-Z0-9_-]/g, '')
-  const jobModule = await import(`./app/Jobs/${jobName}`)
-
-  await retry(() => jobModule.default.handle(), {
-    backoffFactor: Number(process.env.JOB_BACKOFF_FACTOR) || 2,
-    retries: Number(process.env.JOB_RETRIES) || 3,
-    initialDelay: Number(process.env.JOB_INITIAL_DELAY) || 1000,
-    jitter: process.env.JOB_JITTER === 'true',
-  })
-
-  process.exit(0)
-}
-```
-
-Environment variables for job execution:
-- `QUEUE_WORKER` -- enables worker mode (any truthy value)
-- `JOB` -- job file name (e.g., `SendEmail.ts`), sanitized to prevent path traversal
-- `JOB_RETRIES` -- retry count (default: 3)
-- `JOB_BACKOFF_FACTOR` -- exponential backoff multiplier (default: 2)
-- `JOB_INITIAL_DELAY` -- initial retry delay in ms (default: 1000)
-- `JOB_JITTER` -- enable jitter on retries (`'true'` to enable)
+With QUEUE_WORKER set, this entry instead loads the sanitized JOB file and runs
+its handle with retry. JOB_RETRIES, JOB_BACKOFF_FACTOR, JOB_INITIAL_DELAY and
+JOB_JITTER configure that one-shot mode. It is distinct from the durable
+`buddy queue:work` processor.
 
 ## Server Config (core/server/src/config.ts)
+
+`config/server.ts` may set `maxRequestBodySize` to a positive safe integer of
+bytes. Buddy forwards the same ceiling to its API and views listeners in
+development and production, including API requests proxied through the views
+host. Omit it to retain Bun's default. Include multipart framing above a file's
+limit; actions still enforce their own per-file validation.
+
+```typescript
+export default { maxRequestBodySize: 320 * 1024 * 1024 } satisfies ServerConfig
+```
+
+The shared `serverRequestBodyOptions` resolver rejects invalid values before
+starting a listener. It does not remove authentication or body validation.
 
 ```typescript
 function config(options: ServerOptions): { host: string, port: number, open: boolean }
@@ -178,25 +149,19 @@ const config = {
 
 Used by `start.ts` (the production binary entry point) with `SKIP_CONFIG_LOADING=true` to bypass dynamic config imports.
 
+
 ## Production Start (core/server/src/start.ts)
 
-Entry point for compiled production binaries. Sequence:
+The compiled-binary entry marks binary mode and disables external runtime config
+loading. It reads appRouteRegistry at runtime, loads manual routes first, then
+tries `@stacksjs/orm/routes` with a checkout-relative fallback. Missing ORM
+routes warn; unresolved registered route middleware aborts startup rather than
+serving an unguarded route. Bun receives `hostname`, not a host option.
 
-1. Sets `__STACKS_BINARY_MODE__ = true` on `globalThis` (prevents auto-registration in routes)
-2. Sets `SKIP_CONFIG_LOADING = 'true'` env var
-3. Imports `loadRoutes` and `serve` from `@stacksjs/router`
-4. Loads routes from the `app/Routes.ts` registry via `loadRoutes(routeRegistry)`
-5. Loads ORM auto-generated routes from `../../orm/routes` (model CRUD endpoints)
-6. Calls `serve({ port, host })` to start the Bun HTTP server
-
-```typescript
-// Production startup flow
-loadRoutes(routeRegistry)
-  .then(async () => {
-    await import('../../orm/routes')   // ORM auto-routes (after manual routes)
-    serve({ port: config.server.port, host: config.server.host })
-  })
-```
+Unhandled rejections reach the shared report hook; uncaught exceptions report,
+flush logging and exit so a supervisor can restart. This entry's startup contract
+differs from the Docker HTTP entry and the STX production views server; inspect
+the selected build/deploy entrypoint before copying environment assumptions.
 
 ## Auto-Imports System (core/server/src/imports.ts)
 
@@ -215,7 +180,7 @@ Scan order (user overrides framework overrides defaults):
 
 Outputs:
 - `.d.ts` file: `storage/framework/types/server-auto-imports.d.ts`
-- ESLint config: `storage/framework/server-auto-imports.json`
+- Compatibility manifest: storage/framework/server-auto-imports.json; lint remains pickier
 - Runtime index files: `storage/framework/auto-imports/` (see below)
 
 ### generateAutoImportFiles()
@@ -223,7 +188,10 @@ Outputs:
 async function generateAutoImportFiles(): Promise<void>
 ```
 
+Package-based apps address framework defaults through `@stacksjs/defaults` exports, preserving application overrides. Generated imports never depend on the physical npm or Pantry installation path. An app created with `--with-core` keeps source-relative defaults imports; detection uses the framework source layout, independently of the application's package name.
+
 Generates runtime-importable index files under `storage/framework/auto-imports/`:
+
 - `functions.ts` -- re-exports from `resources/functions/`
 - `models.ts` -- re-exports default exports from model definition files as named exports
 - `jobs.ts` -- re-exports default exports from job definition files
@@ -245,15 +213,15 @@ Internal helper that scans a directory for `.ts` files (excluding `.d.ts`, `inde
 
 ```typescript
 class Controller {
-  protected json(data: any, status?: number): ResponseData      // default status: 200
-  protected success(data: any): ResponseData                     // alias for json(data, 200)
-  protected created(data: any): ResponseData                     // json(data, 201)
+  protected json(data: unknown, status?: ResponseStatus): Response      // default status: 200
+  protected success(data: unknown): Response                     // alias for json(data, 200)
+  protected created(data: unknown): Response                     // json(data, 201)
   protected noContent(): any                                     // response.noContent()
-  protected error(message: string, status?: number): ResponseData // json({ error }, 500)
-  protected notFound(message?: string): ResponseData             // error(msg, 404)
-  protected unauthorized(message?: string): ResponseData         // error(msg, 401)
-  protected forbidden(message?: string): ResponseData            // error(msg, 403)
-  protected validate(request: Request, rules: Record<string, any>): Promise<void>
+  protected error(message: string, status?: ResponseStatus): Response // json({ error }, 500)
+  protected notFound(message?: string): Response             // error(msg, 404)
+  protected unauthorized(message?: string): Response         // error(msg, 401)
+  protected forbidden(message?: string): Response            // error(msg, 403)
+  protected validate(request: Request, rules: Record<string, unknown>): Promise<void>
 }
 ```
 
@@ -349,6 +317,54 @@ if (await isDownForMaintenance()) {
 await up()
 ```
 
+## Sitemap and robots.txt (core/actions/src/seo.ts)
+
+The views server answers `/sitemap.xml` and `/robots.txt` for every app, generated from
+`resources/views` at request time. `buddy dev` (`core/actions/src/dev/views.ts`) and `buddy serve`
+(`core/buddy/src/production-server.ts`) call the same `createSiteSeoHandler()` at the same point in
+`onRequest` (after redirects and rewrites), so dev and production answer identically. No route, no
+build step, no app code. Do not add `route.get('/sitemap.xml')` to `routes/`: the views server does
+not forward root GETs to the API.
+
+- **Listed**: every static route under `resources/views`, with `lastmod` from the file, plus the
+  blog's published posts (`content/blog`, or a CMS-built `dist/blog/sitemap.xml`) merged into the
+  same file. `/blog/sitemap.xml` is still served too.
+- **Not listed**: dynamic routes (`[slug].stx`), error and holding pages (`404`, `errors/*`,
+  `coming-soon`), `components/`, `layouts/`, `partials/`, `emails/`, `_`-prefixed files, pages behind
+  `definePageMeta({ middleware: ['auth'] })`, paths in `seo.sitemap.exclude`, paths robots.txt
+  disallows, and any page that says **noindex**. The framework's default views (`/login`, ...) are
+  never listed.
+- **noindex**, the one signal, read from the page source: `<meta name="robots" content="noindex">`,
+  `robots: 'noindex'` in a head object, or `const noindex = true` in the server script (the flag a
+  shared head partial turns into the tag - the scan cannot follow an `@include`, so spell it that
+  way). `definePageMeta({ sitemap: false })` also keeps a page out.
+- **robots.txt**: `User-agent: *`, `Allow: /`, `Disallow: /api/` plus `seo.robots.disallow`, extra
+  groups from `seo.robots.rules`, and `Sitemap: <origin>/sitemap.xml`. Never disallow a page just to
+  hide it: a crawler that cannot fetch it never sees its noindex.
+- **Hand-written files win**: `public/sitemap.xml` / `public/robots.txt` are served instead, and the
+  server warns at boot when the hand-written sitemap misses a page it would list. Delete the file to
+  switch, or set `seo.handwritten: 'replace'`.
+- **Origin**: `seo.origin`, else `app.url` (APP_URL), else the request origin (local dev only).
+- **Config** (`config/app.ts`, type `SeoOptions` in `core/types/src/seo.ts`):
+
+```ts
+seo: {
+  sitemap: {
+    include: ['/products/blue-mug'],            // instances of dynamic routes
+    entries: async () => (await Product.all()).map(p => `/products/${p.slug}`),
+    exclude: ['/styleguide', '/internal/'],     // trailing / or * = subtree
+    // language versions, written as <xhtml:link rel="alternate" hreflang> on each <url>;
+    // an entry's own `alternates` wins, [] or nothing = one language only
+    alternates: path => [{ hreflang: 'en', href: path }, { hreflang: 'de', href: `/de${path}` }, { hreflang: 'x-default', href: path }],
+  },
+  robots: { disallow: ['/checkout/', '/thanks'], rules: [{ userAgent: 'GPTBot', disallow: ['/'] }] },
+  // sitemap: false / robots: false turn either off
+}
+```
+
+Production caches each file for ten minutes (for `entries()`); development regenerates per request.
+Static frontend builds (`buddy build views`) use stx's own SSG sitemap instead.
+
 ## Docker Build Pipeline (server/build.ts)
 
 The build process (`bun build.ts` from `storage/framework/server/`):
@@ -408,7 +424,7 @@ Shell script for running the Docker container locally or against remote storage 
 ./dev local
 # docker run -p 3000:3000 -v app:/usr/src/app/app -v config:... -v storage:... stacks
 
-# Remote/EFS (default — uses /mnt/efs for storage)
+# Remote/EFS (default - uses /mnt/efs for storage)
 ./dev
 # Same volume mounts but storage points to /mnt/efs
 ```
@@ -456,3 +472,13 @@ Shell script for running the Docker container locally or against remote storage 
 - The Docker image runs as non-root user `bun` with `/usr/src/storage` as a persistent volume
 - `build.ts` strips `export { ENV_KEY, ENV_SECRET, fromEnv }` from bundled output as a workaround for a Bun bundler issue
 - `tsconfig.docker.json` has path aliases that remap `@stacksjs/*` to `core/*/dist` -- this is critical for the Docker build to resolve packages without workspace symlinks
+
+
+## Runtime evidence
+
+Read `storage/framework/server/src/index.ts`, `core/server/src/start.ts`,
+`core/buddy/src/production-server.ts` and `core/server/src/imports.ts` for the
+selected runtime. Controller validation awaits the request macro and propagates
+failure (`core/server/src/controllers/base.ts`); helpers return actual Response
+objects. Runtime globals come from the same resolver as app/default models, not
+from ambient type declarations alone. See stacks-auto-imports for that contract.

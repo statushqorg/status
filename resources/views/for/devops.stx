@@ -97,8 +97,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="modules-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="modules-heading">
+        <div class="left section-head">
           <h2 id="modules-heading" class="section-title">Built for the way ops teams actually work.</h2>
         </div>
         <div class="feature-grid">
@@ -112,7 +112,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="api-heading">
+      <section class="section site-shell" aria-labelledby="api-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="api-heading">Everything is an API. The dashboard is just a client.</h2>
@@ -136,8 +136,8 @@ curl -X POST https://statushq.org/api/monitors/42/check \
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="heartbeat-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="heartbeat-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="heartbeat-heading">The backup that fails loudly is not the problem.</h2>
             <p>
@@ -158,7 +158,7 @@ curl -fsS https://statushq.org/api/ping/your-token</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="oss-heading">
+      <section class="section site-shell" aria-labelledby="oss-heading">
         <div class="note-band">
           <div>
             <h2 id="oss-heading">MIT licensed. Run it inside the fence.</h2>
@@ -170,7 +170,7 @@ curl -fsS https://statushq.org/api/ping/your-token</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Ops questions, answered.</h2>

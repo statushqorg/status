@@ -8,7 +8,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Commerce
 
-Comprehensive e-commerce module with 15 sub-modules and 20+ models.
+Comprehensive e-commerce module with 15 sub-modules and 39 models.
 
 ## Key Paths
 - Core package: `storage/framework/core/commerce/src/`
@@ -71,7 +71,7 @@ Each sub-module typically provides:
 - Delivery routes and their stops
 - Couriers
 - Digital deliveries
-- License keys
+- License keys (the delivery CRUD; selling and activating licenses is `commerce.licensing`, see `stacks-licensing`)
 - **Live tracking** (`commerce.shippings.tracking`) - see below
 
 ## Commerce Models (20+)
@@ -79,7 +79,7 @@ Each sub-module typically provides:
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
 | Product | name, price, inventoryCount, allergens(JSON) | belongsTo: Category, Manufacturer; hasMany: Review, ProductUnit, ProductVariant |
-| ProductVariant | SKU, options, pricing | belongsTo: Product |
+| ProductVariant | variant, type, options, status, sku (unique per product), price / compareAtPrice (minor units; null price inherits the product's), inventoryCount (null = untracked) | belongsTo: Product |
 | ProductUnit | unit pricing | belongsTo: Product |
 | Category | name, slug, isActive, displayOrder | hasMany: Product |
 | Cart | status, total, currency(USD), expiresAt | hasMany: CartItem; belongsTo: Customer |
@@ -97,7 +97,7 @@ Each sub-module typically provides:
 | Courier | name, phone, vehicleNumber, status, latitude, longitude, heading, lastPingAt | hasMany: DeliveryRoute, CourierPing |
 | CourierPing | latitude, longitude, heading, speed, accuracy, recordedAt | belongsTo: Courier, DeliveryRoute |
 | TaxRate | name, rate(0-100), type(VAT/GST/Sales Tax) | |
-| LicenseKey | key(XXXX-XXXX-XXXX-XXXX-XXXX), template, status | belongsTo: Customer, Product, Order |
+| LicenseKey | key(XXXX-XXXX-XXXX-XXXX-XXXX), template, tier, status, updatesUntil, maxDevices, seats | belongsTo: Customer, Product, Order, Team; hasMany: LicenseActivation, LicenseSeat |
 | DigitalDelivery | downloadLimit, expiryDays, automaticDelivery | |
 | WaitlistProduct | product waitlist tracking | |
 | Receipt | receipt records | |
@@ -122,9 +122,9 @@ if (!result.ok) {
 // result.coupon reflects the post-redemption state.
 ```
 
-`redeem` bumps `usage_count` and enforces `max_uses`, `is_active` and the
+`redeem` bumps `usage_count` and enforces `usage_limit`, `is_active` and the
 start/end dates in the WHERE clause, so the database decides the race. A
-`max_uses` of `NULL` means unlimited. Do not fetch, check and then call
+`usage_limit` of `NULL` means unlimited. Do not fetch, check and then call
 `update()` to increment: that is the exact pattern this replaced.
 
 ### Spending or reloading a gift card
@@ -230,14 +230,61 @@ straight-line distance by a detour factor and returns `null` for a stationary
 courier rather than `Infinity`.
 
 ## Integration with Payments
-Commerce works with `@stacksjs/payments` for Stripe integration:
+Commerce takes payments through `@stacksjs/payments`, on whichever provider `config.payment.driver` names:
 ```typescript
 import { Payment } from '@stacksjs/payments'
-await Payment.charge(customer, order.totalAmount, paymentMethodId)
+await Payment.charge(customer, { amount: order.totalAmount, currency: 'usd' }, paymentMethodId, { reference: `order-${order.id}` })
 ```
+The provider's webhook reaches orders through `POST /webhooks/payments` (see `stacks-payments`).
 
 ## Dashboard Routes
-All commerce models have dashboard views at `/dashboard/commerce/*`.
+Commerce dashboard pages use `/commerce/*` on the dashboard server, for example
+`/commerce/products` and `/commerce/orders`. Their data Actions use
+`/api/dashboard/*`. Verify the actual page registry instead of assuming that
+every commerce model has an automatically generated dashboard view.
+
+## Enable the feature and choose the native seam
+
+Read `config/commerce.ts` and the feature lifecycle before adding a parallel
+cart or checkout library. `buddy commerce:install` enables the feature and
+copies its owned scaffold paths without overwriting existing application work
+by default. The `@stacksjs/features` manifest owns its tables and the migration
+runner gates disabled feature migrations. Changing `enabled` alone does not
+prove that a route bundle or view has been mounted.
+
+The namespace's helpers, model methods and provider APIs are separate seams.
+Use the existing checkout guards, order state transitions, idempotency and
+provider webhook Actions for an order flow; creating a local payment row does
+not establish that a provider collected money. Public storefront data should
+carry the product/customer/site scope chosen at its boundary.
+
+For variant selection, shipping zones/rates, auctions, digital deliveries or
+loyalty rules, inspect the selected submodule's exported operations and its
+tests rather than extrapolating a generic CRUD interface. Native models cover
+more domain features than the short table here lists. Feature-specific routes
+and jobs also need their enabled feature, tables and worker prerequisites.
+
+## German tills: TSE signing and the DSFinV-K export
+
+Three pure modules for a till in Germany (KassenSichV, § 146a AO). They hold the rules, not a certification: whether a till is compliant depends on the whole system and its operator.
+
+- `@stacksjs/commerce/fiskaly`: a client for fiskaly SIGN DE v2, a cloud TSE. `fiskalySignDe({ apiKey, apiSecret, baseUrl?, fetch? })` caches and refreshes its token; `provisionTss(api, { tssId, clientId, clientSerialNumber, adminPin, adminPuk? })` takes a TSS from nothing (or from where an earlier attempt stopped; keep the PUK it answers) to INITIALIZED with a client; `startTransaction` / `finishTransaction` sign a sale (revisions 1 and 2). `FiskalyError.outage` says when a sale should go on unsigned and be marked.
+- `@stacksjs/commerce/kassensichv`: the VAT keys (`DE_VAT_KEYS`: 1 = 19%, 2 = 7%, 5/6/7 = 0%), `processData` (`Beleg^75.33_7.99_0.00_0.00_0.00^10.00:Bar_64.30:Unbar`), `fiskalyReceiptFor` (amounts per VAT rate and payment type), `receiptQrCode` (the twelve-field `V0;…` QR content of DSFinV-K Anhang I), `receiptVatLines` and `TSE_FAILURE_NOTICE`.
+- `@stacksjs/commerce/dsfinvk`: the export. `DSFINVK_TABLES` are the twenty tables of the official index.xml (DSFinV-K 2.4: files, columns, order, types, lengths, decimals); `dsfinvkExport(closings)` builds every CSV plus `index.xml` and `gdpdu-01-09-2004.dtd` from a till's cash point closings, totals per business case and payment type included. Rows are validated (mandatory columns, lengths, enumerations, time formats); a broken export throws `DsfinvkError` instead of being written. Zip the files yourself (`zipEntries` in `@stacksjs/storage`).
+
+```typescript
+import { fiskalyReceiptFor, processData, receiptQrCode } from '@stacksjs/commerce/kassensichv'
+import { fiskalySignDe } from '@stacksjs/commerce/fiskaly'
+
+const vat = [{ key: 1, grossCents: 1500 }, { key: 2, grossCents: 500 }]
+const payments = [{ kind: 'Unbar', cents: 2000 }]
+const api = fiskalySignDe({ apiKey, apiSecret })
+await api.startTransaction(tssId, txId, clientId)
+const tx = await api.finishTransaction(tssId, txId, clientId, fiskalyReceiptFor({ vat, payments }))
+const qr = receiptQrCode({ clientSerialNumber, processType: 'Kassenbeleg-V1', processData: processData({ vat, payments }), transactionNumber: tx.number, signatureCounter: Number(tx.signature!.counter), start: tx.time_start, end: tx.time_end!, signatureAlgorithm: tx.signature!.algorithm, logTimeFormat: tx.log!.timestamp_format, signature: tx.signature!.value, publicKey: tx.signature!.public_key })
+```
+
+Traps: amounts are gross cents (German prices include VAT). A refund is a new receipt with negative amounts, referenced to the sale (`references`, REF_TYP `Transaktion`); AVBelegstorno is not for TSE tills. A transaction the TSE could not sign still goes into the export, with `tse.error` (TSE_TA_FEHLER) and no signature. fiskaly client serials (and KASSE_SERIENNR) may not contain `_` or `/` (`isClientSerialNumber`).
 
 ## Gotchas
 
@@ -278,6 +325,9 @@ is the helper for when the count is genuinely what you want.
 - Coupon types: `fixed_amount` or `percentage`
 - Gift card codes are unique and auto-generated
 - License keys follow XXXX-XXXX-XXXX-XXXX-XXXX format
+- Software licensing (issue from a payment webhook, device activations, team
+  seats, signed offline tokens, the desktop client) is `commerce.licensing`:
+  read `stacks-licensing`
 - Product dashboard is highlighted (`dashboard: { highlight: true }`)
 - Default seeder counts: Product(10), Order(20), Review(50), Payment(50),
   GiftCard(20), Customer(20), Coupon(15)
@@ -288,3 +338,18 @@ is the helper for when the count is genuinely what you want.
 
 > Touching a money path? `/stacks-tdd` for the seam to test it at, and
 > `/stacks-review` before it merges. `/stacks-payments` covers the Stripe side.
+
+## Input and inventory abstractions
+
+`parseSalesTaxSetup(body, { maxRate?, maxRates? })` requires an explicit rates
+array, rejects coerced prices/text and duplicate normalized component codes,
+and accepts [] only as deliberate removal. HQ-style stores can set maxRate
+to 30; the general default is 100. This validates configuration, not the legal
+rate applicable to a sale. `parseTaxRateWriteData` is also used by native tax
+store/update/bulk operations so false form booleans cannot select a default.
+
+`restockedQuantity(current, units, maximum?)` adds positive whole units,
+refusing untracked stock and overflow. `commerce.products.items.restock(id, units)`
+uses that rule under a row lock and reads back on its own connection;
+`updateInventory` validates absolute quantities through the same boundary.
+Pure narrow entries are commerce/inventory and commerce/tax-input.

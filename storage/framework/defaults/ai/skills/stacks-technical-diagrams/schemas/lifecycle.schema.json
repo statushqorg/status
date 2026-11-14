@@ -1,20 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/tt-a1i/archify/schemas/lifecycle.schema.json",
-  "title": "Technical Lifecycle Diagram",
+  "title": "Archify Lifecycle Diagram",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "diagram_type",
     "meta",
-    "lanes",
+    "mainPath",
     "states",
     "transitions"
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "description": "Lifecycle uses version 3: an automatic main-path layout.",
+      "const": 3
     },
     "diagram_type": {
       "const": "lifecycle"
@@ -23,63 +24,70 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "title"
+        "title",
+        "output"
       ],
       "properties": {
         "title": {
           "type": "string",
           "minLength": 1
         },
+        "locale": {
+          "$ref": "common.schema.json#/$defs/locale"
+        },
+        "translations": {
+          "$ref": "common.schema.json#/$defs/translations"
+        },
         "subtitle": {
           "type": "string"
         },
         "output": {
-          "type": "string"
+          "$ref": "common.schema.json#/$defs/portableOutputPath"
         },
         "animation": {
-          "enum": [
-            "trace",
-            "none"
-          ]
+          "$ref": "common.schema.json#/$defs/animation"
         },
-        "viewBox": {
-          "type": "array",
-          "prefixItems": [
-            {
-              "type": "number",
-              "minimum": 420
-            },
-            {
-              "type": "number",
-              "minimum": 566
+        "visual_preset": {
+          "$ref": "common.schema.json#/$defs/visualPreset"
+        },
+        "quality_profile": {
+          "$ref": "common.schema.json#/$defs/qualityProfile"
+        },
+        "repository": {
+          "$ref": "common.schema.json#/$defs/repository"
+        },
+        "views": {
+          "$ref": "common.schema.json#/$defs/guidedViews"
+        },
+        "legend": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "$ref": "common.schema.json#/$defs/legendMode" },
+            "entries": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "start": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "active": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "waiting": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "decision": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "success": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "failure": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "neutral": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "external": { "$ref": "common.schema.json#/$defs/legendEntry" }
+              }
             }
-          ],
-          "items": false,
-          "minItems": 2,
-          "maxItems": 2
+          }
         }
       }
     },
-    "lanes": {
+    "mainPath": {
+      "description": "The happy path from the initial state, left to right. Each consecutive pair needs a transition. Every other state is placed below the state it branches from; transitions back to an earlier main-path state are drawn as loops above.",
       "type": "array",
-      "minItems": 1,
-      "maxItems": 4,
+      "minItems": 2,
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "label"
-        ],
-        "properties": {
-          "id": {
-            "$ref": "common.schema.json#/$defs/id"
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
+        "$ref": "common.schema.json#/$defs/id"
       }
     },
     "states": {
@@ -91,15 +99,14 @@
         "required": [
           "id",
           "type",
-          "label",
-          "lane",
-          "col"
+          "label"
         ],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
           },
           "type": {
+            "description": "start: the initial state. active: work in progress. waiting: paused for a person, time, or input. decision: a review or branch point (Mermaid <<choice>>). success / failure: a good or bad outcome. neutral: parked, or ended without success or failure. external: handled by an outside party. Color and the default corner sigil follow the type.",
             "enum": [
               "start",
               "active",
@@ -121,27 +128,15 @@
           "tag": {
             "type": "string"
           },
+          "icon": { "$ref": "common.schema.json#/$defs/nodeIcon" },
+          "brand": {
+            "$ref": "common.schema.json#/$defs/brandMark"
+          },
+          "sources": {
+            "$ref": "common.schema.json#/$defs/sourceReferences"
+          },
           "step": {
             "type": "string"
-          },
-          "lane": {
-            "$ref": "common.schema.json#/$defs/id"
-          },
-          "col": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4
-          },
-          "width": {
-            "type": "number",
-            "minimum": 48
-          },
-          "height": {
-            "type": "number",
-            "minimum": 36
-          },
-          "yOffset": {
-            "type": "number"
           }
         }
       }
@@ -156,6 +151,9 @@
           "to"
         ],
         "properties": {
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
           "from": {
             "$ref": "common.schema.json#/$defs/id"
           },
@@ -170,66 +168,6 @@
           },
           "variant": {
             "$ref": "common.schema.json#/$defs/variant"
-          },
-          "route": {
-            "enum": [
-              "auto",
-              "straight",
-              "drop",
-              "bottom-channel",
-              "top-channel",
-              "right-channel",
-              "left-channel"
-            ]
-          },
-          "fromSide": {
-            "enum": [
-              "left",
-              "right",
-              "top",
-              "bottom"
-            ]
-          },
-          "toSide": {
-            "enum": [
-              "left",
-              "right",
-              "top",
-              "bottom"
-            ]
-          },
-          "channelX": {
-            "type": "number"
-          },
-          "channelY": {
-            "type": "number"
-          },
-          "cornerRadius": {
-            "type": "number",
-            "minimum": 0
-          },
-          "labelAt": {
-            "$ref": "common.schema.json#/$defs/point"
-          },
-          "labelDx": {
-            "type": "number"
-          },
-          "labelDy": {
-            "type": "number"
-          },
-          "labelSegment": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "via": {
-            "type": "array",
-            "items": {
-              "$ref": "common.schema.json#/$defs/point"
-            }
-          },
-          "width": {
-            "type": "number",
-            "minimum": 0.5
           }
         }
       }

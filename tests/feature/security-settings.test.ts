@@ -85,14 +85,35 @@ describe('Security settings backend (stacksjs/status#1 Phase 9 follow-up)', () =
     expect((await getTwoFactorState(ownerId)).enabled).toBe(true)
 
     // Password login now returns a 2FA challenge instead of tokens...
-    const login = await anonPost().post('/api/login', { email: OWNER_EMAIL, password: PASSWORD })
-    expect(login.status).toBe(200)
-    const challenge = await login.json<{ requires_two_factor?: boolean, challenge_token?: string, token?: string }>()
-    expect(challenge.requires_two_factor).toBe(true)
-    expect(challenge.challenge_token).toBeTruthy()
-    expect(challenge.token).toBeFalsy()
+    const startLogin = async () => {
+      const login = await anonPost().post('/api/login', { email: OWNER_EMAIL, password: PASSWORD })
+      expect(login.status).toBe(200)
+      const challenge = await login.json<{ requires_two_factor?: boolean, challenge_token?: string, token?: string }>()
+      expect(challenge.requires_two_factor).toBe(true)
+      expect(challenge.challenge_token).toBeTruthy()
+      expect(challenge.token).toBeFalsy()
+      return challenge
+    }
 
-    // ...and the challenge + a fresh code completes it with a token pack.
+    // A TOTP code is single-use: enabling claimed the current 30 second step
+    // (users.two_factor_last_used_step), so the code that enrolled the device
+    // cannot also sign in. Presenting that same code again is refused
+    // rather than replayed.
+    const replayed = await anonPost().post('/api/verify-two-factor-login', {
+      challenge_token: (await startLogin()).challenge_token,
+      code,
+    })
+    expect(replayed.status).toBe(401)
+
+    // A sign-in normally happens in a later step than the enrolment. Move the
+    // claimed step back instead of waiting out the clock, which is the same
+    // state a user is in thirty seconds after enabling.
+    const claimed = await db.selectFrom('users').where('id', '=', ownerId).select(['two_factor_last_used_step']).executeTakeFirst() as { two_factor_last_used_step: number | string | null }
+    expect(claimed.two_factor_last_used_step).not.toBeNull()
+    await db.updateTable('users').set({ two_factor_last_used_step: Number(claimed.two_factor_last_used_step) - 2 }).where('id', '=', ownerId).execute()
+
+    // ...and a fresh challenge + a fresh code completes it with a token pack.
+    const challenge = await startLogin()
     const verify = await anonPost().post('/api/verify-two-factor-login', {
       challenge_token: challenge.challenge_token,
       code: await generateTwoFactorToken(secret),
@@ -101,7 +122,8 @@ describe('Security settings backend (stacksjs/status#1 Phase 9 follow-up)', () =
     const verified = await verify.json<{ token?: string, user?: { id: number } }>()
     expect(verified.token).toBeTruthy()
     expect(verified.user?.id).toBe(ownerId)
-    await db.deleteFrom('oauth_access_tokens').where('token', '=', String(verified.token).split('|').pop()).execute().catch(() => {})
+    try { await db.deleteFrom('oauth_access_tokens').where('token', '=', String(verified.token).split('|').pop()).execute() }
+    catch {}
 
     // Wrong password cannot disable it.
     const badDisable = await authed(ownerToken).post('/api/security-forms/two-factor/disable', { password: 'not-the-password' })

@@ -20,7 +20,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 ## Source Files
 ```
 build/src/
-├── index.ts              # intro() and outro() — build logging and timing
+├── index.ts              # intro() and outro() - build logging and timing
 ├── web-types.ts          # Web types generation for IDE support
 └── build.ts              # Package build config (Bun.build)
 
@@ -86,23 +86,29 @@ buddy build --server --verbose --project [name]
 
 ## Standard Build Pattern
 
-Every core package follows this pattern:
+For workspace dependency ordering, failure propagation and umbrella builds, read
+[the build package's workspace contract](../../../../core/build/README.md#workspace-builds).
+
+For a library barrel or a package with public subpaths, preserve the module
+graph with the shared transpiler. Identifier-minifying bundles have produced
+invalid re-export bindings on supported Bun versions. Separate bundles also
+duplicate shared objects across entrypoints, such as validation's schema proxy.
 
 ```typescript
-import { dts } from 'bun-plugin-dtsx'
-import { intro, outro } from '../build/src'
+import { rm } from 'node:fs/promises'
+import { frameworkExternal, intro, outro, transpilePackage } from '../build/src'
 
 const { startTime } = await intro({ dir: import.meta.dir })
-const result = await Bun.build({
-  entrypoints: ['./src/index.ts'],
-  outdir: './dist',
-  format: 'esm',
-  target: 'bun',
-  minify: true,
-  plugins: [dts({ root: '.', outdir: './dist' })],
-})
-await outro({ dir: import.meta.dir, startTime, result })
+await rm('./dist', { recursive: true, force: true })
+await transpilePackage({ dir: import.meta.dir, external: frameworkExternal() })
+await outro({ dir: import.meta.dir, startTime, result: { errors: [], warnings: [] } })
 ```
+
+The helper emits every source module and its declaration with whitespace-only
+minification. Keep package-specific assets, declaration rewriting, and runtime
+probes around this call. Use Bun.build for intentional executable bundles and
+verify the emitted artifact. ORM inference builds validation before ORM because
+the published ORM imports validation's narrow runtime entry.
 
 ## Releasing libraries out of `resources/`
 
@@ -147,6 +153,26 @@ Packages build in `storage/framework/libs/packages/<dir>/`, where `<dir>` is
 the unscoped npm name unless the entry sets `dir`. The whole directory is
 generated and gitignored.
 
+`libs:publish` sends each package to the Pantry registry with `pantry publish`,
+and refuses when pantry is not on PATH. A package that apps install with Bun or
+npm sets `registry: 'npm'`, which publishes with `pantry publish --npm`, or with
+`bun publish` / `npm publish` where pantry is not installed.
+Each package publishes its own `readme` (a project-relative Markdown file) as
+README.md, or a short one the build writes from its `description`.
+
+A package build compiles TypeScript and nothing else, so generated data (JSON,
+scripts, lists) ships through `assets`: `{ 'path/in/package': 'project/source' }`,
+copied into `dist/` after the compile. A path with an extension is a file and
+gets an exact export; any other path is a directory whose contents are exported
+as `<name>/<path>/*` (never `<name>/<path>` itself, which would shadow a module
+of the same name). Code reads them with `new URL('./<path>/…', import.meta.url)`.
+`prebuild` is a shell command run in the project root before the package
+builds, so the assets are regenerated rather than shipped stale:
+
+```ts
+{ name: 'my-blocker', include: ['webkit.ts'], prebuild: 'buddy extension:build --target webkit', assets: { webkit: 'dist-webkit' } }
+```
+
 ### Things that will stop a build, on purpose
 
 - **A package that matches no files.** Nearly always a typo'd glob, and the
@@ -154,6 +180,8 @@ generated and gitignored.
   packages instead, so an app that never filled in `resources/` is not blocked.
 - **Two packages that resolve to the same directory** (`@acme/ui` and
   `@other/ui` both unscope to `ui`). Give one an explicit `dir`.
+- **A missing asset, or a failed `prebuild`.** Publishing the previous output
+  of a step that just failed is how a stale package ships.
 - **stx ambient globals in a `functions` package.** `state`, `useDark` and the
   rest are injected into an stx page entry and exported by nothing, so a
   bundled copy compiles and then throws `ReferenceError` on the consumer's
@@ -163,7 +191,7 @@ generated and gitignored.
 ### Release flow
 
 `buddy release` runs `generate/lib-entries`, which stages sources and writes
-each manifest without compiling — so a broken library config fails before a tag
+each manifest without compiling - so a broken library config fails before a tag
 exists rather than after. Versions follow the project version unless a package
 pins its own, which is why the build (not the generate) is what CI runs after
 the bump, and `buddy libs:publish` after that.
@@ -214,24 +242,50 @@ enum Action {
 | Tool | Usage |
 |------|-------|
 | **Bun** | Primary bundler (`target: 'bun'`, `format: 'esm'`) |
-| **Vite** | Component library builds |
-| **bun-plugin-dtsx** | TypeScript declaration generation |
+| **stx** | Component library builds |
+| **@dtsx/bun** | TypeScript declaration generation |
 | **Docker** | Server containerization |
 | **@babel/traverse** | AST traversal for export cleanup |
 
 ## Gotchas
-- **Two result formats** — `outro()` must handle both Bun.build and esbuild formats
-- **Server build mutates import paths** — stage 5 rewrites references in compiled output
-- **Core build is sequential** — packages built one at a time, failures collected and reported
-- **Docker build requires cloud config** — only builds if cloud deployment is enabled
+- **Two result formats** - `outro()` must handle both Bun.build and esbuild formats
+- **Server build mutates import paths** - stage 5 rewrites references in compiled output
+- **Core build is sequential** - packages built one at a time, failures collected and reported
+- **Docker build requires cloud config** - only builds if cloud deployment is enabled
 - **Component libraries compile through stx**, not Vite. `buildComponentLibrary`
   emits its own index and each generated component registers its custom element
   on import, which is why a `web-components` package needs no entry file of its
-  own — it publishes `bundle.js` instead of `index.js`.
+  own - it publishes `bundle.js` instead of `index.js`.
 - **A library barrel is generated with `.ts` specifiers on purpose.**
   `transpilePackage` rewrites relative `.ts` to `.js` on the way into `dist`. An
   extensionless specifier survives as-is and only resolves under Bun, so the
   package installs cleanly and fails on first import from Node or Vite.
-- **`build:stacks` builds CLI first** — Buddy binary compiled before core packages
-- **Server build cleans aggressively** — deletes app, config, dist, docs, storage before rebuild
-- **The build package has @babel deps** — uses Babel for AST traversal during export cleanup
+- **`build:stacks` builds CLI first** - Buddy binary compiled before core packages
+- **Server build cleans aggressively** - deletes app, config, dist, docs, storage before rebuild
+- **The build package has @babel deps** - uses Babel for AST traversal during export cleanup
+
+
+## Package build contracts
+
+`@stacksjs/build` exports `transpilePackage` and
+`frameworkExternal(extras?)` alongside intro/outro. Inspect a neighboring
+core build.ts before configuring declaration roots or external dependencies;
+the source example is a pattern, not a universal package manifest. Type-only
+dependencies that escape the package degrade consumers even when local paths
+resolve.
+
+`validateDeclarations(dir)` and `validateRuntimeExports(dir)` are native
+checks used by the build contract. A type declaration export without a matching
+runtime file is a package failure, not a successful build. The current public
+implementation is `storage/framework/core/build/src/index.ts`. Use Bun/TS
+for supporting build scripts and pickier for lint.
+
+## Lazy dependencies in published packages
+
+The shared transpiler emits Node-compatible module syntax while retaining Bun
+runtime APIs. This preserves literal `require('package')` calls inside lazy
+functions, so a later `bun build --compile` can discover and embed the dependency.
+Transpiling to the Bun syntax target first rewrites those calls through
+`import.meta.require`, hiding them from the later standalone build. Preserve
+lazy loading at source boundaries and verify both the source and emitted-package
+paths when changing a dependency used only on errors or optional features.

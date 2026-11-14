@@ -1,9 +1,11 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
-import { toSnakeCaseKeys } from '@stacksjs/orm'
+import { Action } from '@stacksjs/actions/runtime'
+import { isUniqueViolation, ModelValidationError, toSnakeCaseKeys } from '@stacksjs/orm'
 import { response } from '@stacksjs/router'
 import { dashboardOperationalError } from '../dashboard-response'
-import { parseRowId, prepareModelFields, resolveWritableModel } from './model-write'
+import { missingRelationErrors } from './model-relations'
+import { planSwitches, requestedSwitches, storedSwitches } from './model-switches'
+import { duplicateFieldErrors, humanizeIdentifier, parseRowId, prepareModelFields, resolveWritableModel } from './model-write'
 
 interface ModelWriteInput {
   fields?: unknown
@@ -44,17 +46,47 @@ export default new Action({
     if (Object.keys(prepared.errors).length > 0)
       return response.json({ message: 'Validation failed.', errors: prepared.errors }, 422)
     const changes = toSnakeCaseKeys(prepared.data)
-    if (Object.keys(changes).length === 0)
+    // What a trait keeps for itself (a confirmed email, two-factor) is asked
+    // for as a switch and changed by the trait's own function.
+    const { asked, errors: unreadable } = requestedSwitches(resolved.Model, body)
+    if (Object.keys(unreadable).length > 0)
+      return response.json({ message: 'Validation failed.', errors: unreadable }, 422)
+    if (Object.keys(changes).length === 0 && asked.length === 0)
       return response.json({ message: 'No writable fields in the request body.' }, 422)
 
     try {
       const row = await resolved.Model.find(id)
       if (!row)
         return response.json({ message: `${resolved.modelName} ${id} not found.` }, 404)
-      await resolved.Model.update(id, changes)
-      return { ok: true, id, changed: Object.keys(changes) }
+      // Refused before anything is written: a switch that cannot be turned
+      // that way refuses the whole save, like any other field's rule.
+      const { turning, errors } = planSwitches(resolved.Model, asked, asked.length > 0 ? await storedSwitches(resolved.Model, id) : {})
+      if (Object.keys(errors).length > 0)
+        return response.json({ message: 'Validation failed.', errors }, 422)
+      if (Object.keys(changes).length > 0)
+        await resolved.Model.update(id, changes)
+      for (const request of turning)
+        await request.switch.set(id, request.on)
+      return { ok: true, id, changed: [...Object.keys(changes), ...turning.map(request => request.switch.column)] }
     }
     catch (error) {
+      // The model's own rules rejected the row: the caller's mistake, named
+      // field by field, not a server failure (stacksjs/stacks#3007).
+      if (error instanceof ModelValidationError)
+        return response.json({ message: 'Validation failed.', errors: error.errors }, 422)
+      // A value another row already holds, on a field the model marks unique
+      // (a user's email). The person can fix that, so it is named on the field
+      // like any other rule, not reported as a failed save.
+      if (isUniqueViolation(error)) {
+        const errors = duplicateFieldErrors(resolved.Model, Object.keys(changes))
+        if (Object.keys(errors).length > 0)
+          return response.json({ message: 'Validation failed.', errors }, 422)
+      }
+      // A record this one points at was deleted while the form was open. The
+      // person can pick another, so it is said on that field.
+      const missing = missingRelationErrors(resolved.Model, error, Object.keys(changes), humanizeIdentifier)
+      if (Object.keys(missing).length > 0)
+        return response.json({ message: 'Validation failed.', errors: missing }, 422)
       return dashboardOperationalError(error, 'The model record could not be updated.', 'ModelUpdateAction', 500)
     }
   },

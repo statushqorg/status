@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/tt-a1i/archify/schemas/sequence.schema.json",
-  "title": "Technical Sequence Diagram",
+  "title": "Archify Sequence Diagram",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -22,24 +22,62 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "title"
+        "title",
+        "output"
       ],
       "properties": {
         "title": {
           "type": "string",
           "minLength": 1
         },
+        "locale": {
+          "$ref": "common.schema.json#/$defs/locale"
+        },
+        "translations": {
+          "$ref": "common.schema.json#/$defs/translations"
+        },
         "subtitle": {
           "type": "string"
         },
         "output": {
-          "type": "string"
+          "$ref": "common.schema.json#/$defs/portableOutputPath"
         },
         "animation": {
-          "enum": [
-            "trace",
-            "none"
-          ]
+          "$ref": "common.schema.json#/$defs/animation"
+        },
+        "visual_preset": {
+          "$ref": "common.schema.json#/$defs/visualPreset"
+        },
+        "quality_profile": {
+          "$ref": "common.schema.json#/$defs/qualityProfile"
+        },
+        "column_fit": {
+          "description": "Horizontal participant layout. Defaults to spread whether or not meta.viewBox is supplied. Explicit fixed preserves the historical 86px boxes and 108px column gap. Use spread when a wide viewBox would leave unused horizontal space or meaningful participant labels do not fit the fixed boxes; spread derives box width and column distance from the viewBox with at least a 16px gap between participant cards without changing participant order or message semantics.",
+          "enum": ["fixed", "spread"]
+        },
+        "repository": {
+          "$ref": "common.schema.json#/$defs/repository"
+        },
+        "views": {
+          "$ref": "common.schema.json#/$defs/guidedViews"
+        },
+        "legend": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "$ref": "common.schema.json#/$defs/legendMode" },
+            "entries": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "default": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "emphasis": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "security": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "dashed": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "return": { "$ref": "common.schema.json#/$defs/legendEntry" }
+              }
+            }
+          }
         },
         "viewBox": {
           "type": "array",
@@ -83,6 +121,13 @@
           },
           "sublabel": {
             "type": "string"
+          },
+          "icon": { "$ref": "common.schema.json#/$defs/nodeIcon" },
+          "brand": {
+            "$ref": "common.schema.json#/$defs/brandMark"
+          },
+          "sources": {
+            "$ref": "common.schema.json#/$defs/sourceReferences"
           }
         }
       }
@@ -124,6 +169,9 @@
           "label"
         ],
         "properties": {
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
           "from": {
             "$ref": "common.schema.json#/$defs/id"
           },

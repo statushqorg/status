@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Comment',
@@ -8,6 +8,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { erasure: 'anonymize', basis: 'legitimate_interests', purpose: 'Comments on posts' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: {
@@ -24,6 +25,7 @@ export default defineModel({
 
   attributes: {
     authorName: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -33,6 +35,7 @@ export default defineModel({
     },
 
     authorEmail: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -79,6 +82,7 @@ export default defineModel({
     },
 
     ipAddress: {
+      personal: true,
       required: false,
       fillable: true,
       validation: {
@@ -88,6 +92,7 @@ export default defineModel({
     },
 
     userAgent: {
+      personal: true,
       required: false,
       fillable: true,
       validation: {
@@ -99,11 +104,19 @@ export default defineModel({
     isApproved: {
       required: false,
       fillable: true,
-      default: 0,
+      default: false,
       validation: {
-        rule: schema.number(),
+        rule: schema.boolean(),
       },
-      factory: faker => faker.number.int({ min: 0, max: 1 }),
+      factory: faker => faker.datatype.boolean(),
+    },
+  },
+
+  dashboard: {
+    // Prose, asked for in a box with room for it.
+    fields: {
+      content: { input: 'longtext' },
+      body: { input: 'longtext' },
     },
   },
 } as const)

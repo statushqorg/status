@@ -29,8 +29,6 @@ const records = state<ShippingMethodRecord[]>([])
 const loading = state(true)
 const loadError = state('')
 const search = state('')
-const page = state(1)
-const perPage = state(10)
 const editorOpen = state(false)
 const editorMode = state<'create' | 'edit'>('create')
 const editing = state<ShippingMethodRecord | null>(null)
@@ -49,11 +47,6 @@ function filteredRecords(): ShippingMethodRecord[] {
     record.description,
     record.status,
   ].some(value => String(value || '').toLowerCase().includes(query)))
-}
-
-function paginatedRecords(): ShippingMethodRecord[] {
-  const start = (page() - 1) * perPage()
-  return filteredRecords().slice(start, start + perPage())
 }
 
 function activeCount(): number {
@@ -80,9 +73,6 @@ async function loadMethods(): Promise<void> {
     if (!Array.isArray(data))
       throw new TypeError('Shipping methods response was not an array.')
     records.set(data)
-    const lastPage = Math.max(1, Math.ceil(filteredRecords().length / perPage()))
-    if (page() > lastPage)
-      page.set(lastPage)
   }
   catch (error) {
     loadError.set(error instanceof Error ? error.message : String(error))
@@ -95,7 +85,6 @@ async function loadMethods(): Promise<void> {
 
 function handleSearch(value: string): void {
   search.set(value)
-  page.set(1)
 }
 
 function openCreate(): void {
@@ -184,9 +173,6 @@ async function confirmDelete(): Promise<void> {
     })
     records.set(records().filter(record => record.id !== current.id))
     deleting.set(null)
-    const lastPage = Math.max(1, Math.ceil(filteredRecords().length / perPage()))
-    if (page() > lastPage)
-      page.set(lastPage)
     pushToast('success', 'Shipping method deleted', { detail: current.name })
   }
   catch (error) {
@@ -197,45 +183,31 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
-function goToPage(value: number): void {
-  page.set(value)
-}
-
 onMount(() => {
   void loadMethods()
 })
 </script>
 
-<div class="space-y-6">
+<div class="flex flex-col gap-6">
   <TabNavigation model-value="methods" />
 
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">Shipping methods</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Manage persisted rates, activation state, and shipping-zone coverage.</p>
-    </div>
-    <div class="flex gap-2">
-      <Button :loading="loading()" variant="secondary" @click="loadMethods()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
-      <Button @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add method</Button>
-    </div>
-  </header>
+  <PageHeader title="Shipping methods" description="Manage persisted rates, activation state, and shipping-zone coverage.">
+  <div class="flex gap-2">
+    <Button :loading="loading()" variant="secondary" @click="loadMethods()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add method</Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadMethods()">Retry</Button></div>
 
-  <section aria-label="Shipping method metrics" class="grid gap-3 grid-cols-1 sm:grid-cols-3">
-    <template :for="item in metricCards()" :key="item.label"><article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">{{ item.label }}</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p><p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">{{ item.detail }}</p></article></template>
-  </section>
+  <MetricCards label="Shipping method metrics" columns="grid-cols-1 sm:grid-cols-3" :items="metricCards()" />
 
   <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-xl dark:border-neutral-700">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-4 border-b border-gray-200 dark:border-neutral-700">
       <div><h2 class="font-semibold text-gray-900 dark:text-white">Configured methods</h2><p class="mt-0.5 text-gray-500 text-xs dark:text-neutral-400">{{ filteredRecords().length }} matching records</p></div>
       <SearchFilter placeholder="Search shipping methods" class="w-full sm:w-80" @search="handleSearch" />
     </div>
-    <div :if="loading()" class="flex items-center justify-center py-24 text-gray-500 text-sm dark:text-neutral-400"><span class="mr-2 h-4 w-4 animate-spin i-hugeicons-loading-03"></span>Loading shipping methods</div>
-    <ShippingMethodsTable :if="!loading()" :methods="paginatedRecords()" @edit="openEdit" @delete="requestDelete" />
-    <div :if="!loading()" class="px-4 py-3 bg-gray-50 dark:bg-neutral-900/50 border-gray-200 border-t dark:border-neutral-700">
-      <DeliveryPagination :current-page="page()" :total-items="filteredRecords().length" :items-per-page="perPage()" @select="goToPage" />
-    </div>
+    <ShippingMethodsTable :methods="filteredRecords()" :loading="loading()" :page-reset-key="search()" @edit="openEdit" @delete="requestDelete" />
   </section>
 </div>
 
