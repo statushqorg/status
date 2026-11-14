@@ -47,6 +47,7 @@ const ERRORS = {
   missing_config: 'That channel type needs its connection details filled in.',
   invalid_headers: 'Extra headers must be a JSON object, like {"Authorization": "Bearer ..."}.',
   unknown_type: 'Pick a channel type from the list.',
+  invalid_teams_url: 'That is not a Teams Workflows URL. Old Office 365 connector URLs (outlook.office.com) no longer deliver, so create a Workflow in the channel and paste its URL.',
 }
 const errorMessage = ERRORS[query.get('error')] || ''
 

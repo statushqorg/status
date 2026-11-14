@@ -1,6 +1,6 @@
 import type { RequestInstance } from '@stacksjs/types'
 import { Action } from '@stacksjs/actions'
-import { Auth, consumeTwoFactorChallenge, verifyTwoFactorLoginCode } from '@stacksjs/auth'
+import { Auth, verifyTwoFactorCredential, withTwoFactorChallenge } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
 import { schema } from '@stacksjs/validation'
 import { buildAuthCookie, sessionExpiryMinutes } from '../../Support/authCookie'
@@ -13,6 +13,11 @@ import { buildAuthCookie, sessionExpiryMinutes } from '../../Support/authCookie'
  * mirroring LoginAction/RegisterAction do — otherwise a 2FA-enabled user
  * completes the second step but the server-rendered dashboard can't see
  * their session. See Actions/Auth/authCookie.ts.
+ *
+ * The verification is the framework's current one: the challenge is consumed
+ * and the session issued under the same lock a credential reset takes, so a
+ * password reset cannot land between the second factor and the token. It also
+ * accepts a recovery code wherever an account has them.
  */
 export default new Action({
   name: 'VerifyTwoFactorLoginAction',
@@ -25,8 +30,8 @@ export default new Action({
       message: 'A challenge token is required.',
     },
     code: {
-      rule: schema.string().min(6).max(6),
-      message: 'Code must be a 6-digit TOTP code.',
+      rule: schema.string().min(6).max(64),
+      message: 'Enter the 6-digit code from your authenticator app.',
     },
   },
 
@@ -34,25 +39,22 @@ export default new Action({
     const challengeToken = request.get('challenge_token')
     const code = request.get('code')
 
-    // Single-use: a second attempt with the same challenge token
-    // (whether the code was right or wrong) must start over from
-    // LoginAction, not retry — mirrors the WebAuthn challenge
-    // delete-on-read semantics in passkey.ts (stacksjs/stacks#1866).
-    const userId = await consumeTwoFactorChallenge(challengeToken)
-    if (!userId)
-      return response.unauthorized('This login attempt has expired - please sign in again.')
-
-    const valid = await verifyTwoFactorLoginCode(userId, code)
-    if (!valid)
-      return response.unauthorized('Invalid code - please sign in again.')
-
     // Carry the "remember me" tier the user chose on step 1 through to the
     // session issued here, so a 2FA account is not silently downgraded to the
     // baseline week. The login page re-sends the checkbox with the TOTP code.
     const expiresInMinutes = sessionExpiryMinutes(request.get('remember'))
-    const result = await Auth.loginUsingId(userId, { expiresInMinutes })
+
+    // Single-use: a second attempt with the same challenge token
+    // (whether the code was right or wrong) must start over from
+    // LoginAction, not retry — mirrors the WebAuthn challenge
+    // delete-on-read semantics in passkey.ts (stacksjs/stacks#1866).
+    const result = await withTwoFactorChallenge(challengeToken, async (userId) => {
+      if (!await verifyTwoFactorCredential(userId, code))
+        return null
+      return Auth.loginUsingId(userId, { expiresInMinutes })
+    })
     if (!result)
-      return response.unauthorized('Invalid code - please sign in again.')
+      return response.unauthorized('Invalid or expired code - please sign in again.')
 
     const user = result.user
 

@@ -120,6 +120,22 @@ describe('buildChannelConfig', () => {
     })
   })
 
+  test('a Teams channel takes a Workflows URL and turns the retired connector away', () => {
+    const workflow = 'https://prod-00.westus.logic.azure.com/workflows/abc/triggers/manual/paths/invoke'
+    expect(buildChannelConfig('teams', from({ cfg_teams_url: workflow })))
+      .toEqual({ ok: true, config: JSON.stringify({ webhookUrl: workflow }) })
+    for (const retired of [
+      'https://outlook.office.com/webhook/abc',
+      'https://contoso.webhook.office.com/webhookb2/abc',
+      'http://prod-00.westus.logic.azure.com/workflows/abc',
+      'https://logic.azure.com.example.test/workflows/abc',
+      'not a url',
+    ]) {
+      expect(buildChannelConfig('teams', from({ cfg_teams_url: retired })))
+        .toEqual({ ok: false, error: 'invalid_teams_url' })
+    }
+  })
+
   test('non-object headers are rejected', () => {
     const url = 'https://example.com/hook'
     // `...config.headers` on an array spreads indices into the header map;

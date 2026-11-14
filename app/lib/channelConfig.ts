@@ -84,9 +84,11 @@ export const CHANNEL_TYPES: ChannelType[] = [
   {
     value: 'teams',
     label: 'Microsoft Teams',
-    setup: 'Teams → the channel’s ⋯ menu → Connectors → Incoming Webhook → Configure, name it, then copy the URL.',
+    // Microsoft retired the Office 365 connectors (`outlook.office.com/webhook`
+    // and `*.webhook.office.com`); the sender only posts to a Workflows URL.
+    setup: 'Teams → the channel’s ⋯ menu → Workflows → "Post to a channel when a webhook request is received", pick the channel, then copy the URL it gives you.',
     fields: [
-      { name: 'cfg_teams_url', key: 'webhookUrl', label: 'Incoming webhook URL', input: 'url', required: true, placeholder: 'https://outlook.office.com/webhook/...' },
+      { name: 'cfg_teams_url', key: 'webhookUrl', label: 'Workflow webhook URL', input: 'url', required: true, placeholder: 'https://prod-00.westus.logic.azure.com/workflows/...' },
     ],
   },
   {
@@ -143,7 +145,7 @@ export function channelTypeLabel(type: string): string {
 
 export type BuildConfigResult =
   | { ok: true, config: string }
-  | { ok: false, error: 'unknown_type' | 'missing_config' | 'invalid_headers' }
+  | { ok: false, error: 'unknown_type' | 'missing_config' | 'invalid_headers' | 'invalid_teams_url' }
 
 /**
  * Assemble a channel's config JSON from submitted form values.
@@ -158,6 +160,26 @@ export type BuildConfigResult =
  * `config.server || 'https://ntfy.sh'` survives an absent key but an empty
  * string would send the request to `/topic` on no host at all.
  */
+/**
+ * The hosts a Teams Workflows webhook lives on: the same list the sender
+ * (`@stacksjs/chat`) checks before it posts. Kept here too so a URL the sender
+ * would refuse is turned away when the channel is saved, with a message,
+ * rather than failing every alert later in a queue retry nobody is watching.
+ */
+const TEAMS_WORKFLOW_HOST = /(?:^|\.)(?:api\.powerplatform\.com|api\.powerautomate\.com|flow\.microsoft\.com|logic\.azure\.(?:com|us|cn))$/i
+
+/** True for an https URL on a Teams Workflows host. */
+export function isTeamsWorkflowUrl(value: string): boolean {
+  let url: URL
+  try {
+    url = new URL(value)
+  }
+  catch {
+    return false
+  }
+  return url.protocol === 'https:' && TEAMS_WORKFLOW_HOST.test(url.hostname)
+}
+
 export function buildChannelConfig(type: string, get: (name: string) => unknown): BuildConfigResult {
   const spec = BY_VALUE.get(type)
   if (!spec)
@@ -189,6 +211,9 @@ export function buildChannelConfig(type: string, get: (name: string) => unknown)
       config[field.key] = parsed
       continue
     }
+
+    if (type === 'teams' && field.key === 'webhookUrl' && !isTeamsWorkflowUrl(value))
+      return { ok: false, error: 'invalid_teams_url' }
 
     config[field.key] = value
   }
