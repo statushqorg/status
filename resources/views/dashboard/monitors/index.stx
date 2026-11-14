@@ -227,6 +227,11 @@ const REALTIME = {
 // otherwise stamps every fragment 'stx App'). useHead is the sanctioned
 // per-page head hook for fragment views.
 useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: 'noindex' }] })
+// Conditions cannot read a `__` name: stx withholds those from @if and
+// @unless and treats the unknown name as false, so both branches of a test
+// rendered nothing. The rows keep their `__` names (that is what keeps them
+// out of the client payload); these plain flags are what the template tests.
+const MONITOR_ROW_COUNT = __monitorRows.length
 </script>
 
 @include('../partials/app-head.stx')
@@ -306,7 +311,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
       </div>
     </div>
 
-    @if (__monitorRows.length === 0)
+    @if (MONITOR_ROW_COUNT === 0)
       <EmptyState
         title="No monitors match these filters"
         description="Create your first monitor to start tracking uptime, or clear the filters above."
@@ -315,7 +320,7 @@ useHead({ title: 'Monitors \u00b7 StatusHQ', meta: [{ name: 'robots', content: '
       </EmptyState>
     @endif
 
-    @if (__monitorRows.length > 0)
+    @if (MONITOR_ROW_COUNT > 0)
       <section class="scroll-x card" aria-label="Monitor list">
         <div ref="rowsTable" class="rows" role="table" aria-label="Monitor list">
           <div class="cols-monitors thead trow" role="row">

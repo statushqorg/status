@@ -128,6 +128,13 @@ const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
 // otherwise stamps every fragment 'stx App'). useHead is the sanctioned
 // per-page head hook for fragment views.
 useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noindex' }] })
+// Conditions cannot read a `__` name: stx withholds those from @if and
+// @unless and treats the unknown name as false, so both branches of a test
+// rendered nothing. The secret and the passkey rows keep their `__` names
+// (that is what keeps them out of the client payload); these plain flags are
+// what the template tests.
+const SETUP_OPEN = !!__SETUP
+const PASSKEY_COUNT = __passkeys.length
 </script>
 
 @include('../partials/app-head.stx')
@@ -205,12 +212,12 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           </form>
         @endif
 
-        @if (!TWO_FA_ENABLED && !__SETUP)
+        @if (!TWO_FA_ENABLED && !SETUP_OPEN)
           <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
           <StxLink class="button primary" to="/dashboard/settings/security?setup=1">Set up two-factor auth</StxLink>
         @endif
 
-        @if (!TWO_FA_ENABLED && __SETUP)
+        @if (!TWO_FA_ENABLED && SETUP_OPEN)
           <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes.</p>
           <div class="field">
             <label>Secret (enter manually)</label>
@@ -242,7 +249,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           :disabled="pkBusy() || pkUnsupported()" :aria-busy="pkBusy()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
         <div id="pk-msg" :class="pkMessage() ? ('pk-msg show ' + pkKind()) : 'pk-msg'" role="status">{{ pkMessage() }}</div>
       </div>
-      @if (__passkeys.length === 0)
+      @if (PASSKEY_COUNT === 0)
         <div class="card-body">
           <EmptyState
             title="No passkeys yet"
@@ -250,7 +257,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
           />
         </div>
       @endif
-      @if (__passkeys.length > 0)
+      @if (PASSKEY_COUNT > 0)
         <div class="rows" role="table" aria-label="Passkeys">
           <div class="cols-passkeys thead trow" role="row">
             <span class="tcell" role="columnheader">Credential</span>
