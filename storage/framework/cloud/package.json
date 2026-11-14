@@ -48,16 +48,16 @@
     "@stacksjs/config": "^0.75.585",
     "@stacksjs/dns": "^0.75.585",
     "@stacksjs/logging": "^0.75.585",
-    "@stacksjs/path": "^0.75.585",
-    "@stacksjs/queue": "^0.75.585",
-    "@stacksjs/router": "^0.75.585",
-    "@stacksjs/storage": "^0.75.585",
+    "@stacksjs/path": "^0.75.586",
+    "@stacksjs/queue": "^0.75.586",
+    "@stacksjs/router": "^0.75.586",
+    "@stacksjs/storage": "^0.75.586",
     "@stacksjs/utils": "^0.75.585",
     "@stacksjs/validation": "^0.75.585"
   },
   "devDependencies": {
-    "@stacksjs/cli": "^0.75.585",
+    "@stacksjs/cli": "^0.75.586",
     "better-dx": "^0.2.7",
-    "@stacksjs/env": "^0.75.585"
+    "@stacksjs/env": "^0.75.586"
   }
 }
