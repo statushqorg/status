@@ -99,7 +99,7 @@
 
   runtime.inspectResponse = inspectResponse;
 
-  function handleSubmitResponse(response, _textStatus, _jqXHR, callbackFormId) {
+  function handleSubmitResponse(response, textStatus, jqXHR, callbackFormId) {
       var accepted = inspectResponse(response, callbackFormId);
       if (!accepted) {
         if (typeof window.__ctNinjaMethod2AfterResponse === 'function') {

@@ -31,7 +31,7 @@ export default new Action({
     },
     code: {
       rule: schema.string().min(6).max(64),
-      message: 'Enter the 6-digit code from your authenticator app.',
+      message: 'Enter the 6-digit code from your authenticator app, or a recovery code.',
     },
   },
 

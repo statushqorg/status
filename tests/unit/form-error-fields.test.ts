@@ -37,7 +37,7 @@ const VIEWS: View[] = [
   { file: 'dashboard/monitors/[id].stx', labelFn: 'formErrorLabel', fieldFn: 'errorFields', fieldless: [] },
   { file: 'dashboard/maintenance/index.stx', labelFn: 'errorLabel', fieldFn: 'errorFields', fieldless: ['status_invalid'] },
   { file: 'dashboard/maintenance/[id].stx', labelFn: 'errorLabel', fieldFn: 'errorFields', fieldless: [] },
-  { file: 'dashboard/settings/security.stx', labelFn: 'errorLabel', fieldFn: 'errorFields', fieldless: ['setup_expired'] },
+  { file: 'dashboard/settings/security.stx', labelFn: 'errorLabel', fieldFn: 'errorFields', fieldless: [] },
   { file: 'dashboard/status-reports/index.stx', labelFn: 'errorLabel', fieldFn: 'errorFields', fieldless: [] },
 ]
 

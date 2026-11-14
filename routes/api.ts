@@ -221,6 +221,10 @@ route.post('/team-forms/switch', 'Actions/Teams/SwitchTeamAction')
 // native form posts carry only the login cookie, no bearer header.
 route.post('/security-forms/two-factor/enable', 'Actions/Security/DashboardEnableTwoFactorAction')
 route.post('/security-forms/two-factor/disable', 'Actions/Security/DashboardDisableTwoFactorAction')
+// Enable and recovery-codes answer JSON, not a redirect: each returns the
+// account's recovery codes exactly once, and a body is the only place they
+// can travel without being written down somewhere on the way.
+route.post('/security-forms/two-factor/recovery-codes', 'Actions/Security/DashboardRegenerateRecoveryCodesAction')
 route.post('/security-forms/passkeys/delete', 'Actions/Security/DashboardDeletePasskeyAction')
 
 // Passkey (WebAuthn) enrollment + passwordless sign-in (stacksjs/status#1

@@ -2954,6 +2954,15 @@ html:has(meta[name="stx-layout-group"][content="default"]) {
   .pk-msg.show { display: block; }
   .pk-msg.ok { color: var(--success); }
   .pk-msg.err { color: var(--danger); }
+  /* The recovery-code steps swap whole bands of the two-factor card in and
+     out from signals. A bound class is added to the element's own, never
+     swapped for it, so a band that starts hidden cannot carry \`.hide\` in its
+     markup and have a binding take it off: it carries \`.reveal\` and the
+     binding adds \`.show\`, which also keeps it hidden before the client
+     script has run. The !important is the auth sheet's, for its reason: it
+     outranks \`.flash\`'s and \`.card-body\`'s own display, which the plain
+     hidden attribute cannot. */
+  .hide, .reveal:not(.show) { display: none !important; }
 
 
   /* ---- invite/[uuid].stx ---- */

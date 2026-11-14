@@ -90,7 +90,7 @@
   // jQuery(document).trigger(name, [form, response]). addEventListener does not
   // receive these success events. The response is used only by object identity
   // so the redirect and completion callbacks for one response count once.
-  function onAjaxSuccess(_event, form, response) {
+  function onAjaxSuccess(event, form, response) {
     var id = formId(form);
     if (!id || !response || responseWasHandled(response)) return;
     emitAccepted(id, form, 'ajax');

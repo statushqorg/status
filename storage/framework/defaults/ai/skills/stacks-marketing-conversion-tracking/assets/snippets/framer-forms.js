@@ -64,7 +64,7 @@
         if (String(method).toUpperCase() === 'POST' && /^https:\/\/api\.framer\.com\/forms\/v1\/forms\/[a-f0-9-]+\/submit(?:\?.*)?$/.test(url || '')) {
           attempts = [];
           var now = Date.now();
-          pending = pending.filter(function (_attempt) { return now - attempt.time < 60000; });
+          pending = pending.filter(function (attempt) { return now - attempt.time < 60000; });
           for (var i = 0; i < pending.length; i++) {
             if (!pending[i].claimed) {
               pending[i].claimed = true;
