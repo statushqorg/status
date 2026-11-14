@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { Auth, createTwoFactorChallenge, disableTwoFactor, generateTwoFactorToken, getTwoFactorState, remainingTwoFactorRecoveryCodes } from '@stacksjs/auth'
+import { Auth, createTwoFactorChallenge, disableTwoFactor, generateTwoFactorToken, getTwoFactorState, remainingTwoFactorRecoveryCodes, verifyTwoFactorCredential } from '@stacksjs/auth'
 import { db } from '@stacksjs/database'
 import { featureTest } from '@stacksjs/testing'
 import User from '../../app/Models/User'
@@ -238,6 +238,77 @@ describe('Security settings backend (stacksjs/status#1 Phase 9 follow-up)', () =
     expect((await res.json<CodesBody>()).recoveryCodes).toHaveLength(10)
 
     await disableTwoFactor(ownerId)
+  })
+
+  describe('without JavaScript (the browser submits the forms itself)', () => {
+    // Codes are checked with the framework's own verifier rather than by
+    // signing in: the sign-in route allows a handful of requests a minute, and
+    // spending them here made the recovery-code tests below answer 429. They
+    // run on the second account so the two groups share no lockout either.
+    const acceptedForOther = (code: string) => verifyTwoFactorCredential(otherId, code)
+
+    // What a form navigation sends, as opposed to the page's fetch.
+    const asBrowser = (token: string) => featureTest().withHeaders({ Authorization: `Bearer ${token}`, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' })
+
+    test('a wrong setup code goes back to the open setup step with a worded error, and enables nothing', async () => {
+      await authed(otherToken).post('/generate-two-factor-secret', {})
+      const res = await asBrowser(otherToken).post('/api/security-forms/two-factor/enable', { code: 'abcdef' })
+      expect(res.status).toBe(303)
+      expect(res.headers.get('Location')).toBe('/dashboard/settings/security?setup=1&error=invalid_code')
+      expect(res.headers.get('Cache-Control')).toBe('private, no-store')
+      expect((await getTwoFactorState(otherId)).enabled).toBe(false)
+    })
+
+    test('an expired setup goes back with setup_expired', async () => {
+      await db.deleteFrom('two_factor_pending_secrets').where('user_id', '=', otherId).execute()
+      const res = await asBrowser(otherToken).post('/api/security-forms/two-factor/enable', { code: '123456' })
+      expect(res.status).toBe(303)
+      expect(res.headers.get('Location')).toBe('/dashboard/settings/security?error=setup_expired')
+    })
+
+    test('enabling answers a document that shows the codes once and is never cached', async () => {
+      const setup = await authed(otherToken).post('/generate-two-factor-secret', {})
+      const { secret } = await setup.json<{ secret: string }>()
+      const res = await asBrowser(otherToken).post('/api/security-forms/two-factor/enable', { code: await generateTwoFactorToken(secret) })
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Content-Type')).toContain('text/html')
+      expect(res.headers.get('Cache-Control')).toBe('private, no-store')
+      expect(res.headers.get('Set-Cookie')).toBeNull()
+
+      const html = await res.text()
+      const codes = [...html.matchAll(/<code>([^<]+)<\/code>/g)].map(match => match[1]!)
+      expect(codes).toHaveLength(10)
+      for (const code of codes) expect(code).toMatch(RECOVERY_CODE)
+      expect(html).toContain('href="/dashboard/settings/security?twofa=enabled"')
+      expect(html).not.toContain('{"')
+      expect((await getTwoFactorState(otherId)).enabled).toBe(true)
+
+      // They are the account's real codes: one of them signs in.
+      expect(await acceptedForOther(codes[0]!)).toBe(true)
+
+      // Regenerating without usable proof goes back with a worded error. Too
+      // short to be either kind of code, so the action turns it away itself
+      // and it does not count toward the account's wrong-code lockout.
+      const refused = await asBrowser(otherToken).post('/api/security-forms/two-factor/recovery-codes', { code: '123' })
+      expect(refused.status).toBe(303)
+      expect(refused.headers.get('Location')).toBe('/dashboard/settings/security?error=bad_recovery_proof')
+      expect(await acceptedForOther(codes[1]!)).toBe(true)
+
+      // With proof it answers the new set as a document, and retires the old.
+      const renewed = await asBrowser(otherToken).post('/api/security-forms/two-factor/recovery-codes', { code: codes[2]! })
+      expect(renewed.status).toBe(200)
+      expect(renewed.headers.get('Cache-Control')).toBe('private, no-store')
+      const fresh = [...(await renewed.text()).matchAll(/<code>([^<]+)<\/code>/g)].map(match => match[1]!)
+      expect(fresh).toHaveLength(10)
+      // A new set, none of it the old one, and the old one no longer works.
+      for (const code of fresh) expect(code).toMatch(RECOVERY_CODE)
+      expect(fresh.some(code => codes.includes(code))).toBe(false)
+      expect(await acceptedForOther(fresh[0]!)).toBe(true)
+      expect(await acceptedForOther(codes[3]!)).toBe(false)
+
+      await disableTwoFactor(otherId)
+      await db.deleteFrom('two_factor_recovery_codes').where('user_id', '=', otherId).execute()
+    })
   })
 
   describe('recovery codes', () => {

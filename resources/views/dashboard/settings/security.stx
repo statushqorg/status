@@ -140,18 +140,31 @@ const flashPasskeyRemoved = query.get('passkey') === 'removed'
 const flashPasskeyAdded = query.get('passkey') === 'added'
 const flashError = query.get('error') || ''
 
-// Only the redirect-back form (turning two-factor off) reports through the
-// address. The setup and recovery-code forms answer in place, and their
-// messages come from the actions themselves.
+// What a redirect back to this page reports through the address. Turning
+// two-factor off always answers that way. The setup and recovery-code forms
+// answer in place when the page's script submits them, and only come back
+// here when the browser submitted the form itself (scripts off): see
+// app/lib/recoveryCodesFallback.ts.
 function errorLabel(code) {
   if (code === 'bad_password') return 'Incorrect password. Two-factor auth is still enabled.'
+  if (code === 'invalid_code') return 'That code did not match. Scan the current QR secret and try again.'
+  if (code === 'setup_expired') return 'That setup session expired. Start again to get a fresh secret.'
+  if (code === 'already_enabled') return 'Two-factor authentication is already on for this account.'
+  if (code === 'bad_recovery_proof') return 'That code did not match. Your current recovery codes still work.'
+  if (code === 'recovery_locked') return 'Too many wrong codes. Wait 15 minutes and try again.'
   return ''
 }
 
 // Which control the banner is about, so that one alone carries aria-invalid.
+// An expired setup, a factor that is already on and a lockout are about the
+// account's state, not a field, so they mark nothing.
 function errorFields(code) {
   if (code === 'bad_password')
     return ['two-factor-password']
+  if (code === 'invalid_code')
+    return ['two-factor-code']
+  if (code === 'bad_recovery_proof')
+    return ['recovery-proof']
   return []
 }
 
@@ -264,7 +277,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
               <div class="field">
                 <label for="recovery-proof">Authenticator or recovery code</label>
                 <input id="recovery-proof" type="text" name="code" required class="input mono" minlength="6" maxlength="64" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="000000" :aria-invalid="rcError() ? 'true' : 'false'" aria-describedby="recovery-proof-help rc-error" />
-                <p id="recovery-proof-help" class="help">Enter the current 6-digit code from your app, or one of your recovery codes. A new set replaces every code you have now.</p>
+                <p id="recovery-proof-help" class="help">Enter the current 6-digit code from your app, or one of your recovery codes. A new set replaces every code you have now. Five wrong codes in a row pause two-factor sign-in on this account for 15 minutes.</p>
               </div>
             </div>
             <button type="submit" class="button" :disabled="rcBusy()" :aria-busy="rcBusy()">{{ rcBusy() ? 'Generating…' : 'Generate new recovery codes' }}</button>
