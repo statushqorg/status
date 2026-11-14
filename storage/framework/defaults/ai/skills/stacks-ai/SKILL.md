@@ -563,3 +563,76 @@ HTTP ranges, safely restarts when Range is ignored, and honors caller aborts.
 It defaults to four attempts with a 180,000 ms timeout per transfer. Keep model
 download handling in this package rather than copying a shell downloader into
 an application. The Whisper executable remains a managed Pantry dependency.
+
+## Realtime audio transport
+
+`connectRealtime` from `@stacksjs/ai/realtime` opens a server-only GA Realtime
+audio session with Bun's WebSocket client. Supply `apiKey`, an explicitly chosen
+`model`, bounded `instructions`, and `onEvent`. The default audio format is
+`audio/pcmu` for phone media; PCM uses mono 24 kHz. The API key travels only in
+server handshake headers. No connection is opened on import.
+
+Wait for the returned session before appending audio. The transport refuses
+oversized or invalid base64, bounds socket backpressure, and never reconnects
+or retries automatically. Set a maximum call duration and enforce wallet
+reservations outside the transport. `interrupt(itemId, playedMilliseconds)`
+cancels generation and truncates history to the audio actually played.
+
+Only declared completed tool calls are emitted, once per call ID. The caller
+authorizes and executes tools, then submits the result. No tool executes inside
+the transport. Deduplicate response usage by response ID and reconcile incomplete
+calls against provider billing. A closed socket is not proof of final usage.
+
+Retained tests: `core/ai/tests/realtime.test.ts`, including a real local Bun
+WebSocket handshake. Live OpenAI audio quality, account access, media bridging
+and production latency require separate provider qualification. Protocol sources:
+<https://developers.openai.com/api/docs/guides/voice-websockets> and
+<https://developers.openai.com/api/docs/guides/realtime-conversations>.
+
+## Durable SQL retrieval
+
+Use `createDurableRetrievalStore` from `@stacksjs/ai/durable-retrieval` when
+knowledge must survive process restarts. `VectorIndex` above remains memory only.
+The adapter takes the native application's parameterized SQL executor and its
+model-generated source/index/chunk table names. It performs exact pgvector cosine
+ranking on PostgreSQL. Explicit mode: 'lexical' uses native PostgreSQL
+`to_tsvector` / `plainto_tsquery` ranking, while SQLite uses bounded substring
+matching; it does not create tables,
+install extensions, maintain an ANN index, or authorize a caller for you.
+
+The source schema names workspace_id, project_id, source_key, language, audience,
+publication, permission_granted, deleted_at, current_revision and active_index_id.
+Indexes carry source_id, workspace_id, project_id, revision, status,
+embedding_model and dimensions. Chunks carry source_id, index_id, workspace_id,
+project_id, revision, content and embedding (JSON text). Keep these as app models.
+Declare `databaseExtensions: ['vector']` on the embedding-owning model: native
+migration generation emits `CREATE EXTENSION IF NOT EXISTS vector` only in the
+PostgreSQL corpus. Provision the pgvector server extension before migrating;
+missing server binaries or migration privileges fail explicitly. SQLite emits no
+PostgreSQL prerequisite and retains lexical retrieval.
+
+Every search requires a scope with numeric string workspaceId/projectId,
+language, audience ('public' or 'internal') and allowedSourceIds. Authorize these
+source ids through the application's live membership/source ACL before calling.
+An empty list denies all. The list is bounded to 10,000 ids. The SQL intersects
+that grant with ownership, audience, publication, permission state, deletion and
+active revision before ranking; PostgreSQL uses a materialized permitted relation
+so a vector expression cannot run on unauthorized rows. Applications must still
+invalidate sources atomically when their authoritative content or permissions
+change, and swap active_index_id only when a complete new revision is ready.
+
+`createConfiguredEmbeddingClient` from `@stacksjs/ai/embedding-client` consumes
+server AI driver config and an optional explicit OpenAI/Ollama provider, model and
+dimensions. `embed(texts, { signal })` makes a bounded provider HTTP request and
+validates batch indexes, finite nonzero vectors and consistent dimensions. Requests
+refuse redirects and combine a server deadline (at most 60 seconds) with caller
+cancellation. Endpoint URLs reject userinfo, query strings and fragments; OpenAI
+requires HTTPS except on loopback. An explicitly configured private Ollama host
+may use HTTP because it is a server-owned endpoint without provider credentials. It
+honors configured provider endpoints and never silently routes a chat-only
+provider's documents to another service. Provider secrets stay server-side.
+
+Evidence: `ai/tests/durable-retrieval.test.ts`,
+`ai/tests/durable-retrieval-postgres.test.ts` (set STACKS_TEST_PGVECTOR_URL to a
+local server with pgvector; the fixture owns its temporary database) and
+`database/tests/model-extensions.test.ts`.

@@ -17,7 +17,7 @@
   window.dataLayer = window.dataLayer || [];
 
   function isWs(c) { return c === ' ' || c === '\n' || c === '\r' || c === '\t'; }
-  function skipWs(_s, _p) { while (p.i < s.length && isWs(s.charAt(p.i))) p.i++; }
+  function skipWs(s, p) { while (p.i < s.length && isWs(s.charAt(p.i))) p.i++; }
   function stringEnd(s, p, decode) {
     if (s.charAt(p.i) !== '"') throw new Error('string');
     var start = p.i++;

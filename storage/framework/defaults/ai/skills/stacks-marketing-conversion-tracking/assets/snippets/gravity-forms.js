@@ -180,7 +180,7 @@ function acceptedIframe(frame){
 document.addEventListener('load',function(event){acceptedIframe(event.target);},true);
 var jqueryHooked=false;
 function hook(){
- if(!jqueryHooked&&typeof window.jQuery==='function'){jqueryHooked=true;window.jQuery(document).on('gform_confirmation_loaded.ctGallery',function(_event,id){fireLegacy(id);});}
+ if(!jqueryHooked&&typeof window.jQuery==='function'){jqueryHooked=true;window.jQuery(document).on('gform_confirmation_loaded.ctGallery',function(event,id){fireLegacy(id);});}
  if(modernHookInstalled||!window.gform||!gform.utils||!gform.utils.addAsyncFilter)return;
  modernHookInstalled=true;
  gform.utils.addAsyncFilter('gform/submission/pre_submission',function(data){
@@ -222,8 +222,8 @@ function hook(){
 hook();document.addEventListener('gform/theme/scripts_loaded',hook);document.addEventListener('DOMContentLoaded',hook);window.addEventListener('load',hook);
 document.addEventListener('submit',function(event){attempt(event.target,null,'submit');},true);
 document.addEventListener('click',function(event){var el=event.target;if(!el||!el.closest)return;var control=el.closest('[id^="gform_submit_button_"]');if(control)attempt(control.closest('form'),null,'submit');},true);
-function confirmationNode(_node){if(modernHookInstalled||!node||node.nodeType!==1)return;var nodes=[];if(node.matches&&node.matches('[id^="gform_confirmation_message_"], [id^="gform_confirmation_wrapper_"]'))nodes.push(_node);if(node.querySelectorAll){var list=node.querySelectorAll('[id^="gform_confirmation_message_"], [id^="gform_confirmation_wrapper_"]');for(var i=0;i<list.length;i++)nodes.push(list[i]);}for(var j=0;j<nodes.length;j++){var match=/gform_confirmation_(?:message|wrapper)_(\d+)/.exec(nodes[j].id||'');if(match&&!isNodeHidden(nodes[j]))fireLegacy(match[1]);}}
-if(typeof MutationObserver==='function')new MutationObserver(function(_mutations){for(var i=0;i<mutations.length;i++)for(var j=0;j<mutations[i].addedNodes.length;j++)confirmationNode(mutations[i].addedNodes[j]);}).observe(document.body||document.documentElement,{childList:true,subtree:true});
+function confirmationNode(node){if(modernHookInstalled||!node||node.nodeType!==1)return;var nodes=[];if(node.matches&&node.matches('[id^="gform_confirmation_message_"], [id^="gform_confirmation_wrapper_"]'))nodes.push(node);if(node.querySelectorAll){var list=node.querySelectorAll('[id^="gform_confirmation_message_"], [id^="gform_confirmation_wrapper_"]');for(var i=0;i<list.length;i++)nodes.push(list[i]);}for(var j=0;j<nodes.length;j++){var match=/gform_confirmation_(?:message|wrapper)_(\d+)/.exec(nodes[j].id||'');if(match&&!isNodeHidden(nodes[j]))fireLegacy(match[1]);}}
+if(typeof MutationObserver==='function')new MutationObserver(function(mutations){for(var i=0;i<mutations.length;i++)for(var j=0;j<mutations[i].addedNodes.length;j++)confirmationNode(mutations[i].addedNodes[j]);}).observe(document.body||document.documentElement,{childList:true,subtree:true});
 window.addEventListener('pagehide',function(){
  var markers=[];for(var id2 in pending)if(Object.prototype.hasOwnProperty.call(pending,id2)){var entry=pending[id2];if(entry.method!=='postback'||Date.now()-entry.time>10000||(!entry.trusted&&hasVisibleValidationErrors(entry.form)))continue;markers.push({id:id2,time:entry.time,path:entry.path});}
  if(markers.length)try{sessionStorage.setItem(markerKey,JSON.stringify(markers));}catch(e){}

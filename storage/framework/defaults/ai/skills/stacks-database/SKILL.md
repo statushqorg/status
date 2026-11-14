@@ -143,6 +143,14 @@ active transaction connection inside a transaction. It does not mark the request
 as a writer or change routing for unrelated reads. Session authentication uses
 this handle so a revoked session cannot authenticate from a stale replica.
 
+For transaction-bound adapters that register non-SQL work, call
+`assertActiveTransaction()` from `@stacksjs/database/runtime` before registering
+callbacks. It performs the same native ownership checks as the `db` facade:
+no missing or closed callback owner and no parent work while a nested savepoint
+is active. `isInTransaction()` alone only reports a dispatch scope; it does not
+prove that scope can accept work. Keep application ownership checks as well,
+and route SQL through `db` so native connection guards remain in force.
+
 ## SQL Template Tag (types.ts)
 
 ```typescript
@@ -351,6 +359,7 @@ SQLite's SQL on a Turso or `sqld` server. Configure `TURSO_DATABASE_URL`
     retention: 7,        // days
     pruneFrequency: 24,  // hours
     excludedQueries: ['query_logs'],
+    logHousekeeping: false, // true also records the queue's own polling of jobs, queue_workers, queue_circuit_state
     analysis: { enabled: true, analyzeAll: false, explainPlan: true, suggestions: true }
   }
 }

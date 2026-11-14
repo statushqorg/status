@@ -828,6 +828,7 @@ export const actions = {
   'Actions/Storefront/UpdateCartItemAction': '@stacksjs/defaults/app/Actions/Storefront/UpdateCartItemAction.ts',
   'Actions/Storefront/_shipping': '@stacksjs/defaults/app/Actions/Storefront/_shipping.ts',
   'Actions/SubscriberEmailAction': '@stacksjs/defaults/app/Actions/SubscriberEmailAction.ts',
+  'Actions/Support/SessionAction': '@stacksjs/defaults/app/Actions/Support/SessionAction.ts',
   'Actions/Teams/AcceptInvitationAction': '@stacksjs/defaults/app/Actions/Teams/AcceptInvitationAction.ts',
   'Actions/Teams/ShowInvitationAction': '@stacksjs/defaults/app/Actions/Teams/ShowInvitationAction.ts',
   'Actions/Teams/team-response': '@stacksjs/defaults/app/Actions/Teams/team-response.ts',

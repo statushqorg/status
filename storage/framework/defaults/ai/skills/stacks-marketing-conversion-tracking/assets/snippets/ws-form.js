@@ -10,7 +10,7 @@
   var seenEvents = typeof WeakSet === 'function' ? new WeakSet() : null;
   var lastSuccessByInstance = {};
   function unwrap(value) { return value && value.jquery ? value[0] : (value && value[0] && value[0].nodeType ? value[0] : value); }
-  function onAcceptedSubmit(event, _formObject, formId, instanceId, formEl) {
+  function onAcceptedSubmit(event, formObject, formId, instanceId, formEl) {
     if (event && seenEvents) {
       if (seenEvents.has(event)) return;
       seenEvents.add(event);
