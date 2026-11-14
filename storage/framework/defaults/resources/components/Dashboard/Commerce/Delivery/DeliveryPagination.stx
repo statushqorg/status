@@ -3,7 +3,7 @@ const currentPage = useReactiveProp('current-page', 1)
 const totalItems = useReactiveProp('total-items', 0)
 const itemsPerPage = useReactiveProp('items-per-page', 10)
 const maxDisplayedPages = useReactiveProp('max-displayed-pages', 5)
-const emit = defineEmits()
+const emit = defineEmits(['select', 'prev', 'next', 'page'])
 
 const totalPages = derived(() => Math.ceil(totalItems() / Math.max(1, itemsPerPage())))
 const startItem = derived(() => totalItems() === 0 ? 0 : ((currentPage() - 1) * itemsPerPage()) + 1)
@@ -81,7 +81,7 @@ function emitPage(page: number | string): void {
       results
     </p>
 
-    <nav class="inline-flex -space-x-px rounded-md shadow-sm isolate" aria-label="Pagination">
+    <nav class="flex gap-1 items-center" aria-label="Pagination">
       <Button
         variant="secondary"
         iconOnly
@@ -92,7 +92,7 @@ function emitPage(page: number | string): void {
         <span class="h-5 w-5 i-hugeicons-arrow-left-01"></span>
       </Button>
 
-      <template :for="page in displayedPages">
+      <div :for="page in displayedPages" class="contents">
         <Button
           :if="page !== '...' && isCurrent(page)"
           @click="emitPage(page)"
@@ -112,7 +112,7 @@ function emitPage(page: number | string): void {
         >
           ...
         </span>
-      </template>
+      </div>
 
       <Button
         variant="secondary"

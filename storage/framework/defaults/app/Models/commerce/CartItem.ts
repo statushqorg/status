@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { defineModel, parentOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'CartItem',
@@ -7,14 +7,19 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
 
+  // No owner of its own: these rows are owned by whoever owns the cart's customer
+  // (stacksjs/stacks#2375). Resolved through the parent so it follows any change
+  // to how Cart decides ownership.
+  ownership: parentOwnership('Cart', 'cart_id'),
+
   traits: {
     useUuid: true,
     useTimestamps: true,
     useSearch: {
-      displayable: ['id', 'cartId', 'productId', 'quantity', 'unitPrice', 'totalPrice'],
-      searchable: ['id', 'cartId', 'productId'],
+      displayable: ['id', 'cartId', 'productName', 'productSku', 'quantity', 'unitPrice', 'totalPrice'],
+      searchable: ['id', 'cartId', 'productName', 'productSku'],
       sortable: ['createdAt', 'updatedAt', 'quantity', 'unitPrice'],
-      filterable: ['cartId', 'productId'],
+      filterable: ['cartId', 'productSku'],
     },
 
     useSeeder: {
@@ -47,7 +52,8 @@ export default defineModel({
       validation: {
         rule: schema.number().required().min(0),
       },
-      factory: faker => faker.number.int({ min: 1, max: 1000 }),
+      // Integer minor units, in the same range as Product.price.
+      factory: faker => faker.number.int({ min: 100, max: 10000 }),
     },
 
     totalPrice: {
@@ -56,7 +62,7 @@ export default defineModel({
       validation: {
         rule: schema.number().required().min(0),
       },
-      factory: faker => faker.number.int({ min: 1, max: 1000 }),
+      factory: faker => faker.number.int({ min: 100, max: 50000 }),
     },
 
     taxRate: {
@@ -74,7 +80,7 @@ export default defineModel({
       validation: {
         rule: schema.number().min(0),
       },
-      factory: faker => faker.number.int({ min: 0, max: 50 }),
+      factory: faker => faker.number.int({ min: 0, max: 1000 }),
     },
 
     discountPercentage: {
@@ -92,7 +98,8 @@ export default defineModel({
       validation: {
         rule: schema.number().min(0),
       },
-      factory: faker => faker.number.int({ min: 0, max: 25 }),
+      // At most $1.00, so it never exceeds the smallest unit price above.
+      factory: faker => faker.number.int({ min: 0, max: 100 }),
     },
 
     productName: {

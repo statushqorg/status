@@ -26,6 +26,7 @@ import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { acceptsBareHost } from '~/app/lib/monitorForm'
 import { db } from '@stacksjs/database'
+import { rowsOrEmpty } from '~/app/lib/rows'
 
 // Auth + active-team resolution via @stacksjs/auth's resolveTeamContext,
 // which honors the workspace-switcher cookie (see dashboard/index.stx for
@@ -41,12 +42,11 @@ const TEAM_ID = TEAM_CTX.teamId ?? -1
 // the same statement: a servers row carries metrics_token, and stx's bridge
 // serialises any un-prefixed binding whose name word-matches a plain <script>,
 // which is how raw monitor rows leaked a token once already.
-const __serverRows = await db.selectFrom('servers')
+const __serverRows = await rowsOrEmpty(() => db.selectFrom('servers')
   .where('team_id', '=', TEAM_ID)
   .select(['id', 'name'])
   .orderBy('name', 'asc')
-  .execute()
-  .catch(() => [])
+  .execute())
 const serverChoices = __serverRows.map((r: any) => ({ id: Number(r.id), name: String(r.name ?? '') }))
 const NAV_ACTIVE = 'monitors'
 
@@ -166,7 +166,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
     </header>
 
     @if (errorCode && errorLabel(errorCode))
-      <div id="form-error" class="flash error" role="alert">{{ errorLabel(errorCode) }}</div>
+      <div id="form-error" class="error flash" role="alert">{{ errorLabel(errorCode) }}</div>
     @endif
 
     <form method="POST" action="/api/monitor-forms/create" ref="formRoot">
@@ -233,7 +233,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
            soon as a type is chosen. Without JS nothing is hidden and the form
            behaves exactly as it did before — parseMonitorForm() only reads the
            keys that belong to the submitted type, so a stray value is inert. --}}
-      <section class="card !mt-[1.25rem]" aria-label="Type-specific options" data-optional-card>
+      <section class="!mt-[1.25rem] card" aria-label="Type-specific options" data-optional-card>
         <div class="card-head">
           <h2>Options for this type</h2>
           <span ref="optionsSub" class="sub" id="options-sub">Only the ones matching your type are used</span>
@@ -354,7 +354,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
         </div>
       </section>
 
-      <section class="card !mt-[1.25rem]" aria-label="Heartbeat options" data-types="cron" data-optional-card>
+      <section class="!mt-[1.25rem] card" aria-label="Heartbeat options" data-types="cron" data-optional-card>
         <div class="card-head">
           <h2>Heartbeat</h2>
           <span class="sub">Heartbeat / cron type only</span>
@@ -381,7 +381,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
       </section>
 
 
-      <div class="actions mt-[1.25rem]">
+      <div class="mt-[1.25rem] actions">
         <button type="submit" class="button primary">Create monitor</button>
         <StxLink to="/dashboard/monitors" class="button">Cancel</StxLink>
       </div>

@@ -142,13 +142,13 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       <div class="flash" role="status"><span>Update posted. Subscribers of any status page showing an attached monitor have been notified.</span></div>
     @endif
     @if (flashError === 'update')
-      <div class="flash error" role="alert"><span>An update needs a message and a valid status.</span></div>
+      <div class="error flash" role="alert"><span>An update needs a message and a valid status.</span></div>
     @endif
 
     @if (report.body)
       <section class="card" aria-label="Summary">
         <div class="card-body">
-          <p class="m-0 text-[var(--muted)] text-[0.95rem] leading-[1.6]">{{ report.body }}</p>
+          <p class="m-0 leading-[1.6] text-[0.95rem] text-[var(--muted)]">{{ report.body }}</p>
         </div>
       </section>
     @endif
@@ -160,7 +160,7 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       </div>
       <div class="card-body">
         @if (assignedMonitors.length === 0)
-          <p class="mt-0 mx-0 mb-[1rem] text-[var(--amber)] text-[0.85rem]">Attach at least one monitor below so this announcement appears on your status pages and reaches subscribers.</p>
+          <p class="mb-[1rem] mt-0 mx-0 text-[0.85rem] text-[var(--amber)]">Attach at least one monitor below so this announcement appears on your status pages and reaches subscribers.</p>
         @endif
         <form method="POST" action="/api/status-report-forms/{{ report.id }}/updates">
           <div class="field">
@@ -198,14 +198,14 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       @endif
       @if (updates.length > 0)
         <div class="card-body">
-          <ol class="[list-style:none] m-0 p-0">
+          <ol class="m-0 p-0 [list-style:none]">
             @foreach (updates as update)
-              <li class="py-[0.9rem] px-0 border-b border-[var(--border)]">
-                <div class="flex items-center gap-[0.6rem] mb-[0.35rem]">
+              <li class="px-0 py-[0.9rem] border-[var(--border)] border-b">
+                <div class="flex gap-[0.6rem] items-center mb-[0.35rem]">
                   <data class="{{ statusClass(update.status) }}" value="{{ update.status }}"><span class="dot"></span>{{ reportStatusLabel(update.status) }}</data>
-                  <time class="sub !text-[0.8rem]">{{ dateLabel(update.posted_at) }}</time>
+                  <time class="!text-[0.8rem] sub">{{ dateLabel(update.posted_at) }}</time>
                 </div>
-                <p class="m-0 text-[0.92rem] leading-[1.55]">{{ update.message }}</p>
+                <p class="m-0 leading-[1.55] text-[0.92rem]">{{ update.message }}</p>
               </li>
             @endforeach
           </ol>
@@ -221,18 +221,18 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
 
       @if (assignedMonitors.length > 0)
         <div class="rows" role="table" aria-label="Affected monitors">
-          <div class="trow thead cols-attached-monitors" role="row">
+          <div class="cols-attached-monitors thead trow" role="row">
             <span class="tcell" role="columnheader">Status</span>
             <span class="tcell" role="columnheader">Monitor</span>
             <span class="tcell" role="columnheader">Type</span>
-            <span class="tcell num" role="columnheader">Action</span>
+            <span class="num tcell" role="columnheader">Action</span>
           </div>
           @foreach (assignedMonitors as monitor)
-            <div class="trow cols-attached-monitors" role="row">
+            <div class="cols-attached-monitors trow" role="row">
               <span class="tcell" role="cell"><data class="{{ stClass(monitor.status) }}" value="{{ monitor.status }}"><span class="dot"></span>{{ stLabel(monitor.status) }}</data></span>
-              <span class="tcell ellipsis name" role="cell">{{ monitor.name }}</span>
-              <span class="tcell sub" role="cell">{{ monitor.type.replace('_', ' ') }}</span>
-              <span class="tcell num" role="cell">
+              <span class="ellipsis name tcell" role="cell">{{ monitor.name }}</span>
+              <span class="sub tcell" role="cell">{{ monitor.type.replace('_', ' ') }}</span>
+              <span class="num tcell" role="cell">
                 <form class="inline-block" method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/remove">
                   <input type="hidden" name="monitor_id" value="{{ monitor.monitor_id }}" />
                   <button type="submit" class="button danger sm">Remove</button>
@@ -244,10 +244,10 @@ useHead({ title: (report ? report.title + ' · StatusHQ' : 'Announcement · Stat
       @endif
 
       @if (availableMonitors.length > 0)
-        <div class="py-[1rem] px-[1.25rem] border-t border-[var(--border)] bg-[var(--surface-2)]">
-          <div class="field !mb-[0.5rem]"><span class="label">Attach a monitor</span></div>
-          <form class="flex items-stretch gap-[0.6rem]" method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/add">
-            <select id="sr-add-monitor" name="monitor_id" class="select [flex:1_1_auto] !w-auto" aria-label="Monitor to attach">
+        <div class="px-[1.25rem] py-[1rem] bg-[var(--surface-2)] border-[var(--border)] border-t">
+          <div class="!mb-[0.5rem] field"><span class="label">Attach a monitor</span></div>
+          <form class="flex gap-[0.6rem] items-stretch" method="POST" action="/api/status-report-forms/{{ report.id }}/monitors/add">
+            <select id="sr-add-monitor" name="monitor_id" class="!w-auto select [flex:1_1_auto]" aria-label="Monitor to attach">
               @foreach (availableMonitors as monitor)
                 <option value="{{ monitor.id }}">{{ monitor.name }} ({{ monitor.type.replace('_', ' ') }})</option>
               @endforeach

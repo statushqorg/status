@@ -1,23 +1,17 @@
-import { Action } from '@stacksjs/actions'
-import { db } from '@stacksjs/database'
+import type { RequestInstance } from '@stacksjs/types'
+import { Action } from '@stacksjs/actions/runtime'
+import { response } from '@stacksjs/router'
 import { dashboardOperationalError } from '../dashboard-response'
-import { normalizeCommentStatus } from './comment-input'
-
-interface CommentRow {
-  id: number
-  author_name: string | null
-  author_email: string | null
-  content: string | null
-  body: string | null
-  post_title: string | null
-  status: string | null
-  is_approved: number | null
-  created_at: string | null
-  updated_at: string | null
-}
+import { parseCommentListQuery, readCommentPage } from './comment-list'
 
 /**
  * `GET /api/dashboard/comments` — backs `views/dashboard/content/comments/index.stx`.
+ *
+ * Lists both places a comment can live, newest first, one page at a time:
+ * the model-backed `comments` table and the polymorphic `commentables` table
+ * the `commentable` trait writes (`comment-list.ts`, stacksjs/stacks#3193).
+ * Their ids overlap, so every record carries its `source` and a `key` unique
+ * across both, and the moderation writes take `source` back.
  *
  * Reads the `comments` table via `db`. The previous `Comment.orderBy(...)` call
  * threw on every request (the ORM model exposes no query methods) and the catch
@@ -33,27 +27,21 @@ export default new Action({
   description: 'Returns CMS comments for the dashboard.',
   method: 'GET',
   apiResponse: true,
-  async handle() {
+  async handle(request: RequestInstance) {
+    const query = parseCommentListQuery(key => request.get<unknown>(key, ''))
+    if ('error' in query)
+      return response.json({ message: query.error }, 422)
+
     try {
-      const rows = await db
-        .selectFrom('comments')
-        .selectAll()
-        .orderBy('created_at', 'desc')
-        .execute() as unknown as CommentRow[]
+      const result = await readCommentPage(query)
 
-      const comments = rows.map(row => ({
-        id: Number(row.id),
-        author_name: String(row.author_name || ''),
-        author_email: String(row.author_email || ''),
-        content: String(row.content || row.body || ''),
-        post_title: String(row.post_title || ''),
-        status: normalizeCommentStatus(row.status),
-        is_approved: Boolean(row.is_approved),
-        created_at: row.created_at || null,
-        updated_at: row.updated_at || null,
-      }))
-
-      return { comments }
+      return {
+        comments: result.rows,
+        total: result.total,
+        page: result.page,
+        perPage: query.perPage,
+        counts: result.counts,
+      }
     }
     catch (error) {
       return dashboardOperationalError(error, 'Comments could not be loaded.', 'CommentIndexAction')

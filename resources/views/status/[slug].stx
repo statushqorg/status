@@ -359,12 +359,12 @@ function bannerDotClass(tone) {
     <div style="position:fixed;top:0;left:0;right:0;height:4px;background:{{ brandAccent }};z-index:50;"></div>
   @endif
 
-  <div class="mx-auto max-w-3xl px-6 py-16">
+  <div class="mx-auto px-6 py-16 max-w-3xl">
 
     @if (!statusPage)
       <div class="py-24 text-center">
-        <p class="text-sm font-medium uppercase tracking-wide text-gray-400">404</p>
-        <h1 class="mt-2 text-2xl font-semibold text-gray-900">{{ t('not_found') }}</h1>
+        <p class="font-medium text-gray-400 text-sm tracking-wide uppercase">404</p>
+        <h1 class="mt-2 font-semibold text-2xl text-gray-900">{{ t('not_found') }}</h1>
         <p class="mt-2 text-gray-500">There's no public status page at this address.</p>
       </div>
     @endif
@@ -372,17 +372,17 @@ function bannerDotClass(tone) {
     @if (statusPage && !accessGranted && statusPage.access_type === 'password')
       <div class="py-24">
         @if (brandLogoUrl)
-          <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mx-auto mb-6 h-10 w-auto" />
+          <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mb-6 mx-auto h-10 w-auto" />
         @endif
-        <h1 class="mb-2 text-center text-xl font-semibold text-gray-900">{{ statusPage.title }}</h1>
-        <p class="mb-6 text-center text-sm text-gray-500">This status page is password protected.</p>
+        <h1 class="mb-2 font-semibold text-center text-gray-900 text-xl">{{ statusPage.title }}</h1>
+        <p class="mb-6 text-center text-gray-500 text-sm">This status page is password protected.</p>
         @if (unlockError)
-          <p class="mb-4 text-center text-sm text-red-600">Incorrect password.</p>
+          <p class="mb-4 text-center text-red-600 text-sm">Incorrect password.</p>
         @endif
-        <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto max-w-xs space-y-3">
+        <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto space-y-3 max-w-xs">
           <input type="hidden" name="redirect" value="/status/{{ pageSlug }}" />
-          <input type="password" name="password" placeholder="{{ t('pw_placeholder') }}" aria-label="{{ t('pw_placeholder') }}" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          <button type="submit" class="w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white">{{ t('unlock') }}</button>
+          <input type="password" name="password" placeholder="{{ t('pw_placeholder') }}" aria-label="{{ t('pw_placeholder') }}" required class="px-3 py-2 w-full text-sm border border-gray-300 rounded-lg" />
+          <button type="submit" class="px-3 py-2 w-full font-medium text-sm text-white bg-gray-900 rounded-lg">{{ t('unlock') }}</button>
         </form>
       </div>
     @endif
@@ -390,25 +390,25 @@ function bannerDotClass(tone) {
     @if (statusPage && !accessGranted && statusPage.access_type === 'email_domain')
       <div class="py-24">
         @if (brandLogoUrl)
-          <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mx-auto mb-6 h-10 w-auto" />
+          <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mb-6 mx-auto h-10 w-auto" />
         @endif
-        <h1 class="mb-2 text-center text-xl font-semibold text-gray-900">{{ statusPage.title }}</h1>
-        <p class="mb-6 text-center text-sm text-gray-500">Access is restricted to approved email domains.</p>
+        <h1 class="mb-2 font-semibold text-center text-gray-900 text-xl">{{ statusPage.title }}</h1>
+        <p class="mb-6 text-center text-gray-500 text-sm">Access is restricted to approved email domains.</p>
         @if (unlockError)
-          <p class="mb-4 text-center text-sm text-red-600">That email address isn't on an approved domain.</p>
+          <p class="mb-4 text-center text-red-600 text-sm">That email address isn't on an approved domain.</p>
         @endif
-        <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto max-w-xs space-y-3">
+        <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto space-y-3 max-w-xs">
           <input type="hidden" name="redirect" value="/status/{{ pageSlug }}" />
-          <input type="email" name="email" placeholder="you@company.com" aria-label="Work email" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          <button type="submit" class="w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white">{{ t('cont') }}</button>
+          <input type="email" name="email" placeholder="you@company.com" aria-label="Work email" required class="px-3 py-2 w-full text-sm border border-gray-300 rounded-lg" />
+          <button type="submit" class="px-3 py-2 w-full font-medium text-sm text-white bg-gray-900 rounded-lg">{{ t('cont') }}</button>
         </form>
       </div>
     @endif
 
     @if (statusPage && !accessGranted && statusPage.access_type === 'ip_allowlist')
       <div class="py-24 text-center">
-        <p class="text-sm font-medium uppercase tracking-wide text-gray-400">403</p>
-        <h1 class="mt-2 text-2xl font-semibold text-gray-900">{{ t('ip_restricted') }}</h1>
+        <p class="font-medium text-gray-400 text-sm tracking-wide uppercase">403</p>
+        <h1 class="mt-2 font-semibold text-2xl text-gray-900">{{ t('ip_restricted') }}</h1>
         <p class="mt-2 text-gray-500">This status page isn't available from your network.</p>
       </div>
     @endif
@@ -418,7 +418,7 @@ function bannerDotClass(tone) {
         @if (brandLogoUrl)
           <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mb-4 h-10 w-auto" />
         @endif
-        <h1 class="text-2xl font-semibold text-gray-900">{{ statusPage.title }}</h1>
+        <h1 class="font-semibold text-2xl text-gray-900">{{ statusPage.title }}</h1>
       </header>
 
       <div class="{{ bannerClass(overallTone) }}">
@@ -428,13 +428,13 @@ function bannerDotClass(tone) {
 
       @if (activeMaintenanceWindows.length > 0)
         <section class="mb-10">
-          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('maintenance') }}</h2>
+          <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('maintenance') }}</h2>
           <div class="space-y-3">
             @foreach (activeMaintenanceWindows as mw)
-              <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p class="font-medium text-gray-900">{{ mw.title }}</p>
-                <p class="mt-1 text-sm text-gray-600">{{ mw.description }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ formatDate(mw.starts_at) }} to {{ formatDate(mw.ends_at) }}</p>
+                <p class="mt-1 text-gray-600 text-sm">{{ mw.description }}</p>
+                <p class="mt-1 text-gray-400 text-xs">{{ formatDate(mw.starts_at) }} to {{ formatDate(mw.ends_at) }}</p>
               </div>
             @endforeach
           </div>
@@ -443,16 +443,16 @@ function bannerDotClass(tone) {
 
       @if (activeStatusReports.length > 0)
         <section class="mb-10">
-          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('announcements') }}</h2>
+          <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('announcements') }}</h2>
           <div class="space-y-3">
             @foreach (activeStatusReports as report)
-              <div class="rounded-lg border border-gray-200 bg-white p-4">
-                <div class="flex items-center justify-between gap-4">
+              <div class="p-4 bg-white border border-gray-200 rounded-lg">
+                <div class="flex gap-4 items-center justify-between">
                   <p class="font-medium text-gray-900">{{ report.title }}</p>
-                  <span class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ report.status }}</span>
+                  <span class="font-medium text-gray-500 text-xs tracking-wide uppercase">{{ report.status }}</span>
                 </div>
-                <p class="mt-1 text-sm text-gray-600">{{ report.body }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ t('posted') }} {{ formatDate(report.started_at) }}</p>
+                <p class="mt-1 text-gray-600 text-sm">{{ report.body }}</p>
+                <p class="mt-1 text-gray-400 text-xs">{{ t('posted') }} {{ formatDate(report.started_at) }}</p>
               </div>
             @endforeach
           </div>
@@ -461,16 +461,16 @@ function bannerDotClass(tone) {
 
       @if (activeIncidents.length > 0)
         <section class="mb-10">
-          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('active_incidents') }}</h2>
+          <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('active_incidents') }}</h2>
           <div class="space-y-3">
             @foreach (activeIncidents as incident)
-              <StxLink to="/status/{{ pageSlug }}/incidents/{{ incident.id }}" class="block rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 transition-colors">
-                <div class="flex items-center justify-between gap-4">
+              <StxLink to="/status/{{ pageSlug }}/incidents/{{ incident.id }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                <div class="flex gap-4 items-center justify-between">
                   <p class="font-medium text-gray-900">{{ incident.monitor_name }}</p>
-                  <span class="text-xs font-medium uppercase tracking-wide text-amber-600">{{ incident.status }}</span>
+                  <span class="font-medium text-amber-600 text-xs tracking-wide uppercase">{{ incident.status }}</span>
                 </div>
-                <p class="mt-1 text-sm text-gray-600">{{ incident.cause }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ t('started') }} {{ formatDate(incident.started_at) }}</p>
+                <p class="mt-1 text-gray-600 text-sm">{{ incident.cause }}</p>
+                <p class="mt-1 text-gray-400 text-xs">{{ t('started') }} {{ formatDate(incident.started_at) }}</p>
               </StxLink>
             @endforeach
           </div>
@@ -479,23 +479,23 @@ function bannerDotClass(tone) {
 
       @if (monitorGroups.length === 0)
         <section class="mb-10">
-          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('monitors') }}</h2>
-          <div class="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+          <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('monitors') }}</h2>
+          <div class="bg-white border border-gray-200 divide-gray-200 divide-y rounded-lg">
             @foreach (monitors as monitor)
               <div class="px-4 py-4">
-                <div class="flex items-center justify-between gap-4">
+                <div class="flex gap-4 items-center justify-between">
                   <p class="font-medium text-gray-900">{{ monitor.name }}</p>
-                  <div class="flex items-center gap-2">
+                  <div class="flex gap-2 items-center">
                     <span class="h-2 w-2 rounded-full {{ monitorDotClass(monitor) }}"></span>
-                    <span class="text-sm text-gray-500">{{ monitorLabel(monitor) }}</span>
+                    <span class="text-gray-500 text-sm">{{ monitorLabel(monitor) }}</span>
                   </div>
                 </div>
-                <div class="uptime-bars !flex !gap-[2px] !items-stretch !h-[30px] mt-[10px]">
+                <div class="!flex !gap-[2px] !items-stretch mt-[10px] !h-[30px] uptime-bars">
                   @foreach (uptimeBars(monitor.id) as bar)
                     <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ uptimeBarColor(bar.status) }};"></span>
                   @endforeach
                 </div>
-                <div class="mt-1.5 flex items-center justify-between text-xs text-gray-400">
+                <div class="flex items-center justify-between mt-1.5 text-gray-400 text-xs">
                   <span>{{ t('days_ago_90') }}</span>
                   <span>{{ uptimePctLabel(monitor.id) }}</span>
                   <span>{{ t('today') }}</span>
@@ -509,23 +509,23 @@ function bannerDotClass(tone) {
       @if (monitorGroups.length > 0)
         @foreach (monitorGroups as group)
           <section class="mb-10">
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ group.name }}</h2>
-            <div class="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ group.name }}</h2>
+            <div class="bg-white border border-gray-200 divide-gray-200 divide-y rounded-lg">
               @foreach (group.monitors as monitor)
                 <div class="px-4 py-4">
-                  <div class="flex items-center justify-between gap-4">
+                  <div class="flex gap-4 items-center justify-between">
                     <p class="font-medium text-gray-900">{{ monitor.name }}</p>
-                    <div class="flex items-center gap-2">
+                    <div class="flex gap-2 items-center">
                       <span class="h-2 w-2 rounded-full {{ monitorDotClass(monitor) }}"></span>
-                      <span class="text-sm text-gray-500">{{ monitorLabel(monitor) }}</span>
+                      <span class="text-gray-500 text-sm">{{ monitorLabel(monitor) }}</span>
                     </div>
                   </div>
-                  <div class="uptime-bars !flex !gap-[2px] !items-stretch !h-[30px] mt-[10px]">
+                  <div class="!flex !gap-[2px] !items-stretch mt-[10px] !h-[30px] uptime-bars">
                     @foreach (uptimeBars(monitor.id) as bar)
                       <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ uptimeBarColor(bar.status) }};"></span>
                     @endforeach
                   </div>
-                  <div class="mt-1.5 flex items-center justify-between text-xs text-gray-400">
+                  <div class="flex items-center justify-between mt-1.5 text-gray-400 text-xs">
                     <span>{{ t('days_ago_90') }}</span>
                     <span>{{ uptimePctLabel(monitor.id) }}</span>
                     <span>{{ t('today') }}</span>
@@ -539,16 +539,16 @@ function bannerDotClass(tone) {
 
       @if (resolvedIncidents.length > 0)
         <section>
-          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('past_incidents') }}</h2>
+          <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('past_incidents') }}</h2>
           <div class="space-y-3">
             @foreach (resolvedIncidents as incident)
-              <StxLink to="/status/{{ pageSlug }}/incidents/{{ incident.id }}" class="block rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 transition-colors">
-                <div class="flex items-center justify-between gap-4">
+              <StxLink to="/status/{{ pageSlug }}/incidents/{{ incident.id }}" class="block p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                <div class="flex gap-4 items-center justify-between">
                   <p class="font-medium text-gray-900">{{ incident.monitor_name }}</p>
-                  <span class="text-xs font-medium uppercase tracking-wide text-emerald-600">{{ t('resolved') }}</span>
+                  <span class="font-medium text-emerald-600 text-xs tracking-wide uppercase">{{ t('resolved') }}</span>
                 </div>
-                <p class="mt-1 text-sm text-gray-600">{{ incident.cause }}</p>
-                <p class="mt-1 text-xs text-gray-400">{{ formatDate(incident.started_at) }} to {{ formatDate(incident.resolved_at) }}</p>
+                <p class="mt-1 text-gray-600 text-sm">{{ incident.cause }}</p>
+                <p class="mt-1 text-gray-400 text-xs">{{ formatDate(incident.started_at) }} to {{ formatDate(incident.resolved_at) }}</p>
               </StxLink>
             @endforeach
           </div>

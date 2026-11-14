@@ -1,4 +1,4 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { tokens } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
 
@@ -13,7 +13,7 @@ export default new Action({
       return response.unauthorized('Authentication required')
     }
 
-    const userTokens = await tokens(user.id)
+    const userTokens = await tokens(Number(user.id))
 
     return response.json({
       tokens: userTokens.map(token => ({

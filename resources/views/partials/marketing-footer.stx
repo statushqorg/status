@@ -18,7 +18,7 @@ import { authRequest } from '~/app/lib/authRequest'
 // the session is half-recognised.
 const IS_SIGNED_IN = !!authRequest(typeof cookies !== 'undefined' ? cookies : null).cookies.get('auth-token')
 </script>
-<footer class="site-shell site-footer">
+<footer class="site-footer site-shell">
   <div class="footer-grid">
     <div class="footer-brand">
       <StxLink class="brand" to="/" aria-label="{{ appName }} home">

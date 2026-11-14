@@ -119,12 +119,12 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
       <div class="filter-group">
         <span class="lbl">Status</span>
         <StxLink to="/dashboard/incidents" class="chip">Incidents</StxLink>
-        <StxLink to="/dashboard/status-reports" class="chip active">Announcements</StxLink>
+        <StxLink to="/dashboard/status-reports" class="active chip">Announcements</StxLink>
       </div>
     </div>
 
     @if (flashError && errorLabel(flashError))
-      <div id="sr-form-error" class="flash error" role="alert"><span>{{ errorLabel(flashError) }}</span></div>
+      <div id="sr-form-error" class="error flash" role="alert"><span>{{ errorLabel(flashError) }}</span></div>
     @endif
 
     @if (reports.length === 0)
@@ -135,27 +135,27 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
     @endif
 
     @if (reports.length > 0)
-      <section class="card scroll-x" aria-label="Announcements">
+      <section class="scroll-x card" aria-label="Announcements">
         <div class="rows" role="table" aria-label="Announcements">
-          <div class="trow thead cols-status-reports" role="row">
+          <div class="cols-status-reports thead trow" role="row">
             <span class="tcell" role="columnheader">Title</span>
             <span class="tcell" role="columnheader">Status</span>
-            <span class="tcell num" role="columnheader">Monitors</span>
-            <span class="tcell num" role="columnheader">Started</span>
+            <span class="num tcell" role="columnheader">Monitors</span>
+            <span class="num tcell" role="columnheader">Started</span>
           </div>
           @foreach (reports as report)
-            <StxLink class="trow cols-status-reports" role="row" to="/dashboard/status-reports/{{ report.id }}">
-              <span class="tcell ellipsis name" role="cell">{{ report.title }}</span>
+            <StxLink class="cols-status-reports trow" role="row" to="/dashboard/status-reports/{{ report.id }}">
+              <span class="ellipsis name tcell" role="cell">{{ report.title }}</span>
               <span class="tcell" role="cell"><data class="{{ statusClass(report.status) }}" value="{{ report.status }}"><span class="dot"></span>{{ statusLabel(report.status) }}</data></span>
-              <span class="tcell num" role="cell">{{ monitorCount[report.id] || 0 }}</span>
-              <span class="tcell num" role="cell"><time>{{ dateLabel(report.started_at) }}</time></span>
+              <span class="num tcell" role="cell">{{ monitorCount[report.id] || 0 }}</span>
+              <span class="num tcell" role="cell"><time>{{ dateLabel(report.started_at) }}</time></span>
             </StxLink>
           @endforeach
         </div>
       </section>
     @endif
 
-    <section class="card !mt-[1.25rem]" aria-label="Create announcement">
+    <section class="!mt-[1.25rem] card" aria-label="Create announcement">
       <div class="card-head">
         <h3>New announcement</h3>
       </div>
@@ -181,7 +181,7 @@ useHead({ title: 'Announcements · StatusHQ', meta: [{ name: 'robots', content: 
             </div>
           </div>
           <button type="submit" class="button primary">Create announcement</button>
-          <div class="field !mt-[0.75rem] !mx-0 !mb-0">
+          <div class="!mb-0 !mt-[0.75rem] !mx-0 field">
             <p class="help">Next you'll attach the affected monitors and post an update. Posting an update is what emails your status page subscribers.</p>
           </div>
         </form>

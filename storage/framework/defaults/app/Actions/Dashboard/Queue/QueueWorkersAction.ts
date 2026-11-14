@@ -1,6 +1,6 @@
-import { Action } from '@stacksjs/actions'
-import { getActiveJobCount, getWorkerTracker, isWorkerRunning } from '@stacksjs/queue'
+import { Action } from '@stacksjs/actions/runtime'
 import { dashboardOperationalError } from '../dashboard-response'
+import { readDashboardWorkerSnapshots } from './worker-snapshots'
 
 export default new Action({
   name: 'QueueWorkersAction',
@@ -8,8 +8,8 @@ export default new Action({
   method: 'GET',
   async handle() {
     try {
-      const tracker = getWorkerTracker()
-      const tracked = tracker.getAll()
+      const { snapshots, migrated } = await readDashboardWorkerSnapshots()
+      const tracked = snapshots.map(snapshot => snapshot.worker)
 
       // Translate the tracker's internal status into the dashboard's vocabulary
       // ("running" | "paused" | "stopped") so the existing UI badges keep working.
@@ -29,15 +29,16 @@ export default new Action({
           jobs_processed: w.processedCount,
           failed_jobs: w.failedCount,
           uptime,
-          last_heartbeat: w.lastActivityAt,
+          last_heartbeat: new Date(snapshots.find(snapshot => snapshot.worker.id === w.id)!.heartbeatAt).toISOString(),
           memory: '-',
         }
       })
 
       return {
         data,
-        worker_running: isWorkerRunning(),
-        active_jobs: getActiveJobCount(),
+        worker_running: tracked.some(worker => worker.status !== 'stopped'),
+        active_jobs: snapshots.reduce((sum, snapshot) => sum + snapshot.activeJobs, 0),
+        workers_migrated: migrated,
       }
     }
     catch (error) {

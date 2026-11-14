@@ -155,7 +155,8 @@ describe('Passkey WebAuthn end-to-end (stacksjs/status#1 Phase 9 follow-up)', ()
     expect(pack.user?.id).toBe(userId)
     // Signs the user in via the auth cookie too.
     expect(loginVerify.headers.get('set-cookie') || '').toContain('auth-token=')
-    await db.deleteFrom('oauth_access_tokens').where('token', '=', String(pack.token).split('|').pop()).execute().catch(() => {})
+    try { await db.deleteFrom('oauth_access_tokens').where('token', '=', String(pack.token).split('|').pop()).execute() }
+    catch {}
   })
 
   test('a tampered signature is rejected', async () => {

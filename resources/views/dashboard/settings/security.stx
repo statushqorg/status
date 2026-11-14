@@ -159,7 +159,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
         <span class="lbl">Settings</span>
         <StxLink to="/dashboard/settings/team" class="chip">Team</StxLink>
         <StxLink to="/dashboard/settings/notifications" class="chip">Notifications</StxLink>
-        <StxLink to="/dashboard/settings/security" class="chip active">Security</StxLink>
+        <StxLink to="/dashboard/settings/security" class="active chip">Security</StxLink>
         <StxLink to="/dashboard/settings/cloud" class="chip">Cloud</StxLink>
         <StxLink to="/dashboard/settings/billing" class="chip">Billing</StxLink>
       </div>
@@ -178,7 +178,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       <div class="flash" role="status">Passkey removed.</div>
     @endif
     @if (flashError && errorLabel(flashError))
-      <div id="tfa-form-error" class="flash error" role="alert">{{ errorLabel(flashError) }}</div>
+      <div id="tfa-form-error" class="error flash" role="alert">{{ errorLabel(flashError) }}</div>
     @endif
 
     <section class="card" aria-label="Two-factor authentication">
@@ -193,7 +193,7 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       </div>
       <div class="card-body">
         @if (TWO_FA_ENABLED)
-          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Signing in requires your password plus a 6-digit code from your authenticator app. Confirm your password to turn it off.</p>
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Signing in requires your password plus a 6-digit code from your authenticator app. Confirm your password to turn it off.</p>
           <form method="POST" action="/api/security-forms/two-factor/disable" data-confirm="Your account falls back to password-only sign-in." data-confirm-title="Turn off two-factor authentication?" data-confirm-action="Turn it off" data-confirm-type="warning">
             <div class="form-row">
               <div class="field">
@@ -206,15 +206,15 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
         @endif
 
         @if (!TWO_FA_ENABLED && !__SETUP)
-          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add a second factor so a stolen password alone cannot open your account. Works with any TOTP authenticator app (1Password, Google Authenticator, Authy).</p>
           <StxLink class="button primary" to="/dashboard/settings/security?setup=1">Set up two-factor auth</StxLink>
         @endif
 
         @if (!TWO_FA_ENABLED && __SETUP)
-          <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes.</p>
+          <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Add this secret to your authenticator app, then enter the 6-digit code it shows to confirm. The secret is held server-side for 10 minutes.</p>
           <div class="field">
             <label>Secret (enter manually)</label>
-            <p class="mono m-0 py-[0.7rem] px-[0.85rem] border border-[var(--border-strong)] rounded-[var(--radius-sm)] !text-[0.95rem] tracking-[0.08em] break-all bg-[var(--surface-2)]">{{ __SETUP.secret }}</p>
+            <p class="m-0 px-[0.85rem] py-[0.7rem] !text-[0.95rem] break-all tracking-[0.08em] bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] mono">{{ __SETUP.secret }}</p>
             <p class="help">On this device? <StxLink to="{{ __SETUP.uri }}">Open in your authenticator app</StxLink> instead of typing the secret.</p>
           </div>
           <form method="POST" action="/api/security-forms/two-factor/enable">
@@ -225,19 +225,19 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
               </div>
             </div>
             <button type="submit" class="button primary">Confirm and enable</button>
-            <StxLink class="button ml-[0.5rem]" to="/dashboard/settings/security">Cancel</StxLink>
+            <StxLink class="ml-[0.5rem] button" to="/dashboard/settings/security">Cancel</StxLink>
           </form>
         @endif
       </div>
     </section>
 
-    <section class="card scroll-x" aria-label="Passkeys">
+    <section class="scroll-x card" aria-label="Passkeys">
       <div class="card-head">
         <h2>Passkeys</h2>
         <span class="sub">{{ __passkeys.length }} registered</span>
       </div>
-      <div class="card-body border-b border-[var(--border)]">
-        <p class="mt-0 mx-0 mb-[1rem] text-[var(--muted)] text-[0.9rem] leading-[1.6]">Passkeys let you sign in with your device's screen lock or a hardware key instead of a password. They're phishing-resistant and never leave your device.</p>
+      <div class="border-[var(--border)] border-b card-body">
+        <p class="mb-[1rem] mt-0 mx-0 leading-[1.6] text-[0.9rem] text-[var(--muted)]">Passkeys let you sign in with your device's screen lock or a hardware key instead of a password. They're phishing-resistant and never leave your device.</p>
         <button type="button" id="pk-add" class="button primary" @click="addPasskey"
           :disabled="pkBusy() || pkUnsupported()" :aria-busy="pkBusy()">{{ pkBusy() ? 'Waiting for your device…' : 'Add a passkey' }}</button>
         <div id="pk-msg" :class="pkMessage() ? ('pk-msg show ' + pkKind()) : 'pk-msg'" role="status">{{ pkMessage() }}</div>
@@ -252,20 +252,20 @@ useHead({ title: 'Security · StatusHQ', meta: [{ name: 'robots', content: 'noin
       @endif
       @if (__passkeys.length > 0)
         <div class="rows" role="table" aria-label="Passkeys">
-          <div class="trow thead cols-passkeys" role="row">
+          <div class="cols-passkeys thead trow" role="row">
             <span class="tcell" role="columnheader">Credential</span>
             <span class="tcell" role="columnheader">Device</span>
-            <span class="tcell num" role="columnheader">Added</span>
-            <span class="tcell num" role="columnheader">Last used</span>
-            <span class="tcell num" role="columnheader">Remove</span>
+            <span class="num tcell" role="columnheader">Added</span>
+            <span class="num tcell" role="columnheader">Last used</span>
+            <span class="num tcell" role="columnheader">Remove</span>
           </div>
           @foreach (__passkeys as passkey)
-            <div class="trow cols-passkeys" role="row">
-              <span class="tcell ellipsis mono" role="cell">{{ credentialLabel(passkey.id) }}</span>
-              <span class="tcell sub" role="cell">{{ passkey.device_type || 'unknown' }}</span>
-              <span class="tcell num" role="cell"><time>{{ dateLabel(passkey.created_at) }}</time></span>
-              <span class="tcell num" role="cell"><time>{{ passkey.last_used_at ? dateLabel(passkey.last_used_at) : 'never' }}</time></span>
-              <span class="tcell num" role="cell">
+            <div class="cols-passkeys trow" role="row">
+              <span class="ellipsis mono tcell" role="cell">{{ credentialLabel(passkey.id) }}</span>
+              <span class="sub tcell" role="cell">{{ passkey.device_type || 'unknown' }}</span>
+              <span class="num tcell" role="cell"><time>{{ dateLabel(passkey.created_at) }}</time></span>
+              <span class="num tcell" role="cell"><time>{{ passkey.last_used_at ? dateLabel(passkey.last_used_at) : 'never' }}</time></span>
+              <span class="num tcell" role="cell">
                 <form method="POST" action="/api/security-forms/passkeys/delete" data-confirm="Devices using it can no longer sign in with it." data-confirm-title="Remove this passkey?" data-confirm-action="Remove passkey">
                   <input type="hidden" name="id" value="{{ passkey.id }}" />
                   <button type="submit" class="button danger sm">Remove</button>

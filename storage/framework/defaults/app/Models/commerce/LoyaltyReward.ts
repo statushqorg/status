@@ -1,11 +1,17 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'LoyaltyReward',
   table: 'loyalty_rewards',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
 
   traits: {
     useUuid: true,
@@ -92,7 +98,9 @@ export default defineModel({
       validation: {
         rule: schema.string(),
       },
-      factory: faker => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.4 }),
+      // Stored and shown, never resolved: nothing redeems or joins on it yet,
+      // so what it holds is left to the feature that does. No factory, so a
+      // seed does not invent one (stacksjs/stacks#3002).
     },
 
     isActive: {
@@ -125,5 +133,11 @@ export default defineModel({
 
   dashboard: {
     highlight: true,
+    // Prose, asked for in a box with room for it.
+    // An address that leads to a picture: shown as one.
+    fields: {
+      imageUrl: { format: 'image' },
+      description: { input: 'longtext' },
+    },
   },
 } as const)

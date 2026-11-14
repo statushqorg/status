@@ -1,6 +1,6 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
-import { db } from '@stacksjs/database'
+import { Action } from '@stacksjs/actions/runtime'
+import { db } from '@stacksjs/database/runtime'
 import { dashboardOperationalError } from '../dashboard-response'
 
 const ALLOWED_RANGES = new Set([1, 7, 30, 90, 365])
@@ -230,7 +230,7 @@ export default new Action({
         (since ? postQuery.where('created_at', '>=', since) : postQuery).execute() as unknown as Promise<ContentOverviewPostRow[]>,
         (since ? pageQuery.where('created_at', '>=', since) : pageQuery).execute() as unknown as Promise<ContentOverviewPageRow[]>,
         (since ? commentQuery.where('created_at', '>=', since) : commentQuery).execute() as unknown as Promise<ContentOverviewCommentRow[]>,
-        db.selectFrom('categories').select(['id', 'name']).execute() as unknown as Promise<NamedRow[]>,
+        db.selectFrom('categorizables').where('categorizable_type', '=', 'posts').select(['id', 'name']).execute() as unknown as Promise<NamedRow[]>,
         db.selectFrom('authors').select(['id', 'name']).execute() as unknown as Promise<NamedRow[]>,
       ])
 

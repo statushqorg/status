@@ -8,6 +8,19 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Validation
 
+`parseEnumListInput(value, field, choices, minItems = 1, maxItems = 100)` from
+`@stacksjs/validation/input` validates every entry and returns unique values in
+input order. Invalid entries reject the whole list; optional empty lists require
+an explicit zero minimum. Use it for channel, role and capability selections.
+
+`parseObjectInput(value, field)` accepts plain JSON records, including null
+prototype records, and rejects arrays and class instances. `parseArrayInput`
+validates an actual array and its length (`minItems = 0`, `maxItems = 100`).
+`parsePositiveIdListInput(value, field, minItems = 1, maxItems = 100)` validates
+every resource ID and returns unique IDs in input order. Bounds apply before
+deduplication; no malformed entry is silently removed. These dependency-free
+helpers are available from `@stacksjs/validation/input` and the root export.
+
 ## Key Paths
 - Core package: `storage/framework/core/validation/src/`
 - Package: `@stacksjs/validation`
@@ -182,7 +195,7 @@ schema.custom<T>(validationFn, message)  // CustomValidatorType<T>
 Schema validators are used in `defineModel()` attribute validation:
 
 ```typescript
-import { defineModel } from '@stacksjs/config'
+import { defineModel } from '@stacksjs/orm'
 import { schema } from '@stacksjs/validation'
 
 export default defineModel({
@@ -236,6 +249,17 @@ export default defineModel({
 })
 ```
 
+### Custom messages
+
+A rule's `message` is one string for any failure of the field, or an object keyed
+by rule name: `min`, `max`, `email`, `enum`, `required` and so on. `messageKeys(rule)`
+lists the keys a validator takes; `timestamp()` and `date()` take `timestamp` and
+`date`. A key named after the field covers failures no rule key matched, unless the
+validator has a rule of that name (`email: { email: ... }` is the email rule's).
+Action `validations`, `request.validate()`, `validateField()` and model writes all
+apply them through `fieldErrorMessages()` from `@stacksjs/validation/messages`, after
+validation; none of them sets ts-validation's process-wide message provider.
+
 ## Model Validation (`validator.ts`)
 
 ### `validateField(modelFile, params)`
@@ -250,14 +274,17 @@ const result = await validateField('User', { name: 'John', email: 'john@example.
 ```
 
 Behavior:
-1. Finds the model file by name in user models or framework defaults
+1. Finds exact model filenames or qualified paths recursively, preferring app overrides
 2. Extracts validation rules from model attributes
-3. Converts attribute names to snake_case for validation
-4. Sets custom error messages via `MessageProvider`
-5. Validates using `schema.object(ruleObject).validate(params)`
+3. Accepts attribute and snake-case column names, preferring the attribute spelling when both are supplied
+4. Applies custom messages to reported failures without executing predicates again or replacing the shared provider
+5. Validates through the context-aware object schema
 6. Throws `HttpError(422)` with error JSON on validation failure
 7. Throws `HttpError(404)` if model not found
-8. Skips validation for attributes with default values unless `isRequired` is true
+8. An optional default excuses absence, never a supplied invalid value
+
+Ambiguous bare model names require a qualified path. Declared fields and conditional
+siblings use own properties; inherited values never count as submitted input.
 
 ### `customValidate(attributes, params)`
 
@@ -290,13 +317,17 @@ isObjectNotEmpty(undefined)     // false
 
 ## Error Reporter (`reporter.ts`)
 
-Simple error accumulator for validation:
+Validation operations start an async-local latest-error scope before their first await.
+Successful operations clear prior failures; `getErrors()` returns an independent snapshot.
+Standalone adapters that report directly create a scope with `withValidationContext()`:
 
 ```typescript
-import { reportError, getErrors } from '@stacksjs/validation'
+import { reportError, getErrors, withValidationContext } from '@stacksjs/validation'
 
-reportError([{ message: 'Invalid', value: '', field: 'email' }])
-const errors = getErrors()   // returns accumulated MessageObject[]
+withValidationContext(() => {
+  reportError([{ message: 'Invalid', value: '', field: 'email' }])
+  const errors = getErrors() // this scope's latest MessageObject[]
+})
 ```
 
 Interface: `{ message: string, value: string, field: string }`
@@ -364,8 +395,99 @@ type ValidationString = ValidationRule
 - Numeric classification functions (`isEvenOrOdd`, etc.) return string defaults for non-numbers rather than throwing
 - Schema validators map to database column types -- `schema.integer()` creates an integer column, `schema.string()` creates a varchar, etc.
 - `validateField` converts attribute names to snake_case using `snakeCase()` from `@stacksjs/strings`
-- `validateField` skips attributes with default values unless `isRequired` is explicitly set
+- `validateField` validates supplied values even when their attributes declare defaults
 - Validation error messages are customizable per-rule in model definitions via the `message` object
-- The `schema` export is the `v` instance from `@stacksjs/ts-validation` -- they are the same object
+- The schema export is Stacks' proxy over the underlying validation instance, with typed object/array/enum inference, file validation and conditionals; it is not the same object as the upstream v export
 - Custom validators can be added with `schema.custom<T>(fn, message)` for types not covered by built-in validators
 - `customValidate` uses `schema.object().shape()` while `validateField` uses `schema.object(ruleObject)` -- slightly different API
+
+
+## Request, conditional and file validation
+
+The root validate(requestOrRecord, rules, options?) is async, returns the validated payload
+and throws HttpError(422) with normalized field errors on failure. Rules are
+validators or { rule, message? }. Plain records are application data, including URL,
+query and params fields. Native Request bodies and enhanced request.all() are read
+directly; jsonBody/formBody adapters remain supported. URL/query/params-only adapters
+select { source: 'request' }; { source: 'data' } forces data interpretation.
+Returned values contain declared supplied fields, recursively through object shapes
+and array.each() elements. Opaque validators retain their accepted values. Use the
+returned cleaned payload at the boundary, including action getValidated()/safe().
+
+Schema declarations can use the narrow `@stacksjs/validation/runtime` entry.
+The schema proxy adds typed object/array/enum inference and conditional rules:
+when(sibling, literalOrPredicate, refine) applies cross-field refinements through
+objectWithContext, action validations, model writes and validateModelInput.
+Model contexts recognize attribute/column aliases. Creates include declared defaults;
+partial updates validate supplied fields and siblings without loading stored values.
+Refinements preserve reusable schemas. sometimes has the underlying optional/empty-value semantics.
+Read object-with-context.ts before treating presence-only rules as stricter than
+they are. Inferred object shapes are native, not a hand-written request interface.
+
+schema.file().required().image().mimeTypes([...]).maxBytes(n).minBytes(n).
+extensions([...]).custom(fn) provides FileLike validation. Client MIME/extension
+checks do not prove the bytes; use stacks-storage's MIME verification where needed.
+An upload is a class instance (the router's `UploadedFile`); a plain object, which
+is what a JSON body gives for the same field name, is refused.
+
+registerRule/getCustomRule, unique(table,column,exceptId?), exists(table,column)
+and validateFieldAsync support application async validation. These helpers propagate query failures
+instead of approving unchecked values. Keep operational failures separate from invalid input. Validate
+uniqueness at the durable write boundary and handle a uniqueness violation there.
+
+Local is.ts helpers and legacy rules/type declarations are not
+automatically all public exports from the root.
+
+Source: `storage/framework/core/validation/src/index.ts`, runtime.ts,
+schema.ts, request-validator.ts, conditional.ts, file-validator.ts and validator.ts.
+Tests: conditional.test.ts, conditional-boundaries.test.ts, input-contracts.test.ts,
+boundary-e2e.test.ts, file-validator.test.ts, async-rules.test.ts,
+runtime-entry.test.ts and type-inference.test-d.ts under core/validation/tests.
+
+## Custom action input
+
+`@stacksjs/validation/input` is a dependency-free boundary for custom actions:
+
+```ts
+import { readJsonObject, parsePositiveId, parseTextInput, parseNumberInput,
+  parseBooleanInput, validateModelInput } from '@stacksjs/validation/input'
+
+const body = await readJsonObject(request)
+const id = parsePositiveId(request.params.id)
+const title = parseTextInput(body.title, 'title', true)
+const amount = parseNumberInput(body.amount, 'amount', 0, 100000, true)
+const enabled = parseBooleanInput(body.enabled, 'enabled')
+validateModelInput(MyModel, { title })
+```
+
+Failures throw `InputValidationError` with `status: 422`. JSON must be an object;
+text never coerces objects or silently truncates; numeric input rejects booleans,
+non-finite values, unsafe whole numbers and anything but decimal notation (`0x10`
+is not 16), and an identifier is decimal digits only. Optional text/number input returns
+null, and absent boolean input returns undefined. Boolean input accepts JSON
+booleans and the explicit form values `true`, `false`, `1`, `0` and their strings,
+and a checkbox's `on` and `off`.
+
+Numeric bounds reject NaN and inverted intervals; -Infinity and Infinity explicitly
+mean an unbounded lower/upper endpoint. Text maxLength requires a nonnegative safe
+integer. Invalid configuration throws RangeError even for absent optional input.
+Unsafe whole numbers are rejected whether or not integer-only input was requested.
+
+`validateModelInput` checks only supplied fields using `getDefinition()` rules.
+The action still selects writable fields, requires creation fields and validates
+relationships. Use the transaction callback executor for all atomic persistence.
+Root and narrow input imports share the same error constructor.
+
+## Reusable boundary and stored-value rules
+
+`parseTextInput(value, field, required?, maxLength?)` rejects overlong text
+rather than truncating it; `maxLength` counts characters, as a database column
+does, not UTF-16 units. `parseEnumInput(value, field, choices)` requires
+exact string membership; it never stringifies an object or boolean.
+`storedBoolean(value, fallback)` decodes SQL/form 0/1, false/true and on/off; the
+caller explicitly chooses the fallback for missing or corrupt stored data.
+Partial model validation accepts attribute names and their snake-case column
+spelling, including camel-case definitions.
+
+`positiveIdOrNull(value)` is the nullable adapter for optional identifiers and
+record serializers; it uses the same safe-integer and type rules as parsePositiveId.

@@ -399,32 +399,32 @@ if (!statusPageForHost && faqs && faqs.length)
   </head>
   <body data-site-mode="{{ siteMode }}" data-coming-soon-bypass-enabled="{{ comingSoonBypassEnabled }}" data-coming-soon-bypass="{{ comingSoonBypassToken }}">
     @if (hostAccessGated)
-      <div class="mx-auto max-w-3xl px-6 py-24 text-center">
-        <h1 class="text-2xl font-semibold text-gray-900">{{ statusPageForHost.title }}</h1>
+      <div class="mx-auto px-6 py-24 max-w-3xl text-center">
+        <h1 class="font-semibold text-2xl text-gray-900">{{ statusPageForHost.title }}</h1>
         <p class="mt-2 text-gray-500">{{ t('host_restricted') }}</p>
         <p class="mt-1 text-gray-500">{{ t('gate_visit_pre') }} <StxLink class="underline" to="/status/{{ statusPageForHost.slug }}">/status/{{ statusPageForHost.slug }}</StxLink> {{ t('gate_visit_post') }}</p>
       </div>
     @endif
 
     @if (statusPageForHost && !hostAccessGated)
-      <div class="mx-auto max-w-3xl px-6 py-16">
+      <div class="mx-auto px-6 py-16 max-w-3xl">
         <header class="mb-10">
-          <h1 class="text-2xl font-semibold text-gray-900">{{ statusPageForHost.title }}</h1>
+          <h1 class="font-semibold text-2xl text-gray-900">{{ statusPageForHost.title }}</h1>
         </header>
 
-        <div class="mb-8 flex items-center gap-3 rounded-xl border px-5 py-4 border-gray-200 bg-gray-50">
+        <div class="flex gap-3 items-center mb-8 px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl">
           <p class="font-medium text-gray-900">{{ hostOverallLabel }}</p>
         </div>
 
         @if (hostActiveMaintenanceWindows.length > 0)
           <section class="mb-10">
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('maintenance') }}</h2>
+            <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('maintenance') }}</h2>
             <div class="space-y-3">
               @foreach (hostActiveMaintenanceWindows as mw)
-                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p class="font-medium text-gray-900">{{ mw.title }}</p>
-                  <p class="mt-1 text-sm text-gray-600">{{ mw.description }}</p>
-                  <p class="mt-1 text-xs text-gray-400">{{ hostFormatDate(mw.starts_at) }} to {{ hostFormatDate(mw.ends_at) }}</p>
+                  <p class="mt-1 text-gray-600 text-sm">{{ mw.description }}</p>
+                  <p class="mt-1 text-gray-400 text-xs">{{ hostFormatDate(mw.starts_at) }} to {{ hostFormatDate(mw.ends_at) }}</p>
                 </div>
               @endforeach
             </div>
@@ -433,16 +433,16 @@ if (!statusPageForHost && faqs && faqs.length)
 
         @if (hostActiveStatusReports.length > 0)
           <section class="mb-10">
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('announcements') }}</h2>
+            <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('announcements') }}</h2>
             <div class="space-y-3">
               @foreach (hostActiveStatusReports as report)
-                <div class="rounded-lg border border-gray-200 bg-white p-4">
-                  <div class="flex items-center justify-between gap-4">
+                <div class="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div class="flex gap-4 items-center justify-between">
                     <p class="font-medium text-gray-900">{{ report.title }}</p>
-                    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ report.status }}</span>
+                    <span class="font-medium text-gray-500 text-xs tracking-wide uppercase">{{ report.status }}</span>
                   </div>
-                  <p class="mt-1 text-sm text-gray-600">{{ report.body }}</p>
-                  <p class="mt-1 text-xs text-gray-400">{{ t('posted') }} {{ hostFormatDate(report.started_at) }}</p>
+                  <p class="mt-1 text-gray-600 text-sm">{{ report.body }}</p>
+                  <p class="mt-1 text-gray-400 text-xs">{{ t('posted') }} {{ hostFormatDate(report.started_at) }}</p>
                 </div>
               @endforeach
             </div>
@@ -451,15 +451,15 @@ if (!statusPageForHost && faqs && faqs.length)
 
         @if (hostActiveIncidents.length > 0)
           <section class="mb-10">
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('active_incidents') }}</h2>
+            <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('active_incidents') }}</h2>
             <div class="space-y-3">
               @foreach (hostActiveIncidents as incident)
-                <div class="rounded-lg border border-gray-200 bg-white p-4">
-                  <div class="flex items-center justify-between gap-4">
+                <div class="p-4 bg-white border border-gray-200 rounded-lg">
+                  <div class="flex gap-4 items-center justify-between">
                     <p class="font-medium text-gray-900">{{ incident.monitor_name }}</p>
-                    <span class="text-xs font-medium uppercase tracking-wide text-amber-600">{{ incident.status }}</span>
+                    <span class="font-medium text-amber-600 text-xs tracking-wide uppercase">{{ incident.status }}</span>
                   </div>
-                  <p class="mt-1 text-sm text-gray-600">{{ incident.cause }}</p>
+                  <p class="mt-1 text-gray-600 text-sm">{{ incident.cause }}</p>
                 </div>
               @endforeach
             </div>
@@ -468,23 +468,23 @@ if (!statusPageForHost && faqs && faqs.length)
 
         @if (hostMonitorGroups.length === 0)
           <section>
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ t('monitors') }}</h2>
-            <div class="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+            <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ t('monitors') }}</h2>
+            <div class="bg-white border border-gray-200 divide-gray-200 divide-y rounded-lg">
               @foreach (hostMonitors as monitor)
                 <div class="px-4 py-4">
-                  <div class="flex items-center justify-between gap-4">
+                  <div class="flex gap-4 items-center justify-between">
                     <p class="font-medium text-gray-900">{{ monitor.name }}</p>
-                    <div class="flex items-center gap-2">
+                    <div class="flex gap-2 items-center">
                       <span class="h-2 w-2 rounded-full {{ hostMonitorDotClass(monitor.status) }}"></span>
-                      <span class="text-sm text-gray-500">{{ hostMonitorLabel(monitor.status) }}</span>
+                      <span class="text-gray-500 text-sm">{{ hostMonitorLabel(monitor.status) }}</span>
                     </div>
                   </div>
-                  <div class="flex gap-[2px] items-stretch h-[30px] mt-[10px]">
+                  <div class="flex gap-[2px] items-stretch mt-[10px] h-[30px]">
                     @foreach (hostUptimeBars(monitor.id) as bar)
                       <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ hostUptimeBarColor(bar.status) }};"></span>
                     @endforeach
                   </div>
-                  <div class="mt-1.5 flex items-center justify-between text-xs text-gray-400">
+                  <div class="flex items-center justify-between mt-1.5 text-gray-400 text-xs">
                     <span>{{ t('days_ago_90') }}</span>
                     <span>{{ hostUptimePctLabel(monitor.id) }}</span>
                     <span>{{ t('today') }}</span>
@@ -498,23 +498,23 @@ if (!statusPageForHost && faqs && faqs.length)
         @if (hostMonitorGroups.length > 0)
           @foreach (hostMonitorGroups as group)
             <section class="mb-10">
-              <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ group.name }}</h2>
-              <div class="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+              <h2 class="mb-3 font-semibold text-gray-500 text-sm tracking-wide uppercase">{{ group.name }}</h2>
+              <div class="bg-white border border-gray-200 divide-gray-200 divide-y rounded-lg">
                 @foreach (group.monitors as monitor)
                   <div class="px-4 py-4">
-                    <div class="flex items-center justify-between gap-4">
+                    <div class="flex gap-4 items-center justify-between">
                       <p class="font-medium text-gray-900">{{ monitor.name }}</p>
-                      <div class="flex items-center gap-2">
+                      <div class="flex gap-2 items-center">
                         <span class="h-2 w-2 rounded-full {{ hostMonitorDotClass(monitor.status) }}"></span>
-                        <span class="text-sm text-gray-500">{{ hostMonitorLabel(monitor.status) }}</span>
+                        <span class="text-gray-500 text-sm">{{ hostMonitorLabel(monitor.status) }}</span>
                       </div>
                     </div>
-                    <div class="flex gap-[2px] items-stretch h-[30px] mt-[10px]">
+                    <div class="flex gap-[2px] items-stretch mt-[10px] h-[30px]">
                       @foreach (hostUptimeBars(monitor.id) as bar)
                         <span title="{{ bar.date }}" style="flex:1 1 0;min-width:1px;border-radius:2px;background:{{ hostUptimeBarColor(bar.status) }};"></span>
                       @endforeach
                     </div>
-                    <div class="mt-1.5 flex items-center justify-between text-xs text-gray-400">
+                    <div class="flex items-center justify-between mt-1.5 text-gray-400 text-xs">
                       <span>{{ t('days_ago_90') }}</span>
                       <span>{{ hostUptimePctLabel(monitor.id) }}</span>
                       <span>{{ t('today') }}</span>
@@ -552,7 +552,7 @@ if (!statusPageForHost && faqs && faqs.length)
       @include('../partials/marketing-nav.stx')
 
       <main>
-        <section class="site-shell hero">
+        <section class="hero site-shell">
           <div>
             <span class="badge"><span class="dot"></span> Open source &middot; MIT licensed</span>
             <h1 class="hero-title">Know the moment <span class="accent-word">something breaks.</span></h1>
@@ -636,7 +636,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </aside>
         </section>
 
-        <section id="features" class="site-shell section" aria-labelledby="features-heading">
+        <section id="features" class="section site-shell" aria-labelledby="features-heading">
           <div class="section-head">
             <span class="eyebrow">Everything, in one place</span>
             <h2 id="features-heading" class="section-title">One dashboard for uptime, SSL, DNS, and status.</h2>
@@ -660,7 +660,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </div>
         </section>
 
-        <section class="site-shell section" aria-labelledby="how-heading">
+        <section class="section site-shell" aria-labelledby="how-heading">
           <div class="section-head">
             <span class="eyebrow">How it works</span>
             <h2 id="how-heading" class="section-title">Set up monitoring in minutes, not hours.</h2>
@@ -677,7 +677,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </div>
         </section>
 
-        <section id="status-pages" class="site-shell section" aria-labelledby="status-pages-heading">
+        <section id="status-pages" class="section site-shell" aria-labelledby="status-pages-heading">
           <div class="section-head">
             <span class="eyebrow">Status pages</span>
             <h2 id="status-pages-heading" class="section-title">A status page your users will actually visit.</h2>
@@ -743,7 +743,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </div>
         </section>
 
-        <section class="site-shell section" aria-labelledby="oss-heading">
+        <section class="section site-shell" aria-labelledby="oss-heading">
           <div class="oss-band">
             <div>
               <h2 id="oss-heading">Free to self-host. Forever.</h2>
@@ -753,7 +753,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </div>
         </section>
 
-        <section id="pricing" class="site-shell section" aria-labelledby="pricing-heading">
+        <section id="pricing" class="section site-shell" aria-labelledby="pricing-heading">
           <div class="section-head">
             <span class="eyebrow">Pricing</span>
             <h2 id="pricing-heading" class="section-title">Simple, honest pricing.</h2>
@@ -785,7 +785,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </div>
         </section>
 
-        <section class="site-shell section" aria-labelledby="faq-heading">
+        <section class="section site-shell" aria-labelledby="faq-heading">
           <div class="section-head">
             <span class="eyebrow">FAQ</span>
             <h2 id="faq-heading" class="section-title">Questions, answered.</h2>
@@ -801,7 +801,7 @@ if (!statusPageForHost && faqs && faqs.length)
           </div>
         </section>
 
-        <section class="site-shell section" aria-labelledby="cta-heading">
+        <section class="section site-shell" aria-labelledby="cta-heading">
           <div class="cta-band">
             <h2 id="cta-heading">Start monitoring in under 2 minutes.</h2>
             <p>No credit card required for the self-hosted, open-source version.</p>
@@ -813,7 +813,7 @@ if (!statusPageForHost && faqs && faqs.length)
         </section>
       </main>
 
-      <footer class="site-shell site-footer">
+      <footer class="site-footer site-shell">
         <div class="footer-grid">
           <div class="footer-brand">
             <StxLink class="brand" to="/" aria-label="{{ appName }} home">

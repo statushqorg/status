@@ -22,7 +22,8 @@ realtime/src/
   emit.ts             # emit(), emitToUser(), emitToUsers()
   channel.ts          # Channel class + channel() factory
   broadcast.ts        # Broadcast class + runBroadcast() + broadcast()
-  ws.ts               # WebSocket request handler (legacy, kept for backward compat)
+  ws.ts               # setWsAuthenticator() - gates upgrades on the broadcast server
+  replay-buffer.ts    # setReplayBuffer() / replaySince() - per-channel replay with seq numbers
   server-instance.ts  # server lifecycle (createServer/getServer/setServer/stopServer)
 ```
 
@@ -43,7 +44,9 @@ export type { EmitOptions } from './emit'
 export { channel as createChannel, Channel as StacksChannel } from './channel'
 export { broadcast as dispatchBroadcast, runBroadcast, Broadcast as LegacyBroadcast } from './broadcast'
 export type { BroadcastInstance } from './broadcast'
-export { setBunSocket, handleWebSocketRequest, storeWebSocketEvent } from './ws'
+export { debugSnapshot, getReplayBuffer, pruneExpired, recordBroadcast, replaySince, setReplayBuffer } from './replay-buffer'
+export { storeWebSocketEvent, setWsAuthenticator, getWsAuthenticator } from './ws'
+export type { WsAuthenticator, WsAuthResult } from './ws'
 ```
 
 Note the renamed exports:
@@ -72,9 +75,9 @@ emit('orders', 'updated', { status: 'shipped' }, { private: true })
 // Broadcast to a presence channel (auto-prefixes 'presence-')
 emit('room-1', 'user-joined', { userId: 42 }, { presence: true })
 
-// Exclude specific socket(s) from receiving
-// NOTE: BroadcastServer only supports single socket exclusion;
-//       if array is passed, only the first element is used
+// Exclude specific socket(s) from receiving - socket IDs (the `socket_id`
+// a client gets in `connection_established`), not user IDs. Every ID in an
+// array is excluded.
 emit('chat', 'typing', data, { exclude: 'socket-id-1' })
 emit('chat', 'typing', data, { exclude: ['socket-id-1', 'socket-id-2'] })
 ```
@@ -85,7 +88,7 @@ emit('chat', 'typing', data, { exclude: ['socket-id-1', 'socket-id-2'] })
 interface EmitOptions {
   private?: boolean     // prefix channel with 'private-'
   presence?: boolean    // prefix channel with 'presence-'
-  exclude?: string | string[]  // socket IDs to exclude (only first used)
+  exclude?: string | string[]  // socket IDs to exclude (all of them)
   driver?: string       // broadcast driver override
 }
 ```
@@ -185,7 +188,53 @@ setServer(server)
 await stopServer()
 ```
 
-`createServer()` dynamically imports `ts-broadcasting`, instantiates `BroadcastServer`, calls `start()`, stores the instance via `setServer()`, and returns it.
+`createServer()` dynamically imports `ts-broadcasting`, instantiates `BroadcastServer`, calls `start()`, stores the instance via `setServer()`, and returns it. That server is the WebSocket endpoint (`/app` and `/ws` on its own host/port); there is no upgrade handler for the app's HTTP server.
+
+### Connection auth
+
+```typescript
+import { setWsAuthenticator } from '@stacksjs/realtime'
+
+// Read on every upgrade, so it applies whether installed before or after createServer().
+setWsAuthenticator(async (req) => {
+  const token = new URL(req.url).searchParams.get('token')
+  const user = token ? await verify(token) : null
+  if (!user) return { ok: false, status: 401, message: 'Unauthorized' }
+  // user -> socket.data.user, data -> socket.data.data (what channel authorizers read)
+  return { ok: true, user: { id: user.id }, data: { team: user.team } }
+})
+```
+
+A refusal answers the upgrade with its status; a throw refuses with a 500 and is logged, not sent. An `authorizeConnection` in the `createServer()` config still runs after it. Per-channel access is still `Broadcast.channel('private-orders.{id}', (socket, params) => ...)`.
+
+`/stats` and `/metrics` are off unless `createServer({ endpoints: { stats: true, metrics: true, token } })`.
+
+### Dead sockets and slow consumers
+
+Bun's own WebSocket options, passed through `createServer()`:
+
+```typescript
+await createServer({
+  host: '0.0.0.0',
+  port: 6001,
+  websocket: {
+    idleTimeout: 60,                 // Bun pings idle sockets; no pong within this -> closed (rounded up to 4s steps)
+    sendPings: true,
+    backpressureLimit: 1024 * 1024,
+    closeOnBackpressureLimit: true,  // drop a consumer that falls 1 MB behind
+  },
+})
+```
+
+### Replay buffer
+
+```typescript
+import { replaySince, setReplayBuffer } from '@stacksjs/realtime'
+
+setReplayBuffer({ channels: ['orders.*'], maxPerChannel: 100, ttlMs: 5 * 60_000 })
+```
+
+Every broadcast on a matching channel, from any API, is recorded and reaches clients as `{ event, channel, data, seq }`. Patterns match with or without the `private-`/`presence-` prefix (`orders.*` covers `private-orders.1`); `replaySince()` takes the full name. The client keeps the last `seq` per channel and sends it back after reconnecting (through a route of the app's), which answers with `replaySince('private-orders.1', seq)`. The buffer and its numbering are per process. A channel's `seq` rises by one per message and keeps rising across a restart (each channel starts from the clock, never below a number already issued), so messages sent after a restart are still newer than the `seq` a reconnecting client holds. Do not assume it starts at 1. When the first replayed `seq` is not the client's `seq + 1`, messages were lost: evicted, expired, or sent before a restart.
 
 ---
 
@@ -270,157 +319,32 @@ class Broadcast {
 }
 ```
 
-### WebSocket handler (ws.ts)
+### ws.ts
 
 ```typescript
-// Deprecated - handled by ts-broadcasting internally
-setBunSocket(server: BroadcastServer | null): void      // calls setServer()
-storeWebSocketEvent(type, socket, details): Promise<void> // no-op
-handleWebSocketRequest(req, server): Promise<Response | undefined>  // delegates to server.upgrade()
+storeWebSocketEvent(type, socket, details): Promise<void> // no-op, kept for compatibility
 ```
 
 ---
 
 ## config/realtime.ts
 
-Full configuration with all options and their defaults:
+Read the application file for host/port, app credentials, channel and provider
+settings. The Stacks public server is explicitly created through createServer
+with ts-broadcasting ServerConfig, including authorizeConnection, websocket and
+endpoint options. A config field is applied only when the chosen runtime passes
+it to that server or deployment layer.
 
-```typescript
-export default {
-  enabled: true,
+Legacy pusher/ably/reverb/socket names, serverless definitions, Redis topology and
+auto-scaling settings are not separate proved application broadcasting drivers
+in the capability registry. Its retained Stacks topology is a single-process
+WebSocket server, requiring application fan-out to scale out. Do not pass the
+whole Stacks realtime config to createServer as if both types were identical.
 
-  // Deployment mode
-  mode: 'server' as 'server' | 'serverless',
-  // 'server': ts-broadcasting (high-performance Bun WebSocket server)
-  // 'serverless': API Gateway WebSocket + Lambda + DynamoDB
-
-  // Legacy driver option (backward compat)
-  driver: 'bun' as 'socket' | 'pusher' | 'bun' | 'reverb' | 'ably',
-
-  // Server mode config (ts-broadcasting)
-  server: {
-    host: env.BROADCAST_HOST || '0.0.0.0',
-    port: Number(env.BROADCAST_PORT || 6001),
-    scheme: 'ws' as 'ws' | 'wss',
-    driver: 'bun',
-
-    redis: {
-      enabled: Boolean(env.BROADCAST_REDIS_ENABLED || false),
-      host: env.REDIS_HOST || 'localhost',
-      port: Number(env.REDIS_PORT || 6379),
-      password: env.REDIS_PASSWORD || '',
-      prefix: env.BROADCAST_REDIS_PREFIX || 'stacks:realtime:',
-    },
-
-    rateLimit: {
-      enabled: true,                    // env.BROADCAST_RATE_LIMIT_ENABLED
-      maxConnectionsPerIp: 100,
-      maxMessagesPerSecond: 50,
-      maxPayloadSize: 65536,            // 64KB
-      banDuration: 300,                 // seconds
-    },
-
-    loadManagement: {
-      maxConnections: 10000,
-      backpressureThreshold: 1000,
-      messageQueueSize: 10000,
-      gracefulShutdownTimeout: 30000,   // 30s
-    },
-
-    autoScaling: {
-      min: 1,
-      max: 10,
-      targetCPU: 70,                    // percentage
-    },
-
-    healthCheck: {
-      enabled: true,
-      path: '/health',
-      interval: 30,                     // seconds
-    },
-
-    metrics: {
-      enabled: Boolean(env.BROADCAST_METRICS_ENABLED || false),
-      port: 9090,
-      path: '/metrics',
-    },
-  },
-
-  // Serverless mode config (API Gateway WebSocket)
-  serverless: {
-    connectionTimeout: 3600,            // 1 hour
-    idleTimeout: 600,                   // 10 minutes
-    stageName: env.APP_ENV || 'production',
-    memorySize: 256,                    // MB
-    timeout: 30,                        // seconds
-  },
-
-  // Channel configuration
-  channels: {
-    public: true,
-    private: true,
-    presence: {
-      enabled: true,
-      maxMembersPerChannel: 100,
-      memberInfoTtl: 60,               // seconds
-    },
-  },
-
-  // App credentials (Pusher-compatible)
-  app: {
-    id: env.BROADCAST_APP_ID || 'stacks',
-    key: env.BROADCAST_APP_KEY || '',
-    secret: env.BROADCAST_APP_SECRET || '',
-  },
-
-  // Legacy socket config
-  socket: {
-    port: Number(env.BROADCAST_PORT || 6001),
-    host: env.BROADCAST_HOST || 'localhost',
-    cors: {
-      origin: env.BROADCAST_CORS_ORIGIN || env.APP_URL || 'http://localhost:3000',
-      methods: ['GET', 'POST'],
-    },
-  },
-
-  // Legacy Pusher config
-  pusher: {
-    appId: env.PUSHER_APP_ID || '',
-    key: env.PUSHER_APP_KEY || '',
-    secret: env.PUSHER_APP_SECRET || '',
-    cluster: env.PUSHER_APP_CLUSTER || 'mt1',
-    useTLS: Boolean(env.PUSHER_APP_USE_TLS ?? true),
-  },
-
-  debug: Boolean(env.BROADCAST_DEBUG || false),
-} satisfies RealtimeConfig
-```
-
-### Environment Variables
-| Variable | Default | Description |
-|---|---|---|
-| `REALTIME_MODE` | `server` | Deployment mode: server or serverless |
-| `BROADCAST_DRIVER` | `bun` | Broadcasting driver |
-| `BROADCAST_HOST` | `0.0.0.0` | Server bind host |
-| `BROADCAST_PORT` | `6001` | Server port |
-| `BROADCAST_SCHEME` | `ws` | WebSocket scheme (ws/wss) |
-| `BROADCAST_REDIS_ENABLED` | `false` | Enable Redis adapter |
-| `REDIS_HOST` | `localhost` | Redis host |
-| `REDIS_PORT` | `6379` | Redis port |
-| `REDIS_PASSWORD` | (empty) | Redis password |
-| `BROADCAST_REDIS_PREFIX` | `stacks:realtime:` | Redis key prefix |
-| `BROADCAST_RATE_LIMIT_ENABLED` | `true` | Enable rate limiting |
-| `BROADCAST_METRICS_ENABLED` | `false` | Enable metrics endpoint |
-| `BROADCAST_APP_ID` | `stacks` | App ID |
-| `BROADCAST_APP_KEY` | (empty) | App key |
-| `BROADCAST_APP_SECRET` | (empty) | App secret |
-| `BROADCAST_CORS_ORIGIN` | APP_URL | CORS origin |
-| `BROADCAST_DEBUG` | `false` | Debug mode |
-| `PUSHER_APP_ID` | (empty) | Pusher app ID |
-| `PUSHER_APP_KEY` | (empty) | Pusher app key |
-| `PUSHER_APP_SECRET` | (empty) | Pusher app secret |
-| `PUSHER_APP_CLUSTER` | `mt1` | Pusher cluster |
-| `PUSHER_APP_USE_TLS` | `true` | Pusher TLS |
+Environment values come from config/realtime.ts; browser clients receive only
+public connection configuration, never the secret. Connection auth and private
+channel authorizers apply independently. The HTTP application server has no
+automatic broadcast socket upgrade handler.
 
 ---
 
@@ -430,13 +354,56 @@ export default {
 - Private channels auto-prefix `private-` -- don't add it yourself (the code checks `channel.startsWith('private-')`)
 - Presence channels auto-prefix `presence-` -- same logic applies
 - `emitToUser()` sends to `private-user.{userId}` -- users must subscribe to this channel pattern
-- When using `emit()` with `exclude`, only the first socket ID in an array is used (BroadcastServer limitation)
+- `emit()`'s `exclude` takes socket IDs, not user IDs; every ID in an array is excluded
 - Broadcast files are dynamically imported from `app/Broadcasts/` using `bun.globSync`
 - The `Broadcast` class is legacy -- new code should use `emit()` and `channel()` directly
-- `handleWebSocketRequest()` and `storeWebSocketEvent()` are deprecated -- ws events are tracked internally by ts-broadcasting
-- `setBunSocket()` is deprecated -- use `setServer()` instead
-- Serverless mode uses API Gateway WebSocket for AWS Lambda with DynamoDB for connection management
+- There is no `handleWebSocketRequest()`: sockets upgraded on the app's own server were never part of the broadcast server, so they could not join channels. Clients connect to the broadcast server's `/ws`
+- There is no Stacks heartbeat or backpressure guard; use `createServer({ websocket: { idleTimeout, sendPings, backpressureLimit, closeOnBackpressureLimit } })`
+- Serverless/provider shapes in config describe cloud options; inspect their actual deploy/runtime wiring before claiming the Stacks broadcast APIs support that topology
 - Rate limiting defaults: 100 connections per IP, 50 messages/second, 64KB max payload, 300s ban duration
-- Redis adapter enables horizontal scaling across multiple server instances
+- The supported Stacks runtime contract is single-process WebSocket; scale-out requires an application-provided fan-out layer and separate provider evidence
 - Auto-scaling config (min/max/targetCPU) is for cloud deployment orchestration
 - The `satisfies RealtimeConfig` type annotation ensures the config matches the expected type from `@stacksjs/types`
+
+
+## Capability evidence
+
+`storage/framework/core/config/src/capabilities.ts` retains a single-process
+WebSocket contract. A redis/autoScaling/serverless config field is not proof that
+createServer wires it into the broadcast engine. Connection authorization and
+private/presence channel authorization are separate checks. Replay is in-memory
+and per process, not durable recovery or a cluster-wide sequence.
+Retained tests: `core/realtime/tests/ws-auth.test.ts`,
+`websocket-options.test.ts`, and replay/exclusion tests in that directory.
+
+## Authenticated HTTP broadcast transport
+
+`createBroadcastHub()` initializes the same ts-broadcasting engine without opening
+an extra WebSocket listener. It reuses an existing server. This is an explicit
+single-process HTTP transport; it does not initialize Redis or a cluster.
+`emit()`, model broadcasts and private chat invalidations all reach its hooks.
+
+`createBroadcastResponse({ channels, authorize, signal })` returns an SSE Response.
+Select channel names on the server. Authorization is mandatory and runs before
+subscription, before each event, and at every heartbeat. The callback retains the
+subscriber's async context even when another request broadcasts. It must still
+resolve current credentials, grants and expiry on every call; context binding
+does not freeze authorization facts. Pass the request's abort signal. Cancellation, failed authorization and slow consumers remove the hook.
+Streams bound both queued events and pending authorization work (64 by default).
+
+Optional `onEnqueue(chunk, broadcast)` runs after successful native enqueue with
+the exact queued Uint8Array and original `{ channel, event, data }` metadata.
+Connected/heartbeat metadata is null. Do not mutate the chunk. This observes
+local queue admission, not remote receipt or reader demand. Optional `onClose()`
+runs once after removing the subscription, heartbeat and abort listener. These
+callbacks are captured before initial authorization awaits, keep the subscriber's
+async context and preserve their options receiver. They run synchronously;
+enqueue observer throws or accidental promise rejections close the stream.
+Close observer failures are contained. Initial unauthorized responses create no
+subscription and do not notify close. The optional hooks leave wire bytes,
+authorization, capacity and existing callers unchanged.
+
+STX's `useBroadcastStream({ request, endpoint, onMessage, onConnected })` makes
+fresh authenticated requests using the application's injected transport, reconnects
+with backoff, and cancels on `close()`. Re-read durable state in `onConnected`;
+this stream does not promise durable replay. Credentials stay in HTTP headers.

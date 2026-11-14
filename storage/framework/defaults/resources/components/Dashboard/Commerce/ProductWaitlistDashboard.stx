@@ -1,21 +1,21 @@
 <script client>
-import type { ProductWaitlistOptions, ProductWaitlistRecord, ProductWaitlistSummary, ProductWaitlistWritePayload } from '../../../../app/Actions/Dashboard/Commerce/product-waitlist-records'
+import type { ProductWaitlistRecord, ProductWaitlistSummary, ProductWaitlistWritePayload } from '../../../../app/Actions/Dashboard/Commerce/product-waitlist-records'
 import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
+import { useServerList } from '../../../../functions/dashboard-list'
 import { pushToast } from '../../../../functions/toasts'
 
 interface ProductWaitlistResponse {
   records: ProductWaitlistRecord[]
+  total: number
+  page: number
+  perPage: number
   summary: ProductWaitlistSummary
-  options: ProductWaitlistOptions
 }
 
-const records = state<ProductWaitlistRecord[]>([])
 const summary = state<ProductWaitlistSummary>({ total: 0, waiting: 0, notified: 0, purchased: 0, conversionRate: 0 })
-const options = state<ProductWaitlistOptions>({ products: [], customers: [] })
-const search = state('')
+/** Whether any product exists, so an entry can be added at all. */
+const hasProducts = state(true)
 const status = state('all')
-const isLoading = state(true)
-const loadError = state('')
 const entryDialogOpen = state(false)
 const entryDialogMode = state<'add' | 'edit'>('add')
 const editingRecord = state<ProductWaitlistRecord | null>(null)
@@ -31,15 +31,45 @@ const metrics = derived(() => [
   { label: 'Conversion', value: `${summary().conversionRate}%` },
 ])
 
-function rows(): ProductWaitlistRecord[] {
-  const query = search().trim().toLowerCase()
-  return records().filter((record) => {
-    if (status() !== 'all' && record.status !== status())
-      return false
-    const productName = options().products.find(option => option.id === record.productId)?.label || ''
-    return !query || [record.name, record.email, record.phone, record.source, productName, record.productId]
-      .some(value => value.toLowerCase().includes(query))
-  })
+/** The table's sortable columns, as the server's sort names. */
+const COLUMN_SORTS: Record<string, string> = {
+  name: 'name',
+  productName: 'product',
+  quantity: 'quantity',
+  status: 'status',
+  notificationPreference: 'preference',
+  createdAt: 'created',
+}
+
+// The server searches, filters, sorts and pages (stacksjs/stacks#3218);
+// useServerList keeps the request order, paging, header sort and search
+// debounce this page used to keep itself.
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading: isLoading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<ProductWaitlistRecord>({
+  fetch: query => dashboardApi<ProductWaitlistResponse>(`/api/dashboard/commerce/waitlist-products?${query}`),
+  defaultSort: { sort: 'created', direction: 'desc' },
+  columnSorts: COLUMN_SORTS,
+  filters: () => ({ status: status() }),
+  onLoad: (result) => {
+    summary.set((result as ProductWaitlistResponse).summary ?? { total: 0, waiting: 0, notified: 0, purchased: 0, conversionRate: 0 })
+  },
+  onError: error => pushToast('error', 'Could not load product waitlist', { detail: error instanceof Error ? error.message : String(error) }),
+})
+
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'entry' : 'entries'}`
 }
 
 function openAddDialog(): void {
@@ -73,23 +103,19 @@ function closeDeleteDialog(): void {
     deleteRecord.set(null)
 }
 
-async function loadRecords(): Promise<void> {
-  isLoading.set(true)
-  loadError.set('')
+function loadRecords(): Promise<void> {
+  return load()
+}
+
+/** Whether there is any product to make an entry for: one choice is enough to know. */
+async function loadHasProducts(): Promise<void> {
   try {
-    const result = await dashboardApi<ProductWaitlistResponse>('/api/dashboard/commerce/waitlist-products')
-    records.set(Array.isArray(result.records) ? result.records : [])
-    summary.set(result.summary ?? { total: 0, waiting: 0, notified: 0, purchased: 0, conversionRate: 0 })
-    options.set(result.options ?? { products: [], customers: [] })
+    const result = await dashboardApi<{ total?: number }>('/api/dashboard/commerce/product-choices?limit=1')
+    hasProducts.set(Number(result.total) > 0)
   }
-  catch (error) {
-    loadError.set('Product waitlist records could not be loaded.')
-    pushToast('error', 'Could not load product waitlist', {
-      detail: error instanceof Error ? error.message : String(error),
-    })
-  }
-  finally {
-    isLoading.set(false)
+  catch {
+    // Unknown: leave Add enabled, and the dialog says when nothing matches.
+    hasProducts.set(true)
   }
 }
 
@@ -146,46 +172,41 @@ async function deleteSelectedRecord(): Promise<void> {
 
 onMount(() => {
   void loadRecords()
+  void loadHasProducts()
 })
 </script>
 
-<div class="space-y-6">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">Product Waitlist</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Native WaitlistProduct records without simulated customers or activity.</p>
-    </div>
-    <div class="flex gap-2">
-      <Button variant="secondary" :loading="isLoading()" @click="loadRecords">
-        <span :if="!isLoading()" class="h-4 w-4 i-hugeicons-refresh"></span>
-        Refresh
-      </Button>
-      <Button :disabled="isLoading() || options().products.length === 0" @click="openAddDialog()">
-        <span class="h-4 w-4 i-hugeicons-add-01"></span>
-        Add entry
-      </Button>
-    </div>
-  </header>
+<div class="flex flex-col gap-6">
+  <PageHeader title="Product Waitlist" description="Native WaitlistProduct records without simulated customers or activity.">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="isLoading()" @click="loadRecords">
+      <span :if="!isLoading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Button :disabled="isLoading() || !hasProducts()" @click="openAddDialog()">
+      <span class="h-4 w-4 i-hugeicons-add-01"></span>
+      Add entry
+    </Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
-  <div :if="!isLoading() && options().products.length === 0" class="p-4 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
+  <div :if="!isLoading() && !hasProducts()" class="p-4 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
     Add a product before creating a product waitlist entry.
   </div>
 
   <section class="grid gap-3 grid-cols-2 lg:grid-cols-5">
-    <template :for="item in metrics()">
-      <div class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
-        <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">{{ item.label }}</p>
-        <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p>
-      </div>
-    </template>
+    <div :for="item in metrics()" class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
+      <p class="text-gray-500 text-xs uppercase dark:text-neutral-400">{{ item.label }}</p>
+      <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p>
+    </div>
   </section>
 
-  <section class="space-y-3">
+  <section class="flex flex-col gap-3">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h2 class="font-semibold text-gray-900 dark:text-white">Waitlist entries</h2>
-        <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Up to 200 recent records from the application model.</p>
+        <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">{{ matchingLabel() }}</p>
       </div>
       <div class="flex gap-2">
         <label class="sr-only" for="waitlist-status">Status</label>
@@ -201,7 +222,7 @@ onMount(() => {
       </div>
     </div>
 
-    <ProductWaitlistTable :records="rows()" :options="options()" :loading="isLoading()" @edit="openEditDialog" @delete="openDeleteDialog" />
+    <ProductWaitlistTable :records="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="isLoading()" @edit="openEditDialog" @delete="openDeleteDialog" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
   </section>
 </div>
 
@@ -209,7 +230,6 @@ onMount(() => {
   :open="entryDialogOpen()"
   :mode="entryDialogMode()"
   :record="editingRecord()"
-  :options="options()"
   :busy="isSaving()"
   :errors="validationErrors()"
   @submit="saveRecord"

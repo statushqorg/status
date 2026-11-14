@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/tt-a1i/archify/schemas/architecture.schema.json",
-  "title": "Technical Architecture Diagram",
+  "title": "Archify Architecture Diagram",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "diagram_type", "meta", "components"],
@@ -11,12 +11,39 @@
     "meta": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["title"],
+      "required": ["title", "output"],
       "properties": {
         "title": { "type": "string", "minLength": 1 },
+        "locale": { "$ref": "common.schema.json#/$defs/locale" },
+        "translations": { "$ref": "common.schema.json#/$defs/translations" },
         "subtitle": { "type": "string" },
-        "output": { "type": "string" },
-        "animation": { "enum": ["trace", "none"] },
+        "output": { "$ref": "common.schema.json#/$defs/portableOutputPath" },
+        "animation": { "$ref": "common.schema.json#/$defs/animation" },
+        "visual_preset": { "$ref": "common.schema.json#/$defs/visualPreset" },
+        "quality_profile": { "$ref": "common.schema.json#/$defs/qualityProfile" },
+        "engineering_profile": { "enum": ["deployment-ownership"] },
+        "repository": { "$ref": "common.schema.json#/$defs/repository" },
+        "views": { "$ref": "common.schema.json#/$defs/guidedViews" },
+        "legend": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "$ref": "common.schema.json#/$defs/legendMode" },
+            "entries": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "frontend": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "backend": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "database": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "cloud": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "security": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "messagebus": { "$ref": "common.schema.json#/$defs/legendEntry" },
+                "external": { "$ref": "common.schema.json#/$defs/legendEntry" }
+              }
+            }
+          }
+        },
         "viewBox": {
           "type": "array",
           "prefixItems": [
@@ -56,6 +83,9 @@
           "label": { "type": "string", "minLength": 1 },
           "sublabel": { "type": "string" },
           "tag": { "type": "string" },
+          "icon": { "$ref": "common.schema.json#/$defs/nodeIcon" },
+          "brand": { "$ref": "common.schema.json#/$defs/brandMark" },
+          "sources": { "$ref": "common.schema.json#/$defs/sourceReferences" },
           "row": { "type": "integer", "minimum": 0 },
           "col": { "type": "integer", "minimum": 0 },
           "pos": { "$ref": "common.schema.json#/$defs/point" },
@@ -97,12 +127,13 @@
         "additionalProperties": false,
         "required": ["from", "to"],
         "properties": {
+          "id": { "$ref": "common.schema.json#/$defs/id" },
           "from": { "$ref": "common.schema.json#/$defs/id" },
           "to": { "$ref": "common.schema.json#/$defs/id" },
           "label": { "type": "string" },
           "variant": { "$ref": "common.schema.json#/$defs/variant" },
-          "fromSide": { "enum": ["left", "right", "top", "bottom"] },
-          "toSide": { "enum": ["left", "right", "top", "bottom"] },
+          "fromSide": { "$ref": "common.schema.json#/$defs/side" },
+          "toSide": { "$ref": "common.schema.json#/$defs/side" },
           "route": { "enum": ["auto", "straight", "orthogonal-h", "orthogonal-v"] },
           "via": {
             "type": "array",
@@ -112,7 +143,7 @@
           "labelDx": { "type": "number" },
           "labelDy": { "type": "number" },
           "labelSegment": { "type": "integer", "minimum": 0 },
-          "width": { "type": "number", "minimum": 0.5 }
+          "width": { "$ref": "common.schema.json#/$defs/relationshipWidth" }
         }
       }
     },

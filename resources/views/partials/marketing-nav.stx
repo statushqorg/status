@@ -41,7 +41,7 @@ import { authRequest } from '~/app/lib/authRequest'
 const IS_SIGNED_IN = !!authRequest(typeof cookies !== 'undefined' ? cookies : null).cookies.get('auth-token')
 </script>
 <nav class="site-nav">
-  <div class="site-shell nav-inner">
+  <div class="nav-inner site-shell">
     <StxLink class="brand" to="/" aria-label="{{ appName }} home">
       <span class="brand-mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12h3.5l2-5 3 10 2-7 1.5 3.5h6.5"/></svg>
@@ -51,7 +51,7 @@ const IS_SIGNED_IN = !!authRequest(typeof cookies !== 'undefined' ? cookies : nu
     <div class="nav-links" aria-label="Primary navigation">
       <div class="nav-item">
         <StxLink to="/features">Features<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></StxLink>
-        <div class="nav-mega features">
+        <div class="features nav-mega">
           <div class="nav-mega-inner">
             <div class="mega-group">
               <h5>Availability</h5>

@@ -12,20 +12,21 @@ STX is the full-stack templating and component framework for Stacks. It handles 
 
 ## Design & anti-slop skills
 
-When the task is how a page should *look* (not just how stx renders), pair this skill with the design-taste family: `stacks-design-taste` (flagship), the aesthetic presets `stacks-design-soft` / `stacks-design-minimalist` / `stacks-design-brutalist`, `stacks-redesign`, `stacks-design-output`, and the image-first `stacks-image-to-code` / `stacks-imagegen-web` / `stacks-imagegen-mobile` / `stacks-brandkit`. They translate premium design rules into stx + Crosswind + composables.
+When the task is how a page should *look* (not just how stx renders), pair this skill with the design-taste family: `stacks-design-taste` (flagship), the aesthetic presets `stacks-design-soft` / `stacks-design-minimalist` / `stacks-design-brutalist`, `stacks-redesign`, `stacks-design-output`, and the image-first `stacks-image-to-code` / `stacks-imagegen-web` / `stacks-imagegen-mobile` / `stacks-brandkit`. They translate premium design rules into stx + ts-css + composables.
 
 ## Key Paths
 - STX config: `config/ui.ts`
 - STX plugin: `bun-plugin-stx` (loaded via bunfig.toml)
 - STX build cache + route manifest: `storage/framework/stx/` (stx's `stateDir`, set in `config/ui.ts`)
 - Components: `resources/components/`
-- Layouts: `resources/layouts/`
+- Layouts: `resources/views/layouts/` (the one folder scanned when it exists; `resources/layouts/` only in an app without it)
 - Partials: `resources/partials/`
 - Views: `resources/views/`
 - Package: `@stacksjs/stx`
+- Utility CSS configuration: `config/css.ts` (`@stacksjs/ts-css/engine`)
 
 ## CRITICAL Rules
-1. **ALWAYS use STX** for templating — never write vanilla JS
+1. **ALWAYS use STX** for templating - never write vanilla JS
 2. **NEVER use** `var`, `document.*`, `window.*` in STX templates
 3. STX `<script>` tags should ONLY contain stx-compatible code (signals, composables, directives)
 
@@ -81,7 +82,7 @@ function increment(): void {
 </template>
 
 <style>
-/* Use crosswind utility classes or custom CSS */
+/* Use ts-css utility classes or custom CSS */
 .container { max-width: 1200px; margin: 0 auto; }
 </style>
 ```
@@ -152,47 +153,63 @@ import type { StxOptions } from '@stacksjs/stx'
 
 export default {
   componentsDir: 'components',
-  layoutsDir: 'layouts',
+  layoutsDir: 'views/layouts',
   partialsDir: 'partials',
 } satisfies StxOptions
 ```
 
-### Full StxConfig
+### Configuration source
 
-```typescript
-interface StxConfig {
-  enabled: boolean
-  debug: boolean
-  componentsDir: string
-  partialsDir: string
-  layoutsDir?: string
-  defaultLayout?: string
-  templatesDir?: string
-  cachePath: string
-  ssr?: boolean
-  cache?: boolean
-  defaultTitle?: string
-  defaultDescription?: string
+Import `StxOptions` from the installed package and use `satisfies`; the exported
+type and `config/ui.ts` are authoritative. Optional rendering, hydration,
+streaming, SEO, i18n, component/plugin, form, PWA and strict settings vary with
+the installed STX version. Adding a key to a handwritten interface does not
+enable a module. Read the implementation and retained test for the selected
+setting instead of copying an obsolete flattened config shape.
 
-  // Feature modules
-  i18n?: Partial<I18nConfig>
-  webComponents?: Partial<WebComponentConfig>
-  streaming?: Partial<StreamingConfig>
-  hydration?: Partial<HydrationConfig>
-  a11y?: Partial<A11yConfig>
-  seo?: Partial<SeoFeatureConfig>
-  animation?: Partial<AnimationConfig>
-  markdown?: Partial<MarkdownConfig>
-  forms?: Partial<FormConfig>
-  pwa?: Partial<PwaConfig>
-  components?: Partial<ComponentConfig>
-  media?: Partial<MediaConfig>
-  strict?: boolean | StrictModeConfig
-  customDirectives?: CustomDirective[]
-}
-```
+## Request, state and component boundaries
 
-## STX Capabilities (118+ modules)
+Use `config/ui.ts`'s explicit `root: 'resources'` and relative component,
+layout and partial directories. `stateDir: 'storage/framework/stx'` owns caches,
+client bundles and generated route artifacts. Keep application overrides under
+`resources/`; framework defaults remain the fallback. `defaultViews` controls
+which auth/storefront/error/mail views are served, and its default follows the
+mounted default route bundles. A view existing on disk does not establish that
+its POST endpoint is enabled.
+
+Server scripts run per render; client scripts run in the browser. Serialize
+server data through the supported hydration bridge rather than sharing mutable
+process state. In server templates read the request snapshot (including site)
+through `requestContext`; API AsyncLocalStorage site context does not extend
+through STX's asynchronous render boundary. Pair tenant features with
+`stacks-sites`.
+
+The browser has both eagerly delivered and demand-bundled composables.
+Observers, motion helpers, STX `useForm` and `useCompletion` (inline AI ghost
+text; `<AiTextarea>` is the ready-made textarea) are usable client primitives in
+current STX, even when they are not explicit `window.name` aliases. Read
+`stacks-composables/BROWSER.md` before choosing a signature or mixing the
+browser signal API with explicit module Refs.
+
+For account-persisted initial UI use `keptState` or `cachedQuery`, establish
+`setKeptScope` before values are created, and clear the account scope on
+sign-out. Use `clearServerData(key?)` after mutations invalidate hydration
+data. Ordinary localStorage is a different persistence boundary.
+
+### Live API state and offline caching
+
+An enabled offline worker may answer API reads from its saved copy while it
+refreshes in the background. For live job progress, connection status and
+other reads whose stale answer could end a running operation, use
+`fetch(url, { cache: 'no-store' })` and return
+`Cache-Control: private, no-store` from the endpoint. STX >= 0.2.428 forwards
+no-store requests directly to the network without reading, writing or falling
+back to its offline cache; no-store responses also remove earlier saved copies.
+A failed network read must remain a failed read, rather than appearing to
+confirm that a background operation finished. Keep ordinary offline-capable
+calendar and workout reads on their configured cache strategy.
+
+## STX capability discovery
 
 ### Core
 - Template parsing and compilation
@@ -224,21 +241,45 @@ function showSearch(): void {
 `nextTick()` runs after the current synchronous signal and effect flush. Prefer it over `querySelector`, manual DOM polling, or `requestAnimationFrame` when the task is waiting for STX to materialize reactive markup.
 
 ### Rendering
-- **SSR** — Server-Side Rendering
-- **Streaming** — Progressive HTML streaming
-- **Hydration** — Progressive and islands-based hydration
-- **Suspense** — Async component loading with fallbacks
-- **Error boundaries** — Graceful error handling in components
+- **SSR** - Server-Side Rendering
+- **Streaming** - Progressive HTML streaming
+- **Hydration** - Progressive and islands-based hydration
+- **Suspense** - Async component loading with fallbacks
+- **Error boundaries** - Graceful error handling in components
 
 ### Features
-- **Router** — Client-side routing
-- **Forms** — Built-in form handling and validation
-- **i18n** — Internationalization support
-- **SEO** — Meta tags, Open Graph, Twitter cards, structured data
-- **PWA** — Progressive Web App support
-- **Animation** — CSS and JS animation system
-- **Markdown** — Markdown rendering with syntax highlighting
-- **A11y** — Accessibility checking and auto-fixing
+- **Router** - Client-side routing
+- **Forms** - Built-in form handling and validation
+- **i18n** - Internationalization support
+- **SEO** - Meta tags, Open Graph, Twitter cards, structured data
+- **PWA** - Progressive Web App support
+- **Animation** - CSS and JS animation system
+- **Markdown** - Markdown rendering with syntax highlighting
+- **A11y** - Accessibility checking and auto-fixing
+
+### SEO directives
+
+Every argument is an expression evaluated against the template context (`<script server>` variables, the render context, and, inside an `@include` partial, the partial's own `<script server>`). A quoted string is literal text.
+
+```html
+<script server>
+const seo = { title: post.title, description: post.excerpt, canonical: url, openGraph: { image: post.cover } }
+</script>
+
+@seo(seo)                              <!-- or @seo({ ...seo, title }), @seo(buildSeo(post)), @seo({ title: 'Literal' }) -->
+@seo(page.seo ?? {})                   <!-- a variable only some pages define -->
+@meta('author', post.author)           <!-- unquoted value: an expression -->
+@meta('description', 'Plain text')     <!-- quoted value: literal, never looked up -->
+@meta('keywords', tags)                <!-- an array joins with ", " -->
+@meta('og:title')                      <!-- one argument: reads `title`, then `openGraph.title` -->
+@metaTag({ httpEquiv: 'refresh', content: '30' })
+@structuredData(product)               <!-- object or array of objects; @context defaults to schema.org -->
+```
+
+- `@seo` reads only `title`, `description`, `keywords`, `robots`, `canonical`, `openGraph`, `twitter`, `structuredData`. `image`, `url` and `type` are not top-level keys (use `openGraph.image`, `canonical`, `openGraph.type`); stray keys are ignored with a warning.
+- A directive that cannot produce its tag (a variable that is not defined, a value of the wrong type, a syntax error, an unclosed call) leaves `<!-- [SEO Error ...] -->` in its place and logs `[stx] @seo(seo) in <file>: ...`. A defined variable holding `null` renders nothing, quietly. Read those warnings; they are the only sign a page shipped without its preview card.
+- `@meta` in a page is staged into `<head>`. `@seo`, `@metaTag` and `@structuredData` write where they sit, so put them inside `<head>` (a layout or head partial). In a page body use `useSeoMeta({ title, description, ogImage })` in `<script server>`, which always reaches `<head>`.
+- Requires `@stacksjs/stx` >= 0.2.343. Older versions only matched `@seo({ ... })` literally and sent unquoted `@meta` values such as `post.author` as text, without a warning.
 
 ### Dev Tools
 - **Dev server** with HMR (Hot Module Replacement)
@@ -275,20 +316,27 @@ await addLayout('admin', { nav: true, footer: true })
 `default`, `minimal`, `full`, `blog`, `dashboard`, `landing`
 
 ## Gotchas
-- **STX is the ONLY templating system** — do not use other template engines
-- **`bun-plugin-stx` must be loaded** — without it, `.stx` files won't be processed
-- **Auto-imports** — browser auto-imports defined in `storage/framework/browser-auto-imports.json`
+- **STX is the ONLY templating system** - do not use other template engines
+- **`bun-plugin-stx` must be loaded** - without it, `.stx` files won't be processed
+- **Client delivery** - eager runtime/compiler primitives, demand composables
+  and explicit module imports are distinct. The ambient browser manifest
+  does not establish which browser implementation or signature is delivered.
 - **Imported module dependencies** - browser auto-imports are injected into the STX script entry only; imported `.ts` modules must explicitly import every function or store they use
 - **Project-root server imports** - use `~/path` or `@/path` inside `<script server>` when a layout, partial, or page needs a project file. STX resolves both aliases against the application root before executing the server script. Relative imports still resolve against the `.stx` file
 - **Browser package inputs are bundled** - core browser helpers and model auto-import bootstraps are compiler bundle inputs. Rendered HTML must never contain a bare `import '@stacksjs/browser'`, because browsers cannot resolve package specifiers without an import map
 - **Server-to-client values are explicit** - a JSON-serializable top-level value exported by `<script server>` can be referenced by name in `<script client>`. STX serializes only referenced values and never overwrites a client-owned declaration
-- **`storage/framework/stx/`** — stx build cache and the generated route manifest. `config/ui.ts` sets stx's `stateDir` here, so nothing lands in the project root. Gitignored; safe to delete
+- **`storage/framework/stx/`** - stx build cache and the generated route manifest. `config/ui.ts` sets stx's `stateDir` here, so nothing lands in the project root. Gitignored; safe to delete
 - **Reactivity is signal-based** - use callable `state()` and `derived()` signals, not Vue-style `ref()` or `.value`
 - **Client loop conditions** - `@if` chains that read `:for` or `@for` aliases compile into scoped runtime chains; aliases do not leak outside the loop element
 - **Component tag case is semantic** - `<Input v-model:value="query">` is a paired component, while lowercase `<input v-model="query">` is a native void element. Keep component tags PascalCase, including names that collide with native elements
 - **Structural DOM timing** - use `nextTick()` with `useRef()` after opening reactive markup
-- **Crosswind for styling** — use utility classes, not inline styles
-- **Script block restrictions** — only stx-compatible code (signals, composables, directives), no vanilla DOM APIs
+- **ts-css for styling** - use utility classes, not inline styles
+- **Script block restrictions** - only stx-compatible code (signals, composables, directives), no vanilla DOM APIs
 - **Pre-paint state** - use `@appearanceBootstrap`, never a raw browser script in the template
-- **Components go in `resources/`** — not in `app/` or `storage/`
-- **118+ modules** — STX is a comprehensive framework covering rendering, routing, forms, i18n, SEO, PWA, and more
+- **Components go in `resources/`** - not in `app/` or `storage/`
+- **SEO directives take expressions** - `@seo(seo)`, `@meta('author', post.author)` and `@structuredData(product)` are evaluated; a failure shows up as an inline `<!-- [... Error] -->` comment plus a `[stx]` console warning naming the file, never as silent emptiness. Keep `@seo` inside `<head>`
+- **Dynamic bracket access renders empty** - `{{ labels[item.key] }}` prints an empty string, because the safe evaluator rejects a bracket whose key is a member expression. A bare identifier key (`{{ labels[key] }}`) and dot access (`{{ labels.a }}`) work. The dev log says `stx warning: {{ labels[item.key] }} rendered as an empty string` and names the layout file, not the page. Compute the value in `<script server>` (`items.map(item => ({ ...item, label: labels[item.key] }))`) and interpolate the result. Verified on stx 0.2.842
+- **`{{ value }}` inside `<script client>` is already serialized** - `const tags = {{ tags }}` arrives as `const tags = ["draft", "published"];`. Wrapping it, `{{ JSON.stringify(tags) }}`, hands the client the string `'["draft","published"]'`, which half-works: `.includes('draft')` matches a substring and `.length` counts characters. Interpolate the server value bare. Verified on stx 0.2.842
+- **A layout comment is not inert before stx 0.2.854** - layout source is read for `@extends` and `@layout` before `{{-- --}}` comments are stripped, so a layout whose comment spells out its own extends line extends itself, and the first request spins the dev server at full CPU without answering. Describe directives in a comment without the at sign
+- **A new view needs a dev-server restart** - routes are generated at boot, so a `.stx` file added under `resources/views` answers 404 until `./buddy dev` is restarted. Edits to an existing view reload
+- **118+ modules** - STX is a comprehensive framework covering rendering, routing, forms, i18n, SEO, PWA, and more

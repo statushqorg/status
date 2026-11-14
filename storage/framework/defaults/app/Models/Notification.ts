@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Notification',
@@ -8,6 +8,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { erasure: 'delete', basis: 'contract', purpose: 'In-app notifications' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: {
@@ -20,7 +21,9 @@ export default defineModel({
     },
   },
 
-  belongsTo: ['User'],
+  // Cascade, as the framework's own key repair has always made it
+  // (ensureNotificationForeignKeys): a user's notifications go with the user.
+  belongsTo: [{ model: 'User', onDelete: 'cascade' }],
 
   attributes: {
     type: {
@@ -38,6 +41,7 @@ export default defineModel({
     },
 
     data: {
+      personal: true,
       type: 'text',
       required: true,
       fillable: true,
@@ -64,5 +68,9 @@ export default defineModel({
       },
     },
 
+  },
+
+  dashboard: {
+    columns: ['type', 'user', 'readAt', 'createdAt'],
   },
 } as const)

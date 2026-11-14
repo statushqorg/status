@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="exposure-heading">
+      <section class="section site-shell" aria-labelledby="exposure-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="exposure-heading">Nobody opens a port on purpose at 6pm on a Friday.</h2>
@@ -114,8 +114,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="directions-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="directions-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="directions-heading">Both failure directions, both alerted.</h2>
             <p>
@@ -150,8 +150,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What port scan monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -164,7 +164,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="config-heading">
+      <section class="section site-shell" aria-labelledby="config-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="config-heading">The baseline is three lines of config.</h2>
@@ -188,7 +188,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Port scan monitoring, answered.</h2>
@@ -203,8 +203,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

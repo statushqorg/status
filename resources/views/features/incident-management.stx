@@ -82,7 +82,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="auto-heading">
+      <section class="section site-shell" aria-labelledby="auto-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="auto-heading">Down means an incident, not a log line.</h2>
@@ -122,8 +122,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="ack-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="ack-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="ack-heading">Acknowledge from wherever you got paged.</h2>
             <p>
@@ -141,8 +141,8 @@ curl -X POST \
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What incident management includes.</h2>
         </div>
         <ul class="check-list">
@@ -155,7 +155,7 @@ curl -X POST \
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="maint-heading">
+      <section class="section site-shell" aria-labelledby="maint-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="maint-heading">Planned work is not an outage.</h2>
@@ -191,7 +191,7 @@ curl -X POST \
         </div>
       </section>
 
-      <section class="site-shell section" aria-label="Status page integration">
+      <section class="section site-shell" aria-label="Status page integration">
         <div class="note-band">
           <div>
             <h2>Your status page already knows.</h2>
@@ -203,7 +203,7 @@ curl -X POST \
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Incident management, answered.</h2>
@@ -218,8 +218,8 @@ curl -X POST \
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

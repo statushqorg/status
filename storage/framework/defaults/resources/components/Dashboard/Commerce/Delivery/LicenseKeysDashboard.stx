@@ -1,5 +1,6 @@
 <script client>
 import { dashboardApi } from '../../../../../functions/dashboard-api'
+import { useRecordsDashboard, useServerList } from '../../../../../functions/dashboard-list'
 import { pushToast } from '../../../../../functions/toasts'
 
 type LicenseKeyStatus = 'active' | 'inactive' | 'unassigned'
@@ -8,12 +9,6 @@ interface RelatedSummary {
   id: number
   label: string
   detail?: string
-}
-
-interface LicenseKeyOptions {
-  customers: RelatedSummary[]
-  products: RelatedSummary[]
-  orders: RelatedSummary[]
 }
 
 interface LicenseKeyRecord {
@@ -41,127 +36,94 @@ interface LicenseKeyPayload {
   status: LicenseKeyStatus
 }
 
-const emptyOptions: LicenseKeyOptions = { customers: [], products: [], orders: [] }
-const records = state<LicenseKeyRecord[]>([])
-const options = state<LicenseKeyOptions>(emptyOptions)
-const loading = state(true)
-const loadError = state('')
-const search = state('')
-const page = state(1)
-const perPage = state(10)
-const editorOpen = state(false)
-const editorMode = state<'create' | 'edit'>('create')
-const editing = state<LicenseKeyRecord | null>(null)
-const saving = state(false)
-const editorError = state('')
-const deleting = state<LicenseKeyRecord | null>(null)
-const deleteBusy = state(false)
-const deleteError = state('')
-
-function optionFor(items: RelatedSummary[], id?: number | null): RelatedSummary | null {
-  return id ? items.find(item => item.id === id) || null : null
+interface LicenseKeySummary {
+  total: number
+  active: number
+  assigned: number
+  expiring: number
 }
 
-function withRelationships(record: LicenseKeyRecord): LicenseKeyRecord {
-  const currentOptions = options()
-  return {
-    ...record,
-    customer: optionFor(currentOptions.customers, record.customer_id),
-    product: optionFor(currentOptions.products, record.product_id),
-    order: optionFor(currentOptions.orders, record.order_id),
-  }
+interface LicenseKeyPage {
+  records: LicenseKeyRecord[]
+  total: number
+  page: number
+  summary?: LicenseKeySummary
 }
 
-function dateTime(value: string): number {
-  if (/^\d{10,13}$/.test(value))
-    return Number(value) * (value.length === 10 ? 1000 : 1)
-  return new Date(value.replace(' ', 'T')).getTime()
-}
+const emptySummary: LicenseKeySummary = { total: 0, active: 0, assigned: 0, expiring: 0 }
 
-function filteredRecords(): LicenseKeyRecord[] {
-  const query = search().trim().toLowerCase()
-  if (!query)
-    return records()
-  return records().filter(record => [
-    record.key,
-    record.template,
-    record.status,
-    record.customer?.label,
-    record.customer?.detail,
-    record.product?.label,
-    record.order?.label,
-  ].some(value => String(value || '').toLowerCase().includes(query)))
-}
+// The dialog and the delete confirmation. The list itself is the server's
+// (stacksjs/stacks#3218), and so is each key's customer, product and order:
+// this page used to read the newest 500 keys and label their links from the
+// first 500 customers, products and orders.
+const {
+  editorOpen,
+  editorMode,
+  editing,
+  saving,
+  editorError,
+  deleting,
+  deleteBusy,
+  deleteError,
+  openCreate,
+  openEdit,
+  closeEditor,
+  requestDelete,
+  closeDelete,
+} = useRecordsDashboard<LicenseKeyRecord>({ filter: records => records })
 
-function paginatedRecords(): LicenseKeyRecord[] {
-  const start = (page() - 1) * perPage()
-  return filteredRecords().slice(start, start + perPage())
-}
+const summary = state<LicenseKeySummary>({ ...emptySummary })
 
-function metricCards(): Array<{ label: string, value: string, detail: string }> {
-  const expiryCutoff = Date.now() + (30 * 24 * 60 * 60 * 1000)
-  const expiring = records().filter((record) => {
-    const expiry = dateTime(record.expiry_date)
-    return expiry >= Date.now() && expiry <= expiryCutoff
-  }).length
-  return [
-    { label: 'License keys', value: records().length.toLocaleString(), detail: 'Unique persisted keys' },
-    { label: 'Active', value: records().filter(record => record.status === 'active').length.toLocaleString(), detail: 'Currently enabled' },
-    { label: 'Assigned', value: records().filter(record => record.customer_id || record.product_id || record.order_id).length.toLocaleString(), detail: 'Linked to commerce records' },
-    { label: 'Expiring in 30d', value: expiring.toLocaleString(), detail: 'Future expiry within 30 days' },
-  ]
-}
+const {
+  records,
+  total,
+  page,
+  perPage,
+  search,
+  loading,
+  loadError,
+  load,
+  changePage,
+  changePageSize,
+  changeSort,
+} = useServerList<LicenseKeyRecord>({
+  fetch: params => dashboardApi<LicenseKeyPage>(`/api/dashboard/commerce/license-keys?${params}`),
+  defaultSort: { sort: 'created', direction: 'desc' },
+  columnSorts: {
+    key: 'key',
+    template: 'template',
+    customerLabel: 'customer',
+    productLabel: 'product',
+    orderLabel: 'order',
+    created_at: 'created',
+    expiry_date: 'expiry',
+    status: 'status',
+  },
+  onLoad: result => summary.set((result as LicenseKeyPage).summary ?? { ...emptySummary }),
+  onError: error => pushToast('error', 'Could not load license keys', { detail: error instanceof Error ? error.message : String(error) }),
+})
 
-async function loadKeys(): Promise<void> {
-  loading.set(true)
-  loadError.set('')
-  try {
-    const [keyData, optionData] = await Promise.all([
-      dashboardApi<LicenseKeyRecord[]>('/api/dashboard/commerce/license-keys'),
-      dashboardApi<LicenseKeyOptions>('/api/dashboard/commerce/license-key-options'),
-    ])
-    if (!Array.isArray(keyData) || !Array.isArray(optionData?.customers) || !Array.isArray(optionData?.products) || !Array.isArray(optionData?.orders))
-      throw new TypeError('License key resources were not returned in the expected shape.')
-    options.set(optionData)
-    records.set(keyData.map(withRelationships))
-    const lastPage = Math.max(1, Math.ceil(filteredRecords().length / perPage()))
-    if (page() > lastPage)
-      page.set(lastPage)
-  }
-  catch (error) {
-    loadError.set(error instanceof Error ? error.message : String(error))
-    pushToast('error', 'Could not load license keys', { detail: loadError() })
-  }
-  finally {
-    loading.set(false)
-  }
+function loadKeys(): void {
+  void load()
 }
 
 function handleSearch(value: string): void {
   search.set(value)
-  page.set(1)
 }
 
-function openCreate(): void {
-  editing.set(null)
-  editorMode.set('create')
-  editorError.set('')
-  editorOpen.set(true)
+function matchingLabel(): string {
+  const count = total()
+  return `${count.toLocaleString()} matching ${count === 1 ? 'record' : 'records'}`
 }
 
-function openEdit(record: LicenseKeyRecord): void {
-  editing.set(record)
-  editorMode.set('edit')
-  editorError.set('')
-  editorOpen.set(true)
-}
-
-function closeEditor(): void {
-  if (saving())
-    return
-  editorOpen.set(false)
-  editing.set(null)
-  editorError.set('')
+function metricCards(): Array<{ label: string, value: string, detail: string }> {
+  const current = summary()
+  return [
+    { label: 'License keys', value: current.total.toLocaleString(), detail: 'Unique persisted keys' },
+    { label: 'Active', value: current.active.toLocaleString(), detail: 'Currently enabled' },
+    { label: 'Assigned', value: current.assigned.toLocaleString(), detail: 'Linked to commerce records' },
+    { label: 'Expiring in 30d', value: current.expiring.toLocaleString(), detail: 'Future expiry within 30 days' },
+  ]
 }
 
 function setEditorError(message: string): void {
@@ -182,18 +144,10 @@ async function saveKey(payload: LicenseKeyPayload): Promise<void> {
         body: payload,
       },
     )
-    const hydrated = withRelationships(updated)
-    if (current) {
-      records.set(records().map(record => record.id === current.id ? hydrated : record))
-    }
-    else {
-      const nextRecords = [...records(), hydrated]
-      records.set(nextRecords)
-      page.set(Math.max(1, Math.ceil(nextRecords.length / perPage())))
-    }
     editorOpen.set(false)
     editing.set(null)
-    pushToast('success', current ? 'License key updated' : 'License key added', { detail: hydrated.key })
+    pushToast('success', current ? 'License key updated' : 'License key added', { detail: updated.key })
+    await load()
   }
   catch (error) {
     editorError.set(error instanceof Error ? error.message : String(error))
@@ -201,18 +155,6 @@ async function saveKey(payload: LicenseKeyPayload): Promise<void> {
   finally {
     saving.set(false)
   }
-}
-
-function requestDelete(record: LicenseKeyRecord): void {
-  deleting.set(record)
-  deleteError.set('')
-}
-
-function closeDelete(): void {
-  if (deleteBusy())
-    return
-  deleting.set(null)
-  deleteError.set('')
 }
 
 async function confirmDelete(): Promise<void> {
@@ -225,12 +167,9 @@ async function confirmDelete(): Promise<void> {
     await dashboardApi(`/api/dashboard/commerce/license-keys/${current.id}`, {
       method: 'DELETE',
     })
-    records.set(records().filter(record => record.id !== current.id))
     deleting.set(null)
-    const lastPage = Math.max(1, Math.ceil(filteredRecords().length / perPage()))
-    if (page() > lastPage)
-      page.set(lastPage)
     pushToast('success', 'License key deleted', { detail: current.key })
+    await load()
   }
   catch (error) {
     deleteError.set(error instanceof Error ? error.message : String(error))
@@ -240,47 +179,33 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
-function goToPage(value: number): void {
-  page.set(value)
-}
-
 onMount(() => {
-  void loadKeys()
+  loadKeys()
 })
 </script>
 
-<div class="space-y-6">
+<div class="flex flex-col gap-6">
   <TabNavigation model-value="license" />
 
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">License keys</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Generate unique software licenses and manage their commerce assignments.</p>
-    </div>
-    <div class="flex gap-2">
-      <Button :loading="loading()" variant="secondary" @click="loadKeys()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
-      <Button :disabled="loading()" @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add key</Button>
-    </div>
-  </header>
+  <PageHeader title="License keys" description="Generate unique software licenses and manage their commerce assignments.">
+  <div class="flex gap-2">
+    <Button :loading="loading()" variant="secondary" @click="loadKeys()"><span :if="!loading()" aria-hidden="true" class="h-4 w-4 i-hugeicons-refresh"></span>Refresh</Button>
+    <Button :disabled="loading()" @click="openCreate()"><span aria-hidden="true" class="h-4 w-4 i-hugeicons-add-01"></span>Add key</Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" class="flex gap-4 items-center justify-between p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900"><span>{{ loadError() }}</span><Button variant="secondary" size="sm" @click="loadKeys()">Retry</Button></div>
 
-  <section aria-label="License key metrics" class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-    <template :for="item in metricCards()" :key="item.label"><article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700"><p class="text-gray-500 text-xs dark:text-neutral-400">{{ item.label }}</p><p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p><p class="mt-1 text-gray-400 text-xs dark:text-neutral-500">{{ item.detail }}</p></article></template>
-  </section>
+  <MetricCards label="License key metrics" columns="grid-cols-1 sm:grid-cols-2 xl:grid-cols-4" :items="metricCards()" />
 
   <section class="overflow-hidden bg-white dark:bg-neutral-800 border border-gray-200 rounded-xl dark:border-neutral-700">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-4 border-b border-gray-200 dark:border-neutral-700">
-      <div><h2 class="font-semibold text-gray-900 dark:text-white">Key inventory</h2><p class="mt-0.5 text-gray-500 text-xs dark:text-neutral-400">{{ filteredRecords().length }} matching records</p></div>
+      <div><h2 class="font-semibold text-gray-900 dark:text-white">Key inventory</h2><p class="mt-0.5 text-gray-500 text-xs dark:text-neutral-400">{{ matchingLabel() }}</p></div>
       <SearchFilter placeholder="Search license keys" class="w-full sm:w-80" @search="handleSearch" />
     </div>
-    <div :if="loading()" class="flex items-center justify-center py-24 text-gray-500 text-sm dark:text-neutral-400"><span class="mr-2 h-4 w-4 animate-spin i-hugeicons-loading-03"></span>Loading license keys</div>
-    <LicenseKeysTable :if="!loading()" :license-keys="paginatedRecords()" @edit="openEdit" @delete="requestDelete" />
-    <div :if="!loading()" class="px-4 py-3 bg-gray-50 dark:bg-neutral-900/50 border-gray-200 border-t dark:border-neutral-700">
-      <DeliveryPagination :current-page="page()" :total-items="filteredRecords().length" :items-per-page="perPage()" @select="goToPage" />
-    </div>
+    <LicenseKeysTable :license-keys="records()" :total="total()" :current-page="page()" :per-page="perPage()" :loading="loading()" @edit="openEdit" @delete="requestDelete" @page-change="changePage" @page-size-change="changePageSize" @sort="changeSort" />
   </section>
 </div>
 
-<LicenseKeyDialog :open="editorOpen()" :mode="editorMode()" :record="editing()" :options="options()" :busy="saving()" :error="editorError()" @submit="saveKey" @invalid="setEditorError" @close="closeEditor()" />
+<LicenseKeyDialog :open="editorOpen()" :mode="editorMode()" :record="editing()" :busy="saving()" :error="editorError()" @submit="saveKey" @invalid="setEditorError" @close="closeEditor()" />
 <LicenseKeyDeleteDialog :open="Boolean(deleting())" :record="deleting()" :busy="deleteBusy()" :error="deleteError()" @confirm="confirmDelete()" @close="closeDelete()" />

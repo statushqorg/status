@@ -1,4 +1,4 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import {
   consumeWebAuthnChallenge,
   setCurrentRegistrationOptions,
@@ -51,7 +51,7 @@ export default new Action({
         expectedRPID,
       )
 
-      await setCurrentRegistrationOptions(user, verification)
+      await setCurrentRegistrationOptions({ id: Number(user.id), email: user.email }, verification)
 
       return verification
     }

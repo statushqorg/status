@@ -51,10 +51,22 @@ test('every mail indicator produces a failed observation and a Discord incident 
 })
 afterAll(() => server.stop(true))
 
+// The Teams transport only posts to an https Workflows (Power Automate) host
+// and refuses anything else before it reaches the network, so its fixture is
+// stored with a URL of that shape and the request is carried to the local
+// server here. Discord and Slack still post to the local server directly.
+const TEAMS_WORKFLOW_URL = 'https://fixture.api.powerplatform.com/hook'
+
 for (const provider of ['discord', 'slack', 'teams']) {
   test(`${provider} rejection reaches queue retries and a later delivery succeeds`, async () => {
+    const localUrl = `http://localhost:${server.port}/hook`
+    const realFetch = globalThis.fetch
+    if (provider === 'teams') {
+      globalThis.fetch = ((input: any, init?: any) =>
+        realFetch(String(input) === TEAMS_WORKFLOW_URL ? localUrl : input, init)) as typeof fetch
+    }
     const channel = await NotificationChannel.create({ teamId: 90089, name: `${provider} retry fixture`,
-      type: provider, enabled: true, config: JSON.stringify({ webhookUrl: `http://localhost:${server.port}/hook` }) })
+      type: provider, enabled: true, config: JSON.stringify({ webhookUrl: provider === 'teams' ? TEAMS_WORKFLOW_URL : localUrl }) })
     const payload = { channelId: channel.id, subject: 'Mail check failed', message: 'Storage failures', severity: 'critical' as const }
     try {
       for (const rejected of [429, 500]) {
@@ -66,7 +78,10 @@ for (const provider of ['discord', 'slack', 'teams']) {
       const body = received.at(-1)
       expect(JSON.stringify(body)).toContain('Storage failures')
     }
-    finally { await channel.delete() }
+    finally {
+      globalThis.fetch = realFetch
+      await channel.delete()
+    }
   })
 }
 

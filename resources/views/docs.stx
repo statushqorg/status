@@ -83,7 +83,7 @@ useHead({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="start-heading">
+      <section class="section site-shell" aria-labelledby="start-heading">
         <div class="section-head">
           <h2 id="start-heading" class="section-title">Get started.</h2>
         </div>
@@ -99,7 +99,7 @@ useHead({
       </section>
 
       @foreach (groups as group)
-        <section class="site-shell section" aria-label="{{ group.heading }}">
+        <section class="section site-shell" aria-label="{{ group.heading }}">
           <div class="section-head">
             <h2 class="section-title">{{ group.heading }}.</h2>
           </div>
@@ -115,7 +115,7 @@ useHead({
         </section>
       @endforeach
 
-      <section class="site-shell section" aria-labelledby="selfhost-heading">
+      <section class="section site-shell" aria-labelledby="selfhost-heading">
         <div class="section-head">
           <h2 id="selfhost-heading" class="section-title">Self-hosting &amp; API.</h2>
         </div>

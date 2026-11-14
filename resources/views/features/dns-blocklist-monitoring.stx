@@ -85,7 +85,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="silent-heading">
+      <section class="section site-shell" aria-labelledby="silent-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="silent-heading">The outage nothing else can see.</h2>
@@ -115,8 +115,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="newlisting-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="newlisting-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="newlisting-heading">Alerted on the change, not the state.</h2>
             <p>
@@ -151,8 +151,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What blocklist monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -165,7 +165,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-label="Open source note">
+      <section class="section site-shell" aria-label="Open source note">
         <div class="note-band">
           <div>
             <h2>Reputation checks you can read the source of.</h2>
@@ -177,7 +177,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Blocklist monitoring, answered.</h2>
@@ -192,8 +192,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

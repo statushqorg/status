@@ -1,8 +1,9 @@
-import { Action } from '@stacksjs/actions'
-import { Auth, authCookie, register } from '@stacksjs/auth'
+import { Action } from '@stacksjs/actions/runtime'
+import { Auth, authCookieForBrowserSession, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_MIN_LENGTH, greetingName, normalizeAuthEmail, register, resolveBrowserSessionPolicy } from '@stacksjs/auth'
+import { config } from '@stacksjs/config'
 import { dispatch } from '@stacksjs/events'
-import { response } from '@stacksjs/router'
-import { schema } from '@stacksjs/validation'
+import { rateLimit, response } from '@stacksjs/router'
+import { schema } from '@stacksjs/validation/runtime'
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PASSWORD_POLICY_MESSAGE } from '../../password-policy'
 
 export default new Action({
@@ -20,8 +21,10 @@ export default new Action({
       message: PASSWORD_POLICY_MESSAGE,
     },
     name: {
-      rule: schema.string().min(2).max(255).required(),
-      message: 'Name must be between 2 and 255 characters.',
+      // Length only. What a name may contain (no links, markup or control
+      // characters) is `register()`'s rule, so it holds for every caller.
+      rule: schema.string().min(DISPLAY_NAME_MIN_LENGTH).max(DISPLAY_NAME_MAX_LENGTH).required(),
+      message: `Name must be between ${DISPLAY_NAME_MIN_LENGTH} and ${DISPLAY_NAME_MAX_LENGTH} characters.`,
     },
   },
 
@@ -29,8 +32,26 @@ export default new Action({
     const email = request.get('email')
     const password = request.get('password')
     const name = request.get('name')
+    const policy = resolveBrowserSessionPolicy(request.get('remember'))
 
-    const result = await register({ email, password, name })
+    // Hourly budgets, before the bcrypt hash and the insert. The route's
+    // 3-a-minute limit stops a burst and still lets one address create four
+    // thousand accounts a day; these are what make bulk sign-up slow. The
+    // email budget also caps how often one mailbox can be sent a welcome by
+    // somebody guessing at it.
+    const limits = config.auth?.registration?.rateLimit
+    const perIp = limits?.perIp ?? 20
+    const perEmail = limits?.perEmail ?? 5
+    if (perIp !== false)
+      await rateLimit('register-ip', perIp).per('hour')
+    if (perEmail !== false && typeof email === 'string')
+      await rateLimit('register-email', perEmail, { identity: `email:${normalizeAuthEmail(email)}` }).per('hour')
+
+    const referralCode = request.get('referralCode')
+    const result = await register(
+      { email, password, name, referralCode: typeof referralCode === 'string' ? referralCode : undefined },
+      { expiresInMinutes: policy.expiresInMinutes, withRefreshToken: policy.withRefreshToken },
+    )
 
     if (result) {
       const user = await Auth.getUserFromToken(result.token)
@@ -43,10 +64,15 @@ export default new Action({
       // `to` is what SendWelcomeEmail addresses the mail to, so it has to be
       // a string; the registering address is the honest fallback if the
       // freshly-created user could not be read back.
+      //
+      // `name` is the first name a mail may print, or nothing: the address
+      // has not been confirmed, so whatever the listener sends goes to
+      // someone who may never have asked for it. Listeners that need the
+      // stored name read the user by `id`.
       dispatch('user:registered', {
         id: user?.id,
         email: user?.email ?? email,
-        name: user?.name,
+        name: greetingName(user?.name),
         to: user?.email ?? email,
       })
 
@@ -71,7 +97,7 @@ export default new Action({
           email: user?.email,
           name: user?.name,
         },
-      }, { headers: { 'Set-Cookie': authCookie(result.token) } })
+      }, { headers: { 'Set-Cookie': authCookieForBrowserSession(result.token, result.expiresIn) } })
     }
 
     return response.error('Registration failed')

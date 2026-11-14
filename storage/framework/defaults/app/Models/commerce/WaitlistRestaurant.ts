@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { customerOwnership, defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'WaitlistRestaurant',
@@ -7,7 +7,13 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
   belongsTo: ['Customer'],
+  // Rows belong to the caller's customer record, one hop from the user
+  // (stacksjs/stacks#2375). Without this the generated writes are reachable by
+  // any authenticated caller for any row.
+  ownership: customerOwnership(),
+
   traits: {
+    gdpr: { subject: { via: 'Customer' }, erasure: 'delete', basis: 'contract', purpose: 'Restaurant waitlist' },
     useUuid: true,
     useTimestamps: true,
     useSearch: {
@@ -32,6 +38,7 @@ export default defineModel({
 
   attributes: {
     name: {
+      personal: true,
       order: 1,
       fillable: true,
       validation: {
@@ -44,6 +51,7 @@ export default defineModel({
     },
 
     email: {
+      personal: true,
       order: 2,
       fillable: true,
       validation: {
@@ -56,6 +64,7 @@ export default defineModel({
     },
 
     phone: {
+      personal: true,
       order: 3,
       fillable: true,
       validation: {

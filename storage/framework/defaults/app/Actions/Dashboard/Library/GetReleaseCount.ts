@@ -1,5 +1,5 @@
-import { Action } from '@stacksjs/actions'
-import { db } from '@stacksjs/database'
+import { Action } from '@stacksjs/actions/runtime'
+import { db } from '@stacksjs/database/runtime'
 import { dashboardOperationalError } from '../dashboard-response'
 
 export default new Action({

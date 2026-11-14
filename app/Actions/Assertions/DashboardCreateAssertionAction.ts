@@ -37,9 +37,9 @@ export default new Action({
 
       await Assertion.create({
         monitor_id: monitorId,
-        target,
+        target: target as 'body' | 'status_code' | 'header' | 'response_time' | undefined,
         property: property || undefined,
-        compare,
+        compare: compare as 'eq' | 'not_eq' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'not_contains' | 'empty' | 'not_empty' | undefined,
         expected: expected.slice(0, 1000),
         sortOrder: 0,
       })

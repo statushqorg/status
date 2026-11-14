@@ -1,11 +1,16 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { customerOwnership, defineModel } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Review',
   table: 'reviews',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // Rows belong to the caller's customer record, one hop from the user
+  // (stacksjs/stacks#2375). Without this the generated writes are reachable by
+  // any authenticated caller for any row.
+  ownership: customerOwnership(),
 
   traits: {
     useUuid: true,
@@ -29,7 +34,9 @@ export default defineModel({
     observe: true,
   },
 
-  belongsTo: ['Product', 'Customer'],
+  // The order a storefront review was left for: one review per product per
+  // order, and the proof the reviewer bought it (stacksjs/stacks#3017).
+  belongsTo: ['Product', 'Customer', 'Order'],
 
   attributes: {
     /**
@@ -167,5 +174,9 @@ export default defineModel({
 
   dashboard: {
     highlight: true,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      content: { input: 'longtext' },
+    },
   },
 } as const)

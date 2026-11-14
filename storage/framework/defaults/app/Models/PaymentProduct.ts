@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'PaymentProduct', // defaults to the sanitized file name
@@ -28,6 +28,7 @@ export default defineModel({
 
     description: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
         message: {
@@ -54,7 +55,7 @@ export default defineModel({
       validation: {
         rule: schema.number().required(),
         message: {
-          string: 'expires must be a string',
+          number: 'unit_price must be a number',
           required: 'expires is required',
         },
       },

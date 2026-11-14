@@ -91,14 +91,14 @@ onMount(() => {
 })
 </script>
 
-<div class="space-y-6">
+<div class="flex flex-col gap-6">
   <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <StxLink to="/jobs" class="inline-flex gap-1 items-center mb-3 font-medium text-neutral-500 text-sm dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400">
         <span class="h-4 w-4 i-hugeicons-arrow-left-02"></span>
         Jobs
       </StxLink>
-      <h1 class="font-semibold text-2xl text-neutral-900 tracking-tight dark:text-white">Job details</h1>
+      <h1 class="font-bold text-2xl text-neutral-900 tracking-tight dark:text-white">Job details</h1>
       <p class="mt-1 font-mono text-neutral-500 text-sm dark:text-neutral-400">{{ jobId() }}</p>
     </div>
     <Button :if="canRetry()" :disabled="isRetrying()" variant="primary" @click="handleRetry">

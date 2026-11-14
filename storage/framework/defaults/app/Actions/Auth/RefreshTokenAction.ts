@@ -1,7 +1,7 @@
-import { Action } from '@stacksjs/actions'
-import { authCookie, refreshToken } from '@stacksjs/auth'
+import { Action } from '@stacksjs/actions/runtime'
+import { authCookieForBrowserSession, refreshToken } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default new Action({
   name: 'RefreshTokenAction',
@@ -20,10 +20,9 @@ export default new Action({
     })
 
     try {
-      const result = await refreshToken(refreshTokenValue, {
-        expiresInMinutes: 60, // 1 hour access token
-        refreshExpiresInDays: 30, // 30 day refresh token
-      })
+      // The lifetimes config/auth.ts sets (tokenExpiry, refreshTokenExpiry).
+      // Hard-coding an hour and 30 days here overrode them on every refresh.
+      const result = await refreshToken(refreshTokenValue)
 
       // Rotation invalidates the token the cookie was carrying, so a cookie
       // left untouched here would go stale at the exact moment the session was
@@ -34,7 +33,7 @@ export default new Action({
         refresh_token: result.refreshToken,
         token_type: 'Bearer',
         expires_in: result.expiresIn,
-      }, { headers: { 'Set-Cookie': authCookie(result.plainTextToken) } })
+      }, { headers: { 'Set-Cookie': authCookieForBrowserSession(result.plainTextToken, result.expiresIn) } })
     }
     catch (error: any) {
       return response.unauthorized(error.message || 'Invalid or expired refresh token')

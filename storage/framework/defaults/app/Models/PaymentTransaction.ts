@@ -1,7 +1,7 @@
 import { defineModel } from '@stacksjs/orm'
 import { collect } from '@stacksjs/collections'
 
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'PaymentTransaction', // defaults to the sanitized file name
@@ -10,6 +10,7 @@ export default defineModel({
   autoIncrement: true, // defaults to true
   belongsTo: ['User', 'PaymentMethod'],
   traits: {
+    gdpr: { erasure: 'keep', basis: 'legal_obligation', purpose: 'Billing records' },
     useUuid: true,
     useSeeder: {
       count: 5,
@@ -31,6 +32,7 @@ export default defineModel({
 
     description: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
         message: {

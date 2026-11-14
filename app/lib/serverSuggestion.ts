@@ -58,13 +58,20 @@ export async function knownHostsForServers(serverIds: number[]): Promise<Map<num
     return out
 
   const since = new Date(Date.now() - KNOWN_HOST_WINDOW_MS).toISOString()
-  const rows = await db.selectFrom('server_metric_samples')
-    .where('server_id', 'in', serverIds)
-    .where('sampled_at', '>=', since)
-    .select(['server_id', 'host'])
-    .distinct()
-    .execute()
-    .catch(() => [] as Array<{ server_id: unknown, host: unknown }>)
+  // A query fails where it is written now, so the fallback is a try/catch:
+  // `.catch()` on its result would itself throw.
+  let rows: Array<{ server_id: unknown, host: unknown }> = []
+  try {
+    rows = await db.selectFrom('server_metric_samples')
+      .where('server_id', 'in', serverIds)
+      .where('sampled_at', '>=', since)
+      .select(['server_id', 'host'])
+      .distinct()
+      .execute() as Array<{ server_id: unknown, host: unknown }>
+  }
+  catch {
+    rows = []
+  }
 
   for (const row of rows) {
     const host = normalizeHost(row.host)

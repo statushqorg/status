@@ -1,6 +1,6 @@
 ---
 name: stacks-database
-description: Use when working with databases in a Stacks application - configuring connections, running queries, migrations, seeding, SQL helpers, or using SQLite/MySQL/PostgreSQL/DynamoDB. Covers @stacksjs/database, bun-query-builder, config/database.ts, and the database/ migrations directory.
+description: Use when working with databases in a Stacks application - configuring connections, running queries, migrations, seeding, SQL helpers, or using SQLite/Turso/MySQL/PostgreSQL/DynamoDB. Covers @stacksjs/database, bun-query-builder, config/database.ts, and the database/ migrations directory.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript, SQLite >= 3.47.2
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -12,7 +12,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 - Database package: `storage/framework/core/database/src/`
 - Configuration: `config/database.ts`
 - QB config: `config/query-builder.ts`
-- Migrations: `database/migrations/` (96+ migration files, `.sql` format)
+- Migrations: `database/migrations/` (252 migration files, `.sql` format)
 - QB state: `.qb/`
 - ORM: `storage/framework/orm/`
 
@@ -60,6 +60,7 @@ Database.fromEnv()                  // From env vars (DB_CONNECTION, DB_DATABASE
 ## Factory Functions (database.ts)
 - `createDatabase(options: DatabaseOptions): Database`
 - `createSqliteDatabase(database: string, options?): Database`
+- `createTursoDatabase(url: string, authToken?: string, options?): Database`
 - `createPostgresDatabase(connection: DatabaseConnectionConfig, options?): Database`
 - `createMysqlDatabase(connection: DatabaseConnectionConfig, options?): Database`
 
@@ -72,10 +73,10 @@ Database.fromEnv()                  // From env vars (DB_CONNECTION, DB_DATABASE
 
 ## Global `db` Instance (utils.ts)
 
-The `db` export is a **lazy Proxy** that auto-initializes on first property access:
-1. At module load: reads env vars via `@stacksjs/env`, calls `setConfig()` on bun-query-builder
-2. Background: attempts `import('@stacksjs/config')` to override with app config
-3. On first property access: calls `createQueryBuilder()` from bun-query-builder
+The db export is a lazy runtime facade. It initializes the query builder on use
+and resolves application configuration through ensureDatabaseConfigLoaded.
+Use @stacksjs/database/runtime for the narrow query/transaction entry; the
+package root additionally exports migrations, seeders and driver tooling.
 
 ```typescript
 import { db } from '@stacksjs/database'
@@ -85,6 +86,62 @@ const users = await db.selectFrom('users').where('active', '=', true).get()
 ```
 
 `initializeDbConfig(config)` can be called to update the backing config at runtime.
+
+### Values, not promises
+
+A `db` call answers where it is written, on SQLite, MySQL and Postgres:
+
+```typescript
+const users = db.selectFrom('users').where('active', '=', true).get() // the rows
+const newest = db.selectFrom('users').orderBy('created_at', 'desc').first() // the row, or undefined
+const changed = db.updateTable('users').set({ active: false }).where('id', '=', 7).execute() // 1
+
+const orderId = db.transaction((tx) => {
+  const order = tx.insertInto('orders').values({ customer_id: 7 }).returning('id').first()
+  tx.insertInto('order_lines').values({ order_id: order.id, sku: 'A-1' }).execute()
+  return order.id
+}) // committed by this line; a throw has rolled back and rethrown
+```
+
+- `await` in front of any of them still works (`await` on a value is that
+  value), so existing code is correct as it stands.
+- A failure is thrown where the call stands: `try`/`catch`, not `.catch()` or
+  `.then()`. In a test, `expect(() => db.selectFrom('missing').get()).toThrow()`,
+  not `await expect(...).rejects`.
+- A query runs where it is written. To start several and judge each on its own
+  later, hand them over unstarted: `inspect(() => db.selectFrom(...).get())`.
+- `db.unsafe(sql, params)` and `db.file(path)` build a statement. `.execute()`
+  runs it and returns its rows; awaiting the statement resolves to the same
+  rows. Nothing runs until one of the two happens.
+- A transaction callback that is `async` is waited for, and the transaction is
+  then a promise, as is the callback of `chunk()`. Write the callback without
+  `async` when everything in it is a query.
+- While a transaction with an `async` callback is open it holds its locks
+  across each `await`, and the code that commits it needs the thread. A
+  statement elsewhere in the process that needs one of those locks (or a
+  pooled connection, when they are all held) is therefore not waited for in
+  place: that one call answers with a promise, which resolves once the
+  transaction has finished. It is how `withLockedRow` and `rowToken` can
+  contend for one row. A statement that needs nothing held still answers in
+  place, and with synchronous callbacks nothing is ever held.
+- Inside a transaction callback `db.` is the transaction: a `db.selectFrom(...)`
+  there runs on the transaction's connection, as `tx.selectFrom(...)` does. A
+  model call does not (see Gotchas).
+- On SQLite there is one connection. A transaction whose callback is `async`
+  holds it until it settles, so a transaction that starts meanwhile queues
+  behind it and is a promise whatever its own callback does. With only
+  synchronous callbacks that cannot happen.
+- MySQL and Postgres run on a worker thread the caller waits on, sharing one
+  pool with the models. On [stacksjs/bun](https://github.com/stacksjs/bun),
+  whose drivers can wait for a statement themselves, the pool is on the calling
+  thread and there is no worker; nothing else differs. `models: { execution: 'async' }` in `config/query-builder.ts`
+  gives promises back for both; every call then has to be awaited.
+
+For reads which cannot tolerate replication lag, use `db.primary.selectFrom(...)`.
+It stays on the primary when automatic replica routing is enabled, and uses the
+active transaction connection inside a transaction. It does not mark the request
+as a writer or change routing for unrelated reads. Session authentication uses
+this handle so a revoked session cannot authenticate from a stale replica.
 
 ## SQL Template Tag (types.ts)
 
@@ -148,78 +205,80 @@ interface DatabaseOptions {
 
 ```typescript
 interface SqliteConfig { database: string, prefix?: string }
+interface TursoConfig { url: string, authToken?: string, prefix?: string }
 interface MysqlConfig { name: string, host?: string, port?: number, username?: string, password?: string, prefix?: string, charset?: string, collation?: string }
 interface PostgresConfig { name: string, host?: string, port?: number, username?: string, password?: string, prefix?: string, schema?: string, sslMode?: 'disable' | 'require' | 'verify-ca' | 'verify-full' }
 interface DynamoDbConfig { key: string, secret: string, region?: string, prefix?: string, endpoint?: string, tableName?: string, singleTable?: { enabled?, pkAttribute?, skAttribute?, entityTypeAttribute?, keyDelimiter?, gsiCount? } }
 ```
 
-## Migrations (migrations.ts)
+## Model-driven migrations
 
-### Migration Functions
-- `runDatabaseMigration(): Promise<Result<string, Error>>` -- ensures DB exists (postgres/mysql), configures QB, preprocesses SQLite migrations, then calls `qbExecuteMigration()`
-- `resetDatabase(): Promise<Result<string, Error>>` -- drops framework tables (OAuth, passkeys, jobs, etc.) then calls `qbResetDatabase()`
-- `generateMigrations(): Promise<Result<string, Error>>` -- compares models to DB state, generates `.sql` diff files
-- `generateMigrations2(): Promise<Result<string, Error>>` -- full regeneration ignoring previous state (`{ full: true }`)
+Change the model, generate migrations, review the resulting SQL, then migrate.
+The native runner loads application config, selects the dialect corpus, handles
+feature-gated migration resources, and acquires the migration lock. It returns
+a Result; inspect failures rather than treating a resolved call as success.
+RunDatabaseMigration, generateMigrations and resetDatabase are exported tooling,
+but their CLI actions supply the application's operation policy and environment.
 
-### SQLite Migration Preprocessing
-Before running migrations on SQLite, `preprocessSqliteMigrations()`:
-1. Rewrites `ALTER TABLE ADD CONSTRAINT` to no-ops (SQLite does not support this)
-2. Rewrites `CREATE UNIQUE INDEX` to no-ops (redundant when table already has inline UNIQUE)
-3. Filters out `DROP COLUMN` for non-existent columns (checks via `PRAGMA table_info`)
+Read stacks-migrations before using full regeneration, snapshot recovery,
+preprocessing or destructive fresh/reset commands. SQLite preprocessing and
+provider-specific DDL rules are implemented in core/database/src/migrations.ts;
+installed package sources are copied before their SQL is rewritten.
+The migration ledger and snapshot are different state, not interchangeable
+proof that a table exists.
 
-### Framework Tables Dropped on Reset
-`oauth_refresh_tokens`, `oauth_access_tokens`, `oauth_clients`, `passkeys`, `failed_jobs`, `jobs`, `notifications`, `password_reset_tokens`
+## Model factories and application seeders
 
-## Seeding (seeder.ts)
+Models opt into the factory pass with traits.useSeeder/seedable. Attribute
+factories receive faker and the attributes generated so far; column names are
+converted to snake_case, and password fields are hashed by the seeder's bcrypt
+path. The source defines factory fallback behavior: a failed factory can use
+its attribute default, so inspect the summary and warnings as well as row count.
 
-### Seed Functions
-- `seed(config?: SeederConfig): Promise<SeedSummary>` -- loads models from both `storage/framework/defaults/app/Models/` (recursive) and `app/Models/` (flat), user models override defaults by name
-- `seedModel$(modelName, options?): Promise<SeedResult>` -- seed one model by name
-- `freshSeed(config?): Promise<SeedSummary>` -- calls `seed({ ...config, fresh: true })` (truncates before seeding)
-- `listSeedableModels(): Promise<Array<{ name, table, count, source: 'default' | 'user' }>>` -- list without seeding
-- `runApplicationSeeders(config?): Promise<ApplicationSeederSummary>` -- runs `database/seeders` classes in deterministic relative-path order
-- `Seeder` -- abstract base class for idempotent application bootstrap seeders
+seed(options?) returns a SeedSummary; seedModel$(name, options?) targets one
+model; freshSeed truncates before generation; listSeedableModels inspects the
+available definitions; makeModelRecords produces factory data without insertion.
+These are public exports from @stacksjs/database.
 
-### SeederConfig
-```typescript
-interface SeederConfig {
-  modelsDir?: string     // defaults to path.userModelsPath()
-  defaultCount?: number  // default 10
-  verbose?: boolean      // default true
-  fresh?: boolean        // truncate tables first
-  only?: string[]        // specific models to seed
-  except?: string[]      // models to exclude
-}
-```
+When app/Models has user models, the default seed pass uses those definitions.
+includeDefaults explicitly merges framework defaults; an app with no user models
+uses defaults as fallback. User identity overrides a default even when the app
+model opts out of seeding. The current model-seeder app scan is flat, unlike
+recursive model resolution elsewhere; verify nested models at this seam.
 
-### Seeding Behavior
-- Models must have `traits.useSeeder` (or `traits.seedable`) set to `true` or `{ count: N }`
-- Attributes with `factory: (faker) => ...` generate fake data via `@stacksjs/faker`
-- Password fields are auto-detected (by name pattern or `hidden: true` + name includes "pass") and hashed with bcrypt
-- Field names are converted from camelCase to snake_case for DB columns
-- Records inserted in batches of 100
-- Models sorted by dependency: User (0), Team (1), Project (2), everything else (10)
-- Missing tables are skipped gracefully
-- `buddy seed` and `buddy migrate:fresh --seed` also run application seeders after model factories
-- Application seeder modules must default-export a class extending `Seeder` and implement `run()`
-- Application seeders are for idempotent bootstrap work that does not belong in model factories, such as an initial workspace or role assignment
+Options also include only/except, defaultCount, fresh, append, allowProtected,
+attachAccounts and includeDefaults. Default non-empty tables are skipped;
+append is explicit. Protected auth/OAuth data and attachment to existing accounts
+have their own guards because fixture generation can alter live credentials or
+associate invented records with real people. Read buddy seed --help and inspect
+the target connection before requesting a destructive or bypassing mode.
 
-```typescript
-// database/seeders/OwnerSeeder.ts
+Application seeders default-export a class extending the native Seeder:
+
+~~~ts
 import { Seeder } from '@stacksjs/database'
 
-export default class OwnerSeeder extends Seeder {
+export default class WorkspaceSeeder extends Seeder {
+  static override order = 10
+  static override tags = ['deploy']
+
   async run(): Promise<void> {
-    // Resolve existing records first, then create only what is missing.
+    // Find the application's existing workspace before creating missing state.
   }
 }
-```
+~~~
 
-### SeedResult / SeedSummary
-```typescript
-interface SeedResult { model: string, table: string, count: number, success: boolean, error?: string, duration: number }
-interface SeedSummary { total: number, successful: number, failed: number, results: SeedResult[], duration: number }
-```
+runApplicationSeeders applies order (lower first), then relative path for ties.
+Tag/only/except selection lets deploy bootstrap remain separate from a large demo
+corpus. Buddy seed and migrate:fresh --seed run the model and application passes;
+model dependencies determine parent-first generation rather than a hard-coded
+User/Team/Project order. fresh empties in reverse dependency order.
+
+Source: storage/framework/core/database/src/seeder.ts and
+core/buddy/src/commands/seed.ts. Retained seeder tests cover override opt-out,
+dependency order, protected models and non-empty/append behavior. See
+stacks-models for fixtures/factory declarations and stacks-testing for factories
+that produce test records.
 
 ## Validator Type Guards (validators.ts)
 `isStringValidator`, `isNumberValidator`, `enumValidator`, `isBooleanValidator`, `isDateValidator`, `isUnixValidator`, `isFloatValidator`, `isDatetimeValidator`, `isTimestampValidator`, `isTimestampTzValidator`, `isDecimalValidator`, `isSmallintValidator`, `isIntegerValidator`, `isBigintValidator`, `isBinaryValidator`, `isBlobValidator`, `isJsonValidator`
@@ -250,15 +309,44 @@ Entity-centric API for single-table design:
 - `buddy seed` -- seed database
 - `buddy generate:migrations` -- generate migration diffs from models
 
+## Turso / libSQL (`DB_CONNECTION=turso`, alias `libsql`)
+
+SQLite's SQL on a Turso or `sqld` server. Configure `TURSO_DATABASE_URL`
+(`libsql://<db>-<org>.turso.io`, or `http://127.0.0.1:8080` for `turso dev`) and
+`TURSO_AUTH_TOKEN` (a secret, never logged).
+
+- Everything that renders SQL or DDL treats it as `sqlite`: `dialectCapabilities('turso').wire === 'sqlite'`,
+  `getDatabaseDialect()` returns `'sqlite'`, and it shares the SQLite migration corpus and
+  `model-snapshot.sqlite.json`. Switching between `sqlite` and `turso` needs no regeneration.
+- The transport is bun-query-builder's: `setConfig({ dialect: 'sqlite', database: { url, authToken } })`
+  with a libSQL URL selects its dependency-free Hrana-over-HTTP connection (`createLibSQLSQL`).
+- Code that opens the database FILE must ask `isLibsqlDriver(driver)` first - there is none. The SQLite
+  migration preprocessor reads an in-memory replica of the server's schema instead
+  (`loadLibsqlSchemaMirror` in migrations.ts), and the migration lock is a row in
+  `stacks_migration_lock` (`acquireLibsqlMigrationLock`), since migrating hosts share no filesystem.
+- libSQL rejects SQLite's double-quoted-string fallback, so a statement naming a missing column fails
+  instead of storing the column name as text. `tests/corpus-rebuild-sources.test.ts` guards the corpus.
+- Inside `transaction()`, write through the `tx` handle; model writes use their own connection.
+
 ## config/database.ts Shape
 ```typescript
 {
-  default: env.DB_CONNECTION || 'mysql',
-  connections: { sqlite, mysql, postgres, dynamodb },
+  default: env.DB_CONNECTION || 'sqlite',
+  connections: { sqlite, turso, mysql, singlestore, vitess, postgres, dynamodb },
   migrations: 'migrations',
   migrationLocks: 'migration_locks',
   queryLogging: {
-    enabled: true,
+    // Defaults on outside production and off in production. Production also
+    // skips query hooks unless persistent history is explicitly enabled.
+    enabled: env.DB_QUERY_LOGGING_ENABLED ?? !['production', 'prod'].includes(env.APP_ENV || ''),
+    captureAllTraces: false, // slow and failed queries always keep traces
+    // Bound values in query_logs.bindings, credentials stored as `<redacted>`
+    // (by name and shape, so not every secret); production keeps only each
+    // value's type unless this is enabled. Env takes true/false, 1/0, yes/no, on/off.
+    captureBindings: env.DB_QUERY_LOGGING_CAPTURE_BINDINGS ?? !['production', 'prod'].includes(env.APP_ENV || ''),
+    // More secret columns, on top of those names: 'code' in every table,
+    // 'gift_cards.code' in that one. Also taken out of a failed query's error.
+    sensitiveColumns: [],
     slowThreshold: 100,  // ms
     retention: 7,        // days
     pruneFrequency: 24,  // hours
@@ -287,8 +375,8 @@ Entity-centric API for single-table design:
 ```
 
 ## Gotchas
-- The actual default driver in `config/database.ts` is `'mysql'` (not `'sqlite'`), but `utils.ts` and `driver-config.ts` fall back to `'sqlite'` when `DB_CONNECTION` is unset
-- The `db` export is a lazy Proxy -- it auto-initializes on first property access, which means errors are deferred until first use
+- Default connection is SQLite in the shipped config; inspect application config and DB_CONNECTION before choosing a driver
+- The db facade initializes lazily; invalid connection configuration may surface at first query use
 - Query builder config lives in `config/query-builder.ts`, and reads `DB_CONNECTION` / `DB_*` from the env - it is not a second copy of `config/database.ts`
 - The `.qb/` directory at project root stores query builder state for migration diffing
 - `resetDatabase()` drops ALL tables including framework tables (OAuth, passkeys, jobs, etc.) -- only use in development
@@ -304,3 +392,55 @@ Entity-centric API for single-table design:
   and generated `useApi` routes apply the trait-aware scope themselves.
 - Transaction defaults: 2 retries, `read committed` isolation, with exponential backoff + jitter
 - The ORM lives in TWO locations: `storage/framework/core/orm/` (package) and `storage/framework/orm/` (implementation)
+
+
+## Driver conformance and topology
+
+Read `storage/framework/core/config/src/capabilities.ts` before selecting a
+driver. SQLite, MySQL and PostgreSQL have retained supported contracts. MySQL
+and PostgreSQL need migrations generated for their dialect: the shipped SQLite
+SQL corpus is not a portable migration bundle. SingleStore, Vitess and Turso
+are experimental with explicit service/topology limits. DynamoDB helpers are a
+separate entity API and cannot be selected as the SQL/ORM default.
+
+Turso's libsql alias shares SQLite rendering, but uses remote Hrana transport.
+Transactions must write through the tx handle; no embedded replicas or native
+file backup are provided. Scheduler locks remain per host. Read the registry's
+provider versions and retained evidence rather than equating an available adapter
+with an unrestricted supported service.
+
+
+## SQL fragments and temporal values
+
+Parameterized sql fragments are compiled through the query builder; do not
+extract .sql/.parameters and feed question marks directly to PostgreSQL unsafe.
+whereRaw does not accept bound-value fragments on that path. Use typed where
+or dialect-aware raw helpers. sql.as validates an alias; raw text remains a
+trusted-code operation. sqlDateTime/parseSqlDateTime provide the canonical
+application timestamp representation. Mixing SQLite datetime text with
+application ISO text in raw comparisons can give wrong expiry boundaries.
+parseSqlDate(value) reads a DATE column back as the YYYY-MM-DD it stores,
+whether the driver built the Date at UTC midnight (Bun's Postgres driver) or at
+the host's local midnight; toISOString().slice(0, 10) shifts the latter a day
+back east of UTC. Null for missing, invalid or impossible input.
+Source: core/database/src/types.ts and sql-helpers.ts; see stacks-query-builder
+for typed tables, raw binding, transaction handles and replica routing.
+
+## Group row locks
+
+lockRows(tx, table, ids, { key?, scope? }) from database/runtime acquires
+unique numeric primary keys in deterministic order and returns a map keyed by their
+canonical numeric string value, so padded numeric inputs cannot reverse lock order. Missing scoped rows map to undefined. The caller must supply a
+transaction handle and choose ownership filters; reads, writes and validation
+remain on that handle. This prevents opposite input order from creating a
+lock-order cycle during a transfer, merge or multi-item stock reservation.
+
+## Row leases for external operations
+
+`claimRowLease(table, ownerScope, { token, heartbeat }, ttlMs)` from
+`@stacksjs/database/runtime` claims model-owned nullable token and heartbeat
+columns atomically. It returns null when busy, or a lease with `renew()`,
+`release()`, `assertOwned()` and `commit(work)`. Renew periodically during I/O.
+Keep network work outside `commit`; commit locks and revalidates the token before
+writing one bounded batch. An expired worker cannot commit or release a successor.
+A lease's unique owner scope must include the resource binding where applicable.

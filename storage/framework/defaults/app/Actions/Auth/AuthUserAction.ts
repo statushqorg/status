@@ -1,4 +1,4 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { response } from '@stacksjs/router'
 
 export default new Action({
@@ -8,6 +8,8 @@ export default new Action({
   async handle(request: RequestInstance) {
     const user = await request.user()
 
-    return response.json(user)
+    const result = response.json(user)
+    result.headers.set('Cache-Control', 'private, no-store')
+    return result
   },
 })

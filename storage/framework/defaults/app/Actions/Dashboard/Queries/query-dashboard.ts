@@ -60,16 +60,56 @@ export interface DashboardQueryLog {
   suggestions: string[]
 }
 
+export const QUERY_TYPES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'OTHER'] as const
+
+/** What `queryType` skips before the first word: ASCII whitespace, as SQL can strip it too. */
+const LEADING_SPACE = /^[ \t\n\v\f\r]+/
+
+/**
+ * The statement's kind, from its first word. `queryTypeSql` is the same rule
+ * in SQL, so the list can filter and count by kind in the database
+ * (stacksjs/stacks#3204); keep the two in step.
+ */
 export function queryType(query: string): DashboardQueryLog['type'] {
-  const type = query.trim().match(/^([a-z]+)/i)?.[1]?.toUpperCase()
+  const type = query.replace(LEADING_SPACE, '').match(/^([a-z]+)/i)?.[1]?.toUpperCase()
   return type === 'SELECT' || type === 'INSERT' || type === 'UPDATE' || type === 'DELETE'
     ? type
     : 'OTHER'
 }
 
-export function parseQueryLogList(value?: string | null, label = 'query log list'): string[] {
-  if (!value)
+const ASCII_LETTERS = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index))
+  .flatMap(letter => [letter, letter.toLowerCase()])
+  .map(letter => `'${letter}'`)
+  .join(', ')
+
+/**
+ * `queryType` as a SQL expression over `query_logs.query`, for one dialect.
+ *
+ * The text loses the same leading whitespace, then a kind matches when the
+ * text starts with its keyword in any case and the next character is not a
+ * letter, which is what `queryType`'s first-word match comes to. MySQL
+ * compares bytes here, because its default collation would also match
+ * accented letters.
+ */
+export function queryTypeSql(dialect: string): string {
+  const space = [9, 10, 11, 12, 13]
+  // MySQL's LTRIM strips spaces only. Its pattern holds the whitespace itself
+  // in a plain literal, which takes the column's collation where CHAR() would
+  // bring its own and be refused.
+  const text = dialect === 'mysql'
+    ? `REGEXP_REPLACE(query, '^[ ${space.map(code => String.fromCharCode(code)).join('')}]+', '')`
+    : `LTRIM(query, ' ' || ${space.map(code => `${dialect === 'postgres' ? 'chr' : 'char'}(${code})`).join(' || ')})`
+  const exact = (value: string): string => dialect === 'mysql' ? `CAST(${value} AS BINARY)` : value
+  const branches = QUERY_TYPES.filter(type => type !== 'OTHER').map(type =>
+    `WHEN ${exact(`UPPER(SUBSTR(${text}, 1, ${type.length}))`)} = '${type}' AND ${exact(`SUBSTR(${text}, ${type.length + 1}, 1)`)} NOT IN (${ASCII_LETTERS}) THEN '${type}'`)
+  return `(CASE ${branches.join(' ')} ELSE 'OTHER' END)`
+}
+
+export function parseQueryLogList(value?: unknown, label = 'query log list'): string[] {
+  if (value == null || value === '')
     return []
+  if (typeof value !== 'string')
+    throw new TypeError(`${label} must be JSON text`)
 
   let parsed: unknown
   try {
@@ -85,8 +125,15 @@ export function parseQueryLogList(value?: string | null, label = 'query log list
   return parsed
 }
 
-export function mapDashboardQueryLog(row: QueryLogSourceRow): DashboardQueryLog {
+export function mapDashboardQueryLog(row: QueryLogSourceRow | Record<string, unknown>): DashboardQueryLog {
   const label = `query log ${row.id}`
+  if (!((typeof row.id === 'number' && Number.isSafeInteger(row.id) && row.id > 0) || (typeof row.id === 'string' && row.id.trim())))
+    throw new TypeError('Query log id must be a positive integer or a non-empty string')
+  const text = (value: unknown, field: string): string => {
+    if (value == null) return ''
+    if (typeof value !== 'string') throw new TypeError(`${label} ${field} must be text or null`)
+    return value
+  }
   const status = queryStatus(row.status, label)
   if (typeof row.query !== 'string' || !row.query.trim())
     throw new TypeError(`${label} query must be a non-empty string`)
@@ -97,15 +144,15 @@ export function mapDashboardQueryLog(row: QueryLogSourceRow): DashboardQueryLog 
   return {
     id: row.id,
     query: row.query,
-    normalizedQuery: row.normalized_query || row.query,
+    normalizedQuery: text(row.normalized_query, 'normalized query') || row.query,
     type: queryType(row.query),
     duration: finiteNumber(row.duration, `${label} duration`),
-    connection: row.connection || 'unknown',
+    connection: text(row.connection, 'connection') || 'unknown',
     status,
-    error: row.error || '',
+    error: text(row.error, 'error'),
     executedAt,
-    model: row.model || '',
-    method: row.method || '',
+    model: text(row.model, 'model'),
+    method: text(row.method, 'method'),
     rowsAffected: nullableFiniteNumber(row.rows_affected, `${label} rows_affected`),
     memoryUsage: nullableFiniteNumber(row.memory_usage, `${label} memory_usage`),
     tags: parseQueryLogList(row.tags, `${label} tags`),

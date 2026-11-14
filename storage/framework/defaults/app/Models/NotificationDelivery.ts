@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'NotificationDelivery',
@@ -8,6 +8,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { subject: 'user_id', erasure: 'delete', basis: 'contract', purpose: 'Notification delivery log' },
     useTimestamps: true,
     useSearch: {
       displayable: ['id', 'channel', 'recipient', 'subject', 'status', 'sentAt'],
@@ -21,6 +22,10 @@ export default defineModel({
       middleware: ['auth'],
     },
   },
+
+  // Cascade, as the framework's own key repair has always made it
+  // (ensureNotificationForeignKeys): a user's delivery log goes with the user.
+  belongsTo: [{ model: 'User', onDelete: 'cascade' }],
 
   attributes: {
     userId: {
@@ -41,6 +46,7 @@ export default defineModel({
     },
 
     recipient: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -49,6 +55,7 @@ export default defineModel({
     },
 
     subject: {
+      personal: true,
       required: false,
       fillable: true,
       validation: {
@@ -57,6 +64,7 @@ export default defineModel({
     },
 
     body: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -98,5 +106,21 @@ export default defineModel({
         rule: schema.timestamp(),
       },
     },
+  },
+
+  dashboard: {
+    columns: ['recipient', 'channel', 'subject', 'status', 'sentAt'],
+    // Only a failed email or text message can be sent again: the action
+    // refuses the rest, so they are not offered it.
+    actions: [
+      {
+        name: 'retry',
+        label: 'Send again',
+        action: 'Actions/Dashboard/Notifications/NotificationDeliveryRetryAction',
+        icon: 'i-hugeicons-mail-send-01',
+        confirm: 'The same message is sent to the same recipient again.',
+        when: { status: 'failed', channel: ['email', 'sms'] },
+      },
+    ],
   },
 } as const)

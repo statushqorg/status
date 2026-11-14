@@ -26,17 +26,17 @@ The `@stacksjs/scheduler` package provides fluent, chainable task scheduling for
 scheduler/src/
 ├── index.ts       # Re-exports everything from run, schedule, types
 ├── schedule.ts    # Schedule class, Queue alias, sendAt(), timeout()
-├── run.ts         # runScheduler() — loads Jobs/*.ts + app/Scheduler.ts
+├── run.ts         # runScheduler() - loads Jobs/*.ts + app/Scheduler.ts
 └── types.ts       # Timezone union, ScheduledJob, UntimedSchedule, TimedSchedule, BaseSchedule
 
 cron/src/
-├── index.ts       # parse(), register(), remove() — delegates to Bun.cron or parseCron
-├── parser.ts      # parseCron() — native 5-field cron parser with POSIX OR logic
+├── index.ts       # parse(), register(), remove() - delegates to Bun.cron or parseCron
+├── parser.ts      # parseCron() - native 5-field cron parser with POSIX OR logic
 ├── types.ts       # CatchCallbackFn, ProtectCallbackFn, IntRange
 └── bun-cron.d.ts  # Bun.cron type declarations
 
 queue/src/
-└── scheduler.ts   # startScheduler(), stopScheduler(), getSchedulerStatus() — queue-level scheduler
+└── scheduler.ts   # startScheduler(), stopScheduler(), getSchedulerStatus() - queue-level scheduler
 ```
 
 ## Schedule Class (schedule.ts)
@@ -46,12 +46,12 @@ The `Schedule` class is the core scheduling API. The lowercase `schedule` export
 ```typescript
 import { schedule } from '@stacksjs/scheduler'
 
-// Static factory methods — each returns UntimedSchedule
+// Static factory methods - each returns UntimedSchedule
 schedule.job(name: JobName): UntimedSchedule     // Runs a job by name via runJob()
 schedule.action(name: string): UntimedSchedule    // Runs an action by name via runAction()
 schedule.command(cmd: string): UntimedSchedule    // Runs a shell command via runCommand()
 
-// Graceful shutdown — stops all tracked jobs
+// Graceful shutdown - stops all tracked jobs
 schedule.gracefulShutdown(): Promise<void>
 ```
 
@@ -61,7 +61,8 @@ schedule.gracefulShutdown(): Promise<void>
 new Schedule(task: () => void)
 ```
 
-The constructor accepts a task function and auto-starts the schedule via `setTimeout(() => this.start(), 0)` after all chained methods have been called in the current tick.
+The constructor accepts a task function and auto-starts through queueMicrotask
+after the synchronous chain completes. Keep configuration in that same chain.
 
 ### Timing Methods (returns TimedSchedule)
 
@@ -80,8 +81,19 @@ Each sets an internal cron pattern. Once a timing method is called, the schedule
 | `weekly()`             | `0 0 * * 0`        | Sunday at midnight          |
 | `monthly()`            | `0 0 1 * *`        | 1st of month at midnight    |
 | `yearly()` / `annually()` | `0 0 1 1 *`    | Jan 1 at midnight           |
+| `weekdays()`           | `0 0 * * 1-5`      | Monday to Friday            |
 | `onDays(days: number[])` | `0 0 * * {days}` | e.g. `onDays([1,3,5])` => `0 0 * * 1,3,5` |
 | `at(time: string)`      | `{min} {hr} * * *` | e.g. `at('14:30')` => `30 14 * * *` |
+
+The patterns above are what each method answers on its own. Chained, they
+compose on two independent axes and the order does not matter: the time of day
+(`at`, `hourly`, `every*Minutes`) and the days it runs on (`daily`, `weekly`,
+`monthly`, `yearly`, `weekdays`, `onDays`). Each method writes its own axis and
+keeps the other, so `.at('09:00').onDays([2])` and `.onDays([2]).at('09:00')`
+are both `0 9 * * 2`. Two calls on the same axis means the last one wins, so
+`.monthly().weekly()` is weekly. A `cron()` expression replaces both axes, and
+`everySecond()` leaves cron entirely (any cadence method after it returns to a
+cron pattern).
 
 ### Configuration Methods (chainable, returns `this`)
 
@@ -89,11 +101,11 @@ Each sets an internal cron pattern. Once a timing method is called, the schedule
 setTimeZone(timezone: Timezone): this
 withErrorHandler(handler: CatchCallbackFn): this
 withMaxRuns(runs: number): this
-withProtection(callback?: (job: ScheduledJob) => void): this
+withProtection(callback?: (job: ScheduledJob) => void): this  // skip a tick while the last run is still going (this process); callback hears each skip
 withName(name: string): this
-withContext(context: any): this
-withInterval(seconds: number): this
-between(startAt: string | Date, stopAt: string | Date): this
+withContext(context: any): this          // passed to the task on each run: the callback's argument, or the job's `context`
+withInterval(seconds: number): this      // at least this many seconds between runs; sooner ticks are skipped
+between(startAt: string | Date, stopAt: string | Date): this  // only run inside the window; stops for good once it closes
 withoutOverlapping(expiresAfterMinutes?: number): this
 onOneServer(): this
 runInBackground(): this
@@ -110,29 +122,41 @@ interface ScheduledJob {
 
 ### Timezone Type
 
-The `Timezone` type is a string union of ~70 IANA timezone identifiers (e.g., `'America/New_York'`, `'Europe/Berlin'`, `'Asia/Tokyo'`, `'UTC'`). Default is `'America/Los_Angeles'`.
+The `Timezone` type is a string union of ~70 IANA timezone identifiers (e.g., `'America/New_York'`, `'Europe/Berlin'`, `'Asia/Tokyo'`, `'UTC'`). A task without `setTimeZone()` runs on `config.app.timezone`, or UTC when the app sets none, read when its next run is computed.
 
 ### Internal Scheduling Engine
 
 - **Sub-minute** (`everySecond`): Uses `setInterval` with the configured `intervalMs`.
 - **Minute+**: Uses `parse()` from `@stacksjs/cron` to compute the next run time, then `setTimeout` to fire at the right moment. When the delay exceeds `2^31-1 ms` (~24.8 days), it chains shorter timeouts.
-- **Timezone-aware**: Converts "now" to the configured timezone via `toLocaleString()`, parses the cron pattern from that local time, then computes the real-world delay.
+- **Timezone-aware**: passes the configured IANA timezone to the cron parser through nextCronTime(). The returned Date is a UTC instant; local DST windows can still skip or repeat a scheduled local hour. Use idempotency when a task must have one effect in that window.
 - **maxRuns**: Tracks `runCount` and calls `stop()` when the limit is reached.
 - **Error handling**: If `options.catch` is set, errors are caught and passed to the handler instead of propagating.
 
+
 ### Overlap Prevention and Locking
 
-When `withoutOverlapping()` or `onOneServer()` is called:
-1. Lock files are created in `storage/framework/locks/{taskName}.lock`
-2. The lock directory is created automatically if missing
-3. Lock files use exclusive write (`flag: 'wx'`) for atomicity
-4. Stale locks expire after `overlapExpiresAfterMinutes` (default: 1440 = 24 hours)
-5. Lock age is checked via file `mtime`
-6. Locks are released in a `finally` block (or `.finally()` for async tasks)
+`withoutOverlapping()` uses a local exclusive file lock, with a stale-lock
+expiry. `onOneServer()` also requests a dedicated PostgreSQL/MySQL advisory
+lock through `scheduler-lock.ts`, alongside the local file lock. DB locks
+release when their connection disconnects. SQLite/Turso use only the host's file
+lock, and a DB-unavailable fallback warns rather than promising cluster
+coordination. Use the same task name on all participating hosts. Names are
+sanitized and hashed for lock paths.
+
+The advisory lock is released when a run ends, so on its own it only stops
+two runs at once. `onOneServer()` therefore also claims the slot: each tick
+inserts `(task, slot)` into a `scheduler_claims` table with a unique key, and
+only the server whose row went in first runs it (`scheduler-claims.ts`,
+stacksjs/stacks#3152). The slot is the cron time the tick woke for; for
+`everySecond()` it is the wall-clock second, and interval timers are not
+aligned across servers, so ticks that straddle a boundary both run. The table
+is created on first use with CREATE TABLE IF NOT EXISTS, and claims older than
+a day are pruned. `Schedule.runNow()` and `buddy schedule:run-one` have no
+slot and always run. SQLite and the DB-unavailable fallback claim nothing.
 
 ### Background Execution
 
-When `runInBackground()` is called, the task is spawned as a detached child process via `node:child_process.spawn`. The child is `unref()`'d so it does not keep the parent alive.
+When `runInBackground()` is called, each run starts `buddy schedule:run-one <name> --in-process` as a detached child in the project directory. That process registers the app's schedule the way `schedule:run` does and runs the one task there, taking any `withoutOverlapping()` / `onOneServer()` lock itself. The child is `unref()`'d so it does not keep the parent alive, and a non-zero exit is logged under the task's name. The task needs a name (`schedule.job/action/command` have one; a callback needs `.withName()`), or registration fails.
 
 ## Helper Functions
 
@@ -156,10 +180,10 @@ timeout(cronExpression: string | Date): number
 ```typescript
 import { parse } from '@stacksjs/cron'
 
-parse(expression: string, relativeDate?: Date | number): Date | null
+parse(expression: string, relativeDate?: Date | number, options?: { tz?: string }): Date | null
 ```
 
-- Uses `Bun.cron.parse()` when available (native Bun cron support), otherwise falls back to the built-in `parseCron()` implementation.
+- Reads the expression in UTC, or in the given tz, using the built-in parseCron. It does not use `Bun.cron.parse()`, which reads in the server's local time.
 - Returns the next matching UTC `Date`, or `null` if no match within ~4 years.
 - Throws on invalid expressions (wrong field count, out-of-range values).
 
@@ -217,11 +241,11 @@ Every.Year           // '0 0 1 1 *'
 
 The entry point for starting the scheduler process:
 
-1. Globs `app/Jobs/*.ts` for job files
-2. For each job with a `rate` property, maps the rate to a schedule method via `executeJobRate()` (switch on `Every.*` values)
-3. Job names are derived from `job.name` or the filename, then `snakeCase()`'d
-4. Imports and calls the default export from `app/Scheduler.ts`
-5. Returns `Ok<string>` on success
+1. Globs `app/Jobs/*.ts` and loads app/Scheduler.ts first.
+2. Preserves each job filename's case as its schedulable name.
+3. Skips a rate when the file or declared job name already has an explicit schedule.
+4. Schedules remaining rate strings through schedule.job(name).cron(rate), including supported sub-minute intervals.
+5. Logs individual import/rate failures and returns Ok on successful scheduler registration.
 
 ```typescript
 import { runScheduler } from '@stacksjs/scheduler'
@@ -345,13 +369,13 @@ export default {
 ```
 
 ## Gotchas
-- The `Schedule` constructor auto-starts via `setTimeout(0)` -- all chained methods must be called synchronously in the same tick, or the schedule starts with incomplete configuration
-- Default timezone is `'America/Los_Angeles'`, not UTC
+- The Schedule constructor starts through a microtask after the synchronous chain; asynchronous configuration arrives too late
+- A task's default timezone is the app's (`config.app.timezone`, which `config/app.ts` ships as `'America/Los_Angeles'`), not a fixed zone; UTC when the app sets none
 - `everySecond()` uses `setInterval`, not cron -- it sets `intervalMs = 1000` and bypasses the cron parser entirely
 - The `Queue` class in `schedule.ts` is just an empty subclass of `Schedule` (`export class Queue extends Schedule {}`) -- it adds no functionality
-- `withoutOverlapping()` uses file-based locks in `storage/framework/locks/` -- this only prevents overlap within a single machine, not across a cluster
-- `onOneServer()` also uses file-based locks (same as `withoutOverlapping`), so it does not actually coordinate across multiple servers
-- `runInBackground()` spawns a detached child process with `spawn(process.execPath, ['-e', ...])` -- the task function is `.toString()`'d and eval'd, so closures over external variables will not work
+- `withoutOverlapping()` provides local file locking. `onOneServer()` adds a PostgreSQL/MySQL advisory lock and a per-slot claim in `scheduler_claims`, created on first use
+- SQLite/Turso and DB-unavailable fallback cannot provide cluster-wide scheduler coordination; read scheduler-lock.ts and its warning
+- `runInBackground()` runs the task by name in a `buddy schedule:run-one <name> --in-process` child, so the task must be registered under that name by the app's scheduler file, and an unnamed callback is refused
 - There are TWO scheduler systems: `@stacksjs/scheduler` (fluent API in `schedule.ts`) and the queue-level scheduler in `@stacksjs/queue` (`queue/src/scheduler.ts`). The former runs tasks in-process; the latter dispatches to the queue
 - `sendAt()` throws on invalid cron expressions (it delegates to `parse()` which throws)
 - `timeout()` returns `-1` (not `0` or `Infinity`) when there is no upcoming run
@@ -361,3 +385,33 @@ export default {
 - The cron parser uses POSIX OR logic when both day-of-month and day-of-week are specified (neither `*`) -- this means `0 0 15 * FRI` matches the 15th OR every Friday, not only Fridays that fall on the 15th
 - Lock files are written with `{ flag: 'wx' }` for atomic creation, but this is not NFS-safe
 - `parse()` returns `null` for impossible patterns (e.g., `0 0 30 2 *` -- Feb 30 never exists) rather than throwing
+
+
+## Additional native scheduling operations
+
+`cron(expression)` accepts five-field cron and deliberately restricted
+six-field forms: all-wildcard intervals in seconds dividing 60, or leading zero
+seconds with a five-field schedule. Unsupported specific-second forms throw.
+`dailyAt(time)`, `weekdays()` and `onQueue(name)` are native methods.
+`sendOutputTo(path)` and `appendOutputTo(path)` capture supported command
+output. `runMissed({ since, max? })` performs bounded catch-up: each missed
+slot runs in this process, awaited, through the live guards. A paused task
+runs none, only slots inside `between()` run, and a slot is skipped while the
+task holds its `withoutOverlapping()` or `onOneServer()` lock. An
+`onOneServer()` task also claims each slot it replays, so two servers that
+boot together run each missed slot once.
+
+
+`schedule.notification(recipient, payload, channels?, options?)` schedules
+native notify fan-out and fails the task if any channel result failed.
+Use `.withName()` for a stable operational name. `Schedule.listJobs()`,
+`runNow(name, { inProcess? })`, `setEnabled/isEnabled/isScheduled` and
+`listLocks()` expose registered process state, not an inventory of every host.
+CLI: schedule:list/status/run-one/enable/disable. Read each command's help for
+persistence scope and flags; schedule:run starts a long-running scheduler.
+
+Source: `storage/framework/core/scheduler/src/schedule.ts` and
+`scheduler-lock.ts`, `core/buddy/src/commands/schedule.ts`. Tests:
+`cron-expression.test.ts`, `schedule-options.test.ts`,
+`scheduler-lock.test.ts`, `run-missed.test.ts`,
+`notification.test.ts` under `core/scheduler/tests/`.

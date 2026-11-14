@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * A single-use passwordless sign-in token. `token` stores the SHA-256 of the
@@ -15,15 +15,9 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
 
-  indexes: [
-    {
-      name: 'magic_link_tokens_token_unique',
-      columns: ['token'],
-      unique: true,
-    },
-  ],
 
   traits: {
+    gdpr: { erasure: 'delete', basis: 'contract', purpose: 'Passwordless sign-in links' },
     useTimestamps: true,
   },
 
@@ -31,6 +25,7 @@ export default defineModel({
 
   attributes: {
     email: {
+      personal: true,
       required: true,
       order: 1,
       fillable: true,
@@ -93,5 +88,9 @@ export default defineModel({
       },
       factory: () => null,
     },
+  },
+
+  dashboard: {
+    columns: ['email', 'user', 'expiresAt', 'consumedAt', 'createdAt'],
   },
 } as const)

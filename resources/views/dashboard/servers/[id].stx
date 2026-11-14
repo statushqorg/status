@@ -29,6 +29,7 @@ import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { serverFormErrorFields, serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
+import { rowsOrEmpty } from '~/app/lib/rows'
 import { config } from '@stacksjs/config'
 
 const chartLine = line
@@ -67,10 +68,10 @@ const invalidFields = flashError ? serverFormErrorFields(flashError, 'edit-serve
 // Team-scoped fetch. TEAM_ID is -1 when auth failed, so this fails closed to
 // "no such server" rather than to somebody else's box.
 const __serverRow = (AUTH_USER && serverId)
-  ? (await (SEE_ALL
+  ? (await rowsOrEmpty(() => (SEE_ALL
       ? db.selectFrom('servers').where('id', '=', serverId)
       : db.selectFrom('servers').where('id', '=', serverId).where('team_id', '=', TEAM_ID)
-    ).selectAll().limit(1).execute().catch(() => []))[0] || null
+    ).selectAll().limit(1).execute()))[0] || null
   : null
 
 const range = query.get('range') || '24h'
@@ -107,7 +108,7 @@ function thresholdLabel(value) {
 // --- monitors on this box ---------------------------------------------------
 
 const attachedRows = serverView
-  ? await db.selectFrom('monitors').where('server_id', '=', serverView.id).select(['id', 'name', 'type', 'status']).execute().catch(() => [])
+  ? await rowsOrEmpty(() => db.selectFrom('monitors').where('server_id', '=', serverView.id).select(['id', 'name', 'type', 'status']).execute())
   : []
 const attachedMonitors = attachedRows
   .map(m => ({
@@ -124,12 +125,12 @@ const attachedMonitors = attachedRows
 // checkbox that silently steals a monitor from another server would be worse
 // than one that admits what it is doing.
 const teamMonitorRows = (AUTH_USER && serverView)
-  ? await (SEE_ALL ? db.selectFrom('monitors') : db.selectFrom('monitors').where('team_id', '=', TEAM_ID))
-      .select(['id', 'name', 'server_id']).execute().catch(() => [])
+  ? await rowsOrEmpty(() => (SEE_ALL ? db.selectFrom('monitors') : db.selectFrom('monitors').where('team_id', '=', TEAM_ID))
+      .select(['id', 'name', 'server_id']).execute())
   : []
 const otherServerRows = serverView
-  ? await (SEE_ALL ? db.selectFrom('servers') : db.selectFrom('servers').where('team_id', '=', TEAM_ID))
-      .select(['id', 'name']).execute().catch(() => [])
+  ? await rowsOrEmpty(() => (SEE_ALL ? db.selectFrom('servers') : db.selectFrom('servers').where('team_id', '=', TEAM_ID))
+      .select(['id', 'name']).execute())
   : []
 const serverNameById = new Map(otherServerRows.map(r => [Number(r.id), String(r.name ?? '')]))
 
@@ -148,13 +149,12 @@ const monitorChoices = teamMonitorRows
 // --- samples: telemetry, hosts, and the chart -------------------------------
 
 const sampleRows = serverView
-  ? await db.selectFrom('server_metric_samples')
+  ? await rowsOrEmpty(() => db.selectFrom('server_metric_samples')
       .where('server_id', '=', serverView.id)
       .where('sampled_at', '>=', since)
       .orderBy('sampled_at', 'asc')
       .selectAll()
-      .execute()
-      .catch(() => [])
+      .execute())
   : []
 
 // The same aggregation the ingest decides status with, so this table can never
@@ -260,11 +260,11 @@ let hostChart = null
 // before deleting a box, which is the wrong thing to bend.
 
 const incidentRows = serverView
-  ? await db.selectFrom('incidents').where('server_id', '=', serverView.id).orderBy('started_at', 'desc').limit(20).selectAll().execute().catch(() => [])
+  ? await rowsOrEmpty(() => db.selectFrom('incidents').where('server_id', '=', serverView.id).orderBy('started_at', 'desc').limit(20).selectAll().execute())
   : []
 
 const updateRows = incidentRows.length
-  ? await db.selectFrom('incident_updates').where('incident_id', 'in', incidentRows.map(i => Number(i.id))).orderBy('posted_at', 'asc').selectAll().execute().catch(() => [])
+  ? await rowsOrEmpty(() => db.selectFrom('incident_updates').where('incident_id', 'in', incidentRows.map(i => Number(i.id))).orderBy('posted_at', 'asc').selectAll().execute())
   : []
 
 const __incidents = incidentRows.map(i => ({
@@ -372,19 +372,19 @@ useHead({
       <div class="flash" role="status">Monitors updated.</div>
     @endif
     @if (flashError)
-      <div id="server-form-error" class="flash error" role="alert">{{ errorLabel(flashError) }}</div>
+      <div id="server-form-error" class="error flash" role="alert">{{ errorLabel(flashError) }}</div>
     @endif
 
     {{-- The band is the ONE place a breach or a silence is explained. Amber,
          never red: the monitors listed inside keep their own pills, and those
          may be red, because a site being down is a different claim. --}}
     @foreach (bands as band)
-      <div class="server-band border border-[var(--amber)] bg-[var(--amber-soft)] rounded-[12px] py-[1rem] px-[1.25rem] mb-[1rem]">
+      <div class="mb-[1rem] px-[1.25rem] py-[1rem] bg-[var(--amber-soft)] border border-[var(--amber)] rounded-[12px] server-band">
         <strong>{{ band.title }}</strong>
         <span>{{ band.cause }}</span>
         <span class="sub">since {{ band.since }}</span>
         @if (attachedMonitors.length)
-          <div class="blast mt-[0.75rem]">
+          <div class="mt-[0.75rem] blast">
             <p class="sub">{{ attachedMonitors.length }} monitor{{ attachedMonitors.length === 1 ? '' : 's' }} on this server</p>
             @foreach (attachedMonitors as m)
               <StxLink class="inline-flex gap-[0.4rem] items-center mr-[0.9rem]" to="/dashboard/monitors/{{ m.id }}">
@@ -428,7 +428,7 @@ useHead({
           <span class="sub">now {{ hostChart.nowLabel }}</span>
         </div>
         <div class="card-body">
-          <div class="chips mb-[0.75rem]">
+          <div class="mb-[0.75rem] chips">
             <StxLink to="{{ rangeUrl('24h') }}" class="chip {{ range === '24h' ? 'active' : '' }}">24h</StxLink>
             <StxLink to="{{ rangeUrl('7d') }}" class="chip {{ range === '7d' ? 'active' : '' }}">7d</StxLink>
             <StxLink to="{{ rangeUrl('30d') }}" class="chip {{ range === '30d' ? 'active' : '' }}">30d</StxLink>
@@ -458,7 +458,7 @@ useHead({
             @endif
           </div>
           @if (hostNames.length > 1)
-            <div class="chips mt-[0.75rem]">
+            <div class="mt-[0.75rem] chips">
               @foreach (hostNames as h)
                 <StxLink to="{{ hostUrl(h) }}" class="chip {{ chartHost === h ? 'active' : '' }}">{{ h }}</StxLink>
               @endforeach
@@ -569,7 +569,7 @@ useHead({
         </div>
         <div class="card-body">
           @foreach (__incidents as incident)
-            <div class="py-[0.75rem] px-0 border-b border-[var(--border)]">
+            <div class="px-0 py-[0.75rem] border-[var(--border)] border-b">
               <span class="{{ incident.pill }}"><span class="dot"></span>{{ incident.state }}</span>
               <strong>{{ incident.title }}</strong>
               <span class="sub">{{ incident.started }}</span>
@@ -577,7 +577,7 @@ useHead({
                 <p class="card-copy">{{ incident.cause }}</p>
               @endif
               @foreach (incident.updates as update)
-                <p class="sub !ml-[1rem]">{{ update.at }} &middot; {{ update.message }}</p>
+                <p class="!ml-[1rem] sub">{{ update.at }} &middot; {{ update.message }}</p>
               @endforeach
             </div>
           @endforeach

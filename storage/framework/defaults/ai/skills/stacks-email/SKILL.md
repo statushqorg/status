@@ -47,7 +47,9 @@ so `MAIL_MAILER` must be one of `smtp`, `ses`, `sendgrid`, `mailgun`,
 ```typescript
 import { mail } from '@stacksjs/email'
 
-await mail.send({
+// Throws EmailDeliveryError when it was not delivered. The default choice:
+// a try/catch around it means what it looks like.
+await mail.sendOrFail({
   from: { name: 'App', address: 'noreply@app.com' },
   to: 'user@example.com',
   subject: 'Welcome',
@@ -55,19 +57,21 @@ await mail.send({
   text: 'Hello!'
 })
 
-// Use this when later state depends on successful provider delivery.
-await mail.sendOrFail({
-  to: 'user@example.com',
-  subject: 'Your invitation',
-  text: 'Open the invitation link.'
-})
+// send() does NOT throw on a failed delivery; it resolves with success: false.
+// For callers that aggregate outcomes, and they must check it.
+const result = await mail.send({ to: 'user@example.com', subject: 'Digest', text: '...' })
+if (!result.success)
+  failed.push(result.message)
 
 // Switch driver
 const sendgridMail = mail.use('sendgrid')
 await sendgridMail.send(message)
 ```
 
-`mail.send()` always returns an `EmailResult`. Provider rejection is represented
+`mail.send()` always returns an `EmailResult`, typed as `EmailSent | EmailFailed`,
+and `sendOrFail()` resolves with `EmailSent`. Never wrap `send()` in `try`/`catch`
+and count the absence of an exception as delivered: a newsletter was recorded as
+sent while its SMTP host was unreachable that way (#2930). Provider rejection is represented
 as `{ success: false, message, provider }`, which is useful for campaign jobs
 that aggregate individual outcomes. It may still throw for invalid framework
 configuration. `mail.sendOrFail()` returns the same successful result and throws
@@ -105,7 +109,7 @@ import { template, renderHtml, templateExists, listTemplates } from '@stacksjs/e
 
 const { html, text } = await template('welcome', {
   variables: { name: 'John', url: 'https://app.com' },
-  layout: 'default',   // or false to skip layout
+  layout: 'base',   // HTML layout, or false; STX templates own their layout
   subject: 'Welcome'
 })
 
@@ -164,9 +168,11 @@ await deleteEmail('chris', messageId)
 - Configurable domain and endpoint
 
 ### Mailtrap Driver
-- Inbox-aware sending
-- Sandbox and production modes
-- Host default: `sandbox.api.mailtrap.io`
+- `MAILTRAP_INBOX_ID` picks the API: set, mail is captured in that sandbox
+  inbox (`sandbox.api.mailtrap.io/api/send/<inbox>`); unset, it is delivered
+  through the Sending API (`send.api.mailtrap.io/api/send`)
+- `MAILTRAP_HOST` overrides the host for either; blank means Mailtrap's own
+- A 4xx other than 429 is not retried
 
 ### SMTP Driver
 - Raw TCP/TLS socket connection
@@ -238,6 +244,25 @@ abstract class BaseEmailDriver {
 }
 ```
 
+### Mail DNS a deploy publishes
+
+With `server.enabled`, `buddy deploy` reconciles the mail domain's DNS through whichever configured provider holds the zone: MX, SPF, DKIM at the selector the server signs under, DMARC (`server.dmarc`), `mail.<domain>`, and the Gmail Postmaster Tools verification TXT when `server.postmaster.google` is set. Writes are surgical: only records the deploy owns are replaced, so other apex TXT (Search Console, other verifications) survive.
+
+Postmaster Tools is the only view of why Gmail files mail as spam when SPF, DKIM and DMARC all pass. Its value is issued per Google account and cannot be generated: add the domain at https://postmaster.google.com, copy the TXT value, set `server.postmaster.google`, deploy, then press Verify in Postmaster Tools. Until it is set the deploy prints where to get it; `postmaster: false` silences that.
+
+When no configured provider can write the zone (no credentials for the provider its nameservers name, e.g. a Cloudflare zone with no `CLOUDFLARE_API_TOKEN`), nothing is published, on this deploy or any later one. The deploy warns with the exact fix (`buddy env:set CLOUDFLARE_API_TOKEN <value> -f .env.production`) and the records to add by hand. `buddy doctor` reports the same without deploying: "Mail DNS provider" (which provider the nameservers name, and whether its keys are in `.env.production`, by name only), "Mail DNS records" (MX, SPF, DKIM at `mail._domainkey`, DMARC in public DNS, each exactly once, the DMARC policy against config, SPF against the MX host's address) and "Postmaster Tools". Code: `core/buddy/src/mail-dns-health.ts`, `core/buddy/src/dns-credentials.ts`.
+
+## Notification email templates
+
+`notify()` and `notificationEmailMessage()` accept
+`emailTemplate: { name: 'workout-reminder', variables: { workouts } }`.
+The named STX template receives the normal subject, paragraphs, locale, action
+and unsubscribe frame alongside the supplied variables. Frame values take
+precedence so template data cannot replace the recipient's opt-out links or
+language. Keep the notification `body` complete, including per-item links: it
+is still the plain-text part and rendering fallback. Persist template data
+with queued notifications so a retry renders the same content.
+
 ## Application Mail Example
 
 ```typescript
@@ -290,7 +315,7 @@ are enforced rather than using their legacy warn-once compatibility path.
 Reprocessing refreshes existing messages instead of skipping them, preserves their read state, and repairs body and attachment metadata written by older versions. The dashboard receives opaque attachment IDs, resolves them against the stored message before download, and never accepts arbitrary S3 keys from a client.
 
 ## CLI Commands
-- `buddy email` / `buddy mail` - email management
+- `buddy email` - email management (there is no `buddy mail` alias: `mail:*` is the separate mail-server namespace)
 - `buddy email:verify` - check domain verification
 - `buddy email:test [recipient]` - send test email
 - `buddy email:list` - list mailboxes
@@ -301,12 +326,13 @@ Reprocessing refreshes existing messages instead of skipping them, preserves the
 - `buddy mail:user:add <email>` - add mail user
 - `buddy mail:user:list` - list mail users
 - `buddy mail:user:delete <email>` - delete mail user
+- `buddy mail:storage:machine-bind` - restore unattended reboot recovery with a systemd machine-bound encrypted LUKS credential
 
 ## Gotchas
 - Default driver is `ses` - requires AWS credentials
 - Template rendering supports both `.stx` and `.html` files
 - Variable interpolation uses `{{ }}` double-brace syntax
-- The `mail` singleton auto-registers all 5 drivers on initialization
+- The mail singleton registers smtp, ses, sendgrid, mailgun, mailtrap, log and capture; provider selection comes from config
 - SMTP driver handles TLS handshake manually (not via node:tls)
 - SendGrid/Mailgun retry with exponential backoff on failure
 - `mail.send()` returns structured failures; use `mail.sendOrFail()` when success is required
@@ -314,6 +340,23 @@ Reprocessing refreshes existing messages instead of skipping them, preserves the
 - Mailtrap requires `inboxId` for sandbox mode
 - EmailSDK reads inbox from S3 (bucket configured via env)
 - EmailSDK attachment downloads use binary-safe S3 reads and opaque IDs
+- Externally keyed mail storage stays locked after a host reboot by design. Use `buddy mail:storage:machine-bind` when unattended recovery is required; the AWS recovery secret remains escrowed.
 - `buddy email:reprocess` preserves existing read state and exits nonzero on failure
 - Email categorization auto-sorts incoming mail by domain/substring patterns
 - The `text` fallback is auto-generated from HTML via `htmlToText()`
+
+
+## Delivery controls and provider evidence
+
+The package exports native suppression, send idempotency, unsubscribe tokens,
+webhook deduplication/signature/processors, CSS inlining, typed Mailable and mail
+previews. Read [DELIVERY-CONTROLS.md](DELIVERY-CONTROLS.md) when sending campaigns,
+processing provider callbacks or building recipient unsubscribe flows.
+
+Log and capture have local test contracts. SMTP/SES/SendGrid/Mailgun/Mailtrap
+are partial in `core/config/src/capabilities.ts`: credentials and request
+behavior are retained, live inbox delivery assertions are not. A successful
+provider API result means accepted by that provider, not received by the user.
+The default email webhook bundle is subject to route selection and the email
+feature gate. A preview/scaffold workflow never needs a production transport;
+see `stacks-mail` for make:mail and mail:preview.

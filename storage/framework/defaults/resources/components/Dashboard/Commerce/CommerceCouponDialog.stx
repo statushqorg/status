@@ -4,13 +4,16 @@ import type {
   CouponRecord,
   CouponStatus,
 } from '../../../../app/Actions/Dashboard/Commerce/coupon-records'
+import { minorToInput, moneyInputError, moneyInputStep, parseMoneyInput } from '@stacksjs/commerce/money'
+import { formErrorMessages } from '../../../../functions/dashboard-form'
 
 const open = useReactiveProp('open', false)
 const mode = useReactiveProp('mode', 'add')
 const record = useReactiveProp('record', null as CouponRecord | null)
+const currency = useReactiveProp('currency', 'USD')
 const busy = useReactiveProp('busy', false)
 const errors = useReactiveProp('errors', {} as Record<string, string>)
-const emit = defineEmits()
+const emit = defineEmits(['submit', 'close'])
 const code = state('')
 const description = state('')
 const status = state<CouponStatus>('Active')
@@ -40,9 +43,13 @@ effect(() => {
   status.set(current?.status || 'Active')
   isActive.set(current?.isActive ?? true)
   discountType.set(current?.discountType || 'percentage')
-  discountValue.set(String(current?.discountValue || 10))
-  minOrderAmount.set(current?.minOrderAmount ? String(current.minOrderAmount) : '')
-  maxDiscountAmount.set(current?.maxDiscountAmount ? String(current.maxDiscountAmount) : '')
+  // A percentage is shown as stored; money fields are stored as integer
+  // minor units and shown as the decimal.
+  discountValue.set(current
+    ? current.discountType === 'fixed_amount' ? minorToInput(current.discountValue, currency()) : String(current.discountValue)
+    : '10')
+  minOrderAmount.set(current?.minOrderAmount ? minorToInput(current.minOrderAmount, currency()) : '')
+  maxDiscountAmount.set(current?.maxDiscountAmount ? minorToInput(current.maxDiscountAmount, currency()) : '')
   freeProductId.set(current?.freeProductId || '')
   usageLimit.set(current?.usageLimit ? String(current.usageLimit) : '')
   startDate.set(current?.startDate || '')
@@ -56,8 +63,24 @@ function optionalNumber(value: string): number | undefined {
   return Number.isFinite(result) ? result : undefined
 }
 
+function optionalMoney(value: string): number | undefined {
+  return parseMoneyInput(value, currency(), { required: false }) ?? undefined
+}
+
+function discountValueValid(): boolean {
+  if (discountType() === 'fixed_amount')
+    return !moneyInputError(discountValue(), currency(), { min: 1 })
+  const rate = Number(discountValue())
+  return Number.isFinite(rate) && rate >= 0.01 && rate <= 100
+}
+
 function valid(): boolean {
-  return Boolean(code().trim() && Number(discountValue()) >= 0.01)
+  return Boolean(
+    code().trim()
+    && discountValueValid()
+    && !moneyInputError(minOrderAmount(), currency(), { required: false })
+    && !moneyInputError(maxDiscountAmount(), currency(), { required: false }),
+  )
 }
 
 function submit(): void {
@@ -69,9 +92,11 @@ function submit(): void {
     status: status(),
     isActive: isActive(),
     discountType: discountType(),
-    discountValue: Number(discountValue()),
-    minOrderAmount: optionalNumber(minOrderAmount()),
-    maxDiscountAmount: optionalNumber(maxDiscountAmount()),
+    discountValue: discountType() === 'fixed_amount'
+      ? parseMoneyInput(discountValue(), currency(), { min: 1 })
+      : Number(discountValue()),
+    minOrderAmount: optionalMoney(minOrderAmount()),
+    maxDiscountAmount: optionalMoney(maxDiscountAmount()),
     freeProductId: freeProductId().trim() || undefined,
     usageLimit: optionalNumber(usageLimit()),
     startDate: startDate() || undefined,
@@ -80,10 +105,7 @@ function submit(): void {
 }
 
 function errorMessages(): string[] {
-  return Object.entries(errors()).map(([field, message]) => {
-    const label = field.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ')
-    return `${label.charAt(0).toUpperCase()}${label.slice(1)}: ${message}`
-  })
+  return formErrorMessages(errors())
 }
 </script>
 
@@ -96,21 +118,23 @@ function errorMessages(): string[] {
 >
     <form id="coupon-form" @submit.prevent="submit">
         <ul :if="errorMessages().length > 0" class="mb-5 p-3 space-y-1 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">
-          <template :for="message in errorMessages()" :key="message"><li>{{ message }}</li></template>
+          <li :for="message in errorMessages()" :key="message">{{ message }}</li>
         </ul>
         <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Code</span><input x-model="code" type="text" maxlength="50" required spellcheck="false" class="mt-1 px-3 py-2 w-full font-mono text-gray-900 text-sm uppercase dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Status</span><select x-model="status" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"><option value="Active">Active</option><option value="Scheduled">Scheduled</option><option value="Expired">Expired</option></select></label>
           <label class="block sm:col-span-2"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Description</span><textarea x-model="description" rows="3" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"></textarea></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Discount type</span><select x-model="discountType" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700"><option value="percentage">Percentage</option><option value="fixed_amount">Fixed amount</option></select></label>
-          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Discount value</span><input x-model="discountValue" type="number" min="0.01" step="0.01" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
-          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Minimum order amount</span><input x-model="minOrderAmount" type="number" min="0" step="0.01" placeholder="No minimum" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
-          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Maximum discount amount</span><input x-model="maxDiscountAmount" type="number" min="0" step="0.01" placeholder="No maximum" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
+          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Discount value</span><input x-model="discountValue" type="number" :min="discountType() === 'fixed_amount' ? '0' : '0.01'" :step="discountType() === 'fixed_amount' ? moneyInputStep(currency()) : '0.01'" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
+          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Minimum order amount</span><input x-model="minOrderAmount" type="number" min="0" :step="moneyInputStep(currency())" placeholder="No minimum" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
+          <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Maximum discount amount</span><input x-model="maxDiscountAmount" type="number" min="0" :step="moneyInputStep(currency())" placeholder="No maximum" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Usage limit</span><input x-model="usageLimit" type="number" min="1" step="1" placeholder="No limit" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Free product ID</span><input x-model="freeProductId" type="text" placeholder="Optional" class="mt-1 px-3 py-2 w-full font-mono text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Start date</span><input x-model="startDate" type="date" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
           <label class="block"><span class="font-medium text-gray-700 text-sm dark:text-neutral-200">End date</span><input x-model="endDate" type="date" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700" /></label>
-          <label class="flex gap-3 items-center sm:col-span-2 p-3 border border-gray-200 rounded-lg dark:border-neutral-700"><input x-model="isActive" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded" /><span><span class="block font-medium text-gray-700 text-sm dark:text-neutral-200">Enabled for redemption</span><span class="block mt-0.5 text-gray-400 text-xs dark:text-neutral-500">Availability is stored separately from lifecycle status.</span></span></label>
+          <div class="sm:col-span-2 p-3 border border-gray-200 rounded-lg dark:border-neutral-700">
+            <Toggle v-model:checked="isActive" label="Enabled for redemption" description="Availability is stored separately from lifecycle status." labelPosition="left" />
+          </div>
         </div>
     </form>
   <template #footer>

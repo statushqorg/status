@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="lapse-heading">
+      <section class="section site-shell" aria-labelledby="lapse-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="lapse-heading">Companies have vanished over a renewal email.</h2>
@@ -113,8 +113,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="ladder-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="ladder-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="ladder-heading">Warnings at 30, 14, 7, and 1 day out.</h2>
             <p>
@@ -146,8 +146,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What domain monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -160,7 +160,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="api-heading">
+      <section class="section site-shell" aria-labelledby="api-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="api-heading">One call per domain.</h2>
@@ -183,7 +183,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-label="Open source">
+      <section class="section site-shell" aria-label="Open source">
         <div class="note-band">
           <div>
             <h2>Open source, MIT licensed.</h2>
@@ -193,7 +193,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Domain monitoring, answered.</h2>
@@ -208,8 +208,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

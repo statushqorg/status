@@ -8,136 +8,140 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Browser
 
-Frontend/browser utilities for STX applications.
+Use `@stacksjs/browser` for client authentication, API transport, browser models,
+request error messages and imported billing/utilities. Imported availability is
+different from an STX runtime global.
 
-## Key Paths
-- Core package: `storage/framework/core/browser/src/`
-- Auto-imports: `storage/framework/browser-auto-imports.json`
+## Imports and runtime boundary
 
-## Authentication Composable (useAuth)
+Import useAuth/authGuard, initApi/Fetch and needed helpers explicitly. The package
+initializes browser API config as an import side effect, using public injected
+config or same-origin /api; initApi is an optional override. autoInit itself is
+internal, not a public entry export. window.StacksBrowser is a bag of utilities
+and registered models, not proof that each name is attached as a bare global.
+Read stacks-auto-imports for the actual STX runtime names.
 
-```typescript
-const { user, isAuthenticated, login, register, logout, token, errors, loading } = useAuth()
+The public query builder comes from bun-query-builder/browser, so client bundles
+avoid server SQLite/child_process dependencies. configureBrowser/getBrowserConfig,
+browserQuery/BrowserQueryBuilder/BrowserQueryError, browserAuth and
+createBrowserDb/createBrowserModel are native browser exports. API access remains
+subject to server routes, permissions and row scoping; a client model is not a
+direct SQL connection or authorization layer.
 
-// Login
-await login({ email: 'user@example.com', password: 'secret' })
+## Authentication and session recovery
 
-// Register
-await register({ email: 'new@example.com', password: 'secret', name: 'John' })
+~~~ts
+import { useAuth } from '@stacksjs/browser'
 
-// Logout
-await logout()
+const session = useAuth()
+const result = await session.login({ email: 'user@example.com', password: 'secret' })
+~~~
 
-// Auth guard (redirect if not authenticated)
-authGuard()              // redirect to /login
-authGuard({ guest: true })  // redirect if authenticated (for login page)
-```
+useAuth returns shared client refs and login/register/logout/session methods.
+Login returns a union including validation/refusal and a two-factor challenge;
+inspect the result, rather than assuming a resolved call means signed-in state.
+Browser state uses imported storage helpers, not direct document/window mutation
+inside STX scripts.
 
-## API Client (Fetch)
+refreshSession coalesces concurrent refresh attempts. A server refusal clears the
+session and returns false; a network failure, 5xx, 408 or 429 keeps the existing
+credential and returns false. authFetch retries the eligible request after
+refresh using the native credential/CSRF flow. Cookie/session behavior and
+refresh-token availability depend on server browser-session policy. A
+fixed-lifetime login cannot be made renewable by keeping an old client refresh
+token.
 
-```typescript
-import { Fetch, initApi } from '@stacksjs/browser'
+Only a 401 ends a session. fetchAuthUser shares one in-flight /api/me request
+between concurrent callers. A network failure, 5xx, 403 or other non-401 answer
+keeps token, user and isAuthenticated and resolves the last known user. 403 is
+an authorization decision about a recognised identity, so the app should show
+a forbidden state, not send the user to log in again. An unchanged /me answer
+keeps the same user object, so effects do not re-run. A same-origin authFetch
+401 that refresh cannot cure re-checks /api/me instead of signing out (signed
+URLs and step-up checks also answer 401). Only that check's 401 clears the
+session. A burst of such 401s makes one /me request, one clear and one
+onSessionExpired(listener) call. Answers to requests sent before a new sign-in
+are ignored. logout() does not fire onSessionExpired.
 
-initApi({ baseUrl: '/api', onUnauthorized: () => router.push('/login') })
+completeSocialLogin applies the native handoff through the same storage refs and
+strips its URL fragment. The default callback sends a one-use stx_handoff code.
+Called with no argument, completeSocialLogin redeems it with a credentialed POST
+to /auth/handoff (AUTH_HANDOFF_PATH); a refused or unreachable redemption
+resolves null and leaves the existing session alone. A stx_auth pack from a
+custom callback still works. Use socialHandoffRedirect on the server; a
+hand-built inline script writing token/user keys duplicates the
+encoding/security contract.
 
-const users = await Fetch.get('/users')
-await Fetch.post('/users', { name: 'John' })
-await Fetch.patch('/users/1', { name: 'Jane' })
-await Fetch.put('/users/1', data)
-await Fetch.destroy('/users/1')
-Fetch.setToken('bearer-token')
-```
+authGuard controls client navigation; guard server pages/actions independently.
+With a stored but unconfirmed token it checks /api/me instead of redirecting,
+so a network blip on page load keeps the user on the page. A 401 then, or any
+later session expiry on that page, redirects to /login once.
 
-## Stripe Billing (Browser-Side)
+## API transports and errors
 
-```typescript
-import { loadCardElement, loadPaymentElement, confirmCardSetup, confirmCardPayment, confirmPayment, createPaymentMethod } from '@stacksjs/browser'
+initApi configures the browser query builder. The older Fetch facade has its own
+baseURL/token/request path; do not assume initApi changes Fetch's baseURL.
+Fetch.get uses query parameters, post/patch/put JSON bodies, and destroy sends
+DELETE with query parameters. Non-2xx throws an error with status/data after
+body parsing. Its methods return parsed response data, not query-builder Results.
 
-// Load Stripe Elements
-const cardElement = await loadCardElement(clientSecret)
-const paymentElement = await loadPaymentElement(clientSecret)
+For cookie writes prefer the native auth/composable request flow and
+readCsrfToken/withCsrfHeader. The low-level Fetch facade is not that complete
+session/CSRF abstraction. describeResponseError(status, body?) and
+describeThrownError(error) normalize useful client messages and field errors.
+Read request-error.ts before displaying raw server/provider data to a user.
 
-// Confirm payment
-const { paymentIntent, error } = await confirmCardPayment(clientSecret, elements)
-const { setupIntent, error } = await confirmCardSetup(clientSecret, elements)
-const { paymentIntent, error } = await confirmPayment(elements)
-const { paymentIntent, error } = await createPaymentMethod(elements)
-```
+## Models, billing and utilities
 
-## Browser Model Loading
+registerModelModules or loadBrowserModels(modules?) registers bundled model
+definitions; loadBrowserModels is synchronous and does not dynamically scan
+server app/Models over HTTP. Only definitions with traits.useApi.uri become
+browser models, with server-only factories/validators stripped. getBrowserModel
+returns a model or null; getBrowserModelNames lists the registered model entries.
 
-```typescript
-import { loadBrowserModels, getBrowserModel, getBrowserModelNames } from '@stacksjs/browser'
+Stripe helpers (loadCardElement/loadPaymentElement/confirmCardSetup/
+confirmCardPayment/createPaymentMethod/confirmPayment) are imported exports;
+Stripe.js and the public key are prerequisites. Server payment actions retain
+authority over amounts, ownership and payment completion. Utility/composable
+re-exports have their own signatures in utils/ and composables/; read the native
+composable skill instead of copying another fixed inventory of globals.
 
-await loadBrowserModels()               // loads all models from app/Models/
-const User = getBrowserModel('User')
-const names = getBrowserModelNames()     // ['User', 'Post', ...]
-```
+## On-demand 3D model inspection
 
-## Browser Query Builder
+Import `createModelViewer`, `modelTransform` and the `ModelScene` type from
+`@stacksjs/browser/model-viewer`. This narrow module has no boot side effect or
+external renderer. It renders binary STL, boxes, square tubes and hollow/solid
+cylinders through native WebGL. Node transforms use millimeters (or one consistent
+caller unit), column-major matrices and Euler degrees. STL URLs must be same-origin.
+The renderer owns pointer orbit, pinch/wheel zoom, keyboard controls, responsive
+canvas sizing, one GPU buffer and abortable STL loads. Call `dispose()` on teardown.
+Source/format/context failures report through `onStatus`; provide a fallback.
 
-```typescript
-import { browserQuery, BrowserQueryBuilder, browserAuth, createBrowserModel, createBrowserDb } from '@stacksjs/browser'
+`<ModelViewer :scene="scene()" label="Frame inspection" poster="/drawing.png" />`
+is the corresponding native STX component. Its scene prop is reactive. It includes
+camera presets, loading/error states and accessible keyboard instructions. Theme
+through inherited `--model-surface`, `--model-ink`, `--model-line`, `--model-height`
+and `--model-mobile-height`. It does not perform CAD booleans, generate print files,
+validate structural strength or prescribe mechanical settings. Keep manufacturing
+geometry, export provenance and domain checks in the application.
 
-const users = await browserQuery('users').where('active', true).get()
-const db = createBrowserDb({ baseUrl: '/api' })
-```
+Evidence: `core/browser/src/model-viewer.ts`, its retained geometry/parser tests,
+and `tests/unit/model-viewer-component.test.ts` for live STX prop delivery.
 
-## Utility Functions
+## Source and evidence
 
-```typescript
-// Date
-useDateFormat(date, 'YYYY-MM-DD')
-useNow()
-
-// Formatting
-formatAreaSize(sqMeters)       // '1,234 sq ft' or 'X acres'
-formatDistance(miles)           // '1.5 mi' or '2,640 ft'
-formatElevation(feet)          // '1,234 ft'
-formatDuration(seconds)        // '2h 15m'
-getRelativeTime(dateString)    // '5 minutes ago'
-
-// Async
-fetchData(fetcher, { onError, fallback })
-
-// Random
-random(size?)                  // nanoid
-customAlphabet(alphabet, size) // custom nanoid
+`storage/framework/core/browser/src/index.ts`, auto-init.ts, model-loader.ts,
+composables/useAuth.ts/useApi.ts/csrf.ts/request-error.ts and utils/fetch.ts.
+Tests: client-bundle-safety.test.ts, use-auth-refresh.test.ts (refresh, session
+resilience, burst expiry, authGuard, handoff code), auth.test.ts, csrf.test.ts,
+request-error.test.ts and api-url.test.ts under core/browser/tests.
 
 
-// Retry
-retry(fn, { retries: 3, initialDelay: 100, backoffFactor: 2 })
+## Retry timing
 
-// Sleep
-sleep(ms), wait(ms), delay(ms)
-waitUntil(condition, { interval, timeout })
-waitWhile(condition, options)
-
-// Promise
-createSingletonPromise(fn)
-createControlledPromise()
-createPromiseLock()
-```
-
-## Guards
-- `notNullish(v)` — type guard for non-null/undefined
-- `noNull(v)` — excludes null
-- `notUndefined(v)` — excludes undefined
-- `isTruthy(v)` — excludes falsy values
-
-## Auto-Initialization
-```typescript
-autoInit()  // initializes all browser utilities, exposes on window.StacksBrowser
-```
-
-## Re-exports from Composables
-`useDark`, `useFetch`, `useOnline`, `useStorage`, `useToggle`, `useDateFormat`, `useNow`, `usePreferredDark`
-
-## Gotchas
-- All browser utilities are auto-imported in STX templates
-- `initApi()` must be called before using `Fetch`
-- `loadCardElement()` requires Stripe.js to be loaded
-- `publishableKey` must be set for Stripe integration
-- Browser models use a different query builder than server-side models
-- `autoInit()` exposes utilities on `window.StacksBrowser`
-- Do NOT use `document.*`, `window.*` directly in STX templates
+`retry` and `calculateDelay` are available through the utilities entry. Retry
+budgets must be finite non-negative safe integers; delays and backoff factors
+must be finite non-negative numbers. Invalid options reject before invoking
+work. Retry runs once plus the allowed retries, preserving the final error.
+Backoff/jitter delays saturate at the platform timer maximum (2147483647 ms),
+including numeric overflow. Large delays never fall through to one-ms timers.

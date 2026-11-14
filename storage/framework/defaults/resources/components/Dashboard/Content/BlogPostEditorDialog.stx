@@ -24,7 +24,11 @@ interface BlogPostDraft {
 }
 
 const open = useReactiveProp('open', false)
-const post = useReactiveProp('post', null as BlogPostRecord | null)
+// Named `editing`, not `post`, while still reading the `post` prop.
+// A bare `post` in a `{{ … }}` interpolation is resolved server-side
+// against module and global scope, where it finds the dashboard API
+// client's own `post()` and calls it mid-render (stacksjs/stacks#2944).
+const editing = useReactiveProp('post', null as BlogPostRecord | null)
 const loadedBody = useReactiveProp('loadedBody', '')
 const bodyLoading = useReactiveProp('bodyLoading', false)
 const bodyLoadFailed = useReactiveProp('bodyLoadFailed', false)
@@ -39,7 +43,7 @@ const poster = state('')
 const body = state('')
 const draft = state(true)
 const featured = state(false)
-const emit = defineEmits()
+const emit = defineEmits(['close', 'submit', 'retry'])
 let wasOpen = false
 let activeSlug = ''
 
@@ -54,13 +58,13 @@ function slugify(input: string): string {
 const suggestedSlug = derived(() => slugify(title()))
 const wordCount = derived(() => body().split(/\s+/).filter(Boolean).length)
 const readingTime = derived(() => Math.max(1, Math.round(wordCount() / 200)))
-const dialogTitle = derived(() => post() ? 'Edit post' : 'New post')
-const actionLabel = derived(() => post() ? 'Save post' : 'Create post')
+const dialogTitle = derived(() => editing() ? 'Edit post' : 'New post')
+const actionLabel = derived(() => editing() ? 'Save post' : 'Create post')
 
 effect(() => {
   const isOpen = open()
   if (isOpen && !wasOpen) {
-    const record = post()
+    const record = editing()
     activeSlug = record?.slug || ''
     title.set(record?.title || '')
     slug.set(record?.slug || '')
@@ -76,7 +80,7 @@ effect(() => {
 })
 
 effect(() => {
-  if (open() && post()?.slug === activeSlug && !bodyLoading())
+  if (open() && editing()?.slug === activeSlug && !bodyLoading())
     body.set(loadedBody())
 })
 
@@ -160,27 +164,21 @@ function submit(): void {
       </label>
 
       <label class="flex flex-col gap-2 sm:col-span-2">
-        <span class="flex items-center justify-between gap-3">
+        <span class="flex gap-3 items-center justify-between">
           <span class="font-medium text-sm">Content</span>
           <span :if="bodyLoading()" role="status" class="inline-flex gap-1.5 items-center text-neutral-500 text-xs dark:text-neutral-400">
             <span class="h-3.5 w-3.5 animate-spin i-hugeicons-loading-03"></span>
             Loading content
           </span>
         </span>
-        <textarea x-model="body" name="body" rows="14" :disabled="bodyLoading() || bodyLoadFailed()" class="px-3 py-2 font-mono text-neutral-900 text-sm dark:text-neutral-100 bg-white dark:bg-neutral-950 border border-neutral-300 outline-none rounded-md disabled:opacity-60 dark:border-neutral-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 resize-y"></textarea>
+        <textarea x-model="body" name="body" rows="14" :disabled="bodyLoading() || bodyLoadFailed()" class="px-3 py-2 font-mono text-neutral-900 text-sm dark:text-neutral-100 bg-white dark:bg-neutral-950 border border-neutral-300 outline-none rounded-md dark:border-neutral-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60 resize-y"></textarea>
         <span class="text-neutral-500 text-xs dark:text-neutral-400">Markdown. {{ wordCount() }} words, about {{ readingTime() }} min read.</span>
       </label>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:gap-6 pt-2 border-neutral-200 border-t dark:border-neutral-800">
-      <label class="flex gap-2 items-center text-sm">
-        <input x-model="draft" name="draft" type="checkbox" class="h-4 w-4 text-blue-600 border-neutral-300 rounded dark:border-neutral-600" />
-        <span>Draft, keep off the public blog</span>
-      </label>
-      <label class="flex gap-2 items-center text-sm">
-        <input x-model="featured" name="featured" type="checkbox" class="h-4 w-4 text-blue-600 border-neutral-300 rounded dark:border-neutral-600" />
-        <span>Feature at the top of the listing</span>
-      </label>
+      <Toggle v-model:checked="draft" name="draft" label="Draft, keep off the public blog" />
+      <Toggle v-model:checked="featured" name="featured" label="Feature at the top of the listing" />
     </div>
   </form>
 

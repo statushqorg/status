@@ -1,6 +1,6 @@
 ---
 name: stacks-calendar
-description: Use when working with calendar functionality in Stacks - exporting events to Google Calendar, Outlook, Yahoo, or ICS format, the CalendarLink interface for event definitions, timezone handling, all-day events, or calendar URL generation. Covers @stacksjs/calendar-api.
+description: Use when exporting calendar links or ICS bodies, building subscribable event feeds, or expanding supported recurrence rules. Covers @stacksjs/calendar-api.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -8,106 +8,78 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Calendar
 
-Calendar event export to 4 calendar providers.
+Use `@stacksjs/calendar-api` for add-to-calendar links, downloadable ICS,
+subscribable feeds and the supported server-side recurrence subset. A calendar
+export is different from a scheduler task or a provider calendar CRUD API.
 
-## Key Paths
-- Core package: `storage/framework/core/calendar-api/src/`
-- Package: `@stacksjs/calendar-api`
+## Single-event links and files
 
-## Export Functions
+~~~ts
+import { exportCalendarGoogle, exportCalendarIcs, exportCalendarIcsBody } from '@stacksjs/calendar-api'
 
-```typescript
-import { exportCalendarGoogle, exportCalendarIcs, exportCalendarOutlook, exportCalendarYahoo } from '@stacksjs/calendar-api'
-
-const event: CalendarLink = {
-  title: 'Team Meeting',
+const event = {
+  title: 'Team meeting',
   description: 'Weekly standup',
-  from: new Date('2024-06-15T10:00:00'),
-  to: new Date('2024-06-15T11:00:00'),
-  address: '123 Main St, City',
+  from: new Date('2026-10-12T17:00:00Z'),
+  to: new Date('2026-10-12T18:00:00Z'),
   timezone: 'America/New_York',
-  allDay: false
+  allDay: false,
 }
-
-// Generate URLs
 const googleUrl = exportCalendarGoogle(event)
-// → https://calendar.google.com/calendar/render?action=TEMPLATE&text=...
+const downloadUrl = exportCalendarIcs(event)
+const fileBody = exportCalendarIcsBody(event)
+~~~
 
-const icsContent = exportCalendarIcs(event)
-// → BEGIN:VCALENDAR\nBEGIN:VEVENT\n...
+Google/Outlook/Yahoo exports return provider compose URLs. exportCalendarIcs
+returns a base64 data URL for an anchor; exportCalendarIcsBody returns raw
+text/calendar for a route or mail attachment. Do not serve the data URL string
+as if it were an ICS file. The single-event CalendarLink source type has from/to,
+title, required allDay and optional description/address/timezone; the root entry
+does not re-export that type. Infer a literal or read src/types.ts when extending
+the package.
 
-const outlookUrl = exportCalendarOutlook(event)
-// → https://outlook.live.com/calendar/0/deeplink/compose?...
+Single-event exports write a timed event as UTC instants (`...Z`), so a link
+means the same on every host; `timezone` only sets the zone Google's compose
+screen displays it in. All-day dates are the UTC calendar dates of from/to.
+The ICS body escapes and folds its text as the feed builder does. Its UID
+derives from the event's instants and title, so editing those changes the
+UID. Do not promise subscription update semantics from a generated
+single-event link; use the feed builder for stable records.
 
-const yahooUrl = exportCalendarYahoo(event)
-// → https://calendar.yahoo.com/?v=60&title=...
-```
+## Native subscribable feeds
 
-## CalendarLink Interface
+buildCalendarFeed({ name, events, timezone?, refreshInterval?, prodId? }) returns
+a complete VCALENDAR body. Use calendarFeedHeaders for the response and an
+authorized route for private calendars. CalendarFeedEvent has a stable uid,
+title/start/end plus optional allDay/description/location/url/rrule/sequence/
+updatedAt. Keep uid stable, increment sequence and update updatedAt on edits.
 
-```typescript
-interface CalendarLink {
-  title: string
-  description?: string
-  from: Date              // start time
-  to: Date                // end time
-  allDay?: boolean        // all-day event (ignores time)
-  address?: string        // location
-  timezone?: string       // IANA timezone (e.g., 'America/New_York')
-}
-```
+The builder escapes ICS text and folds UTF-8 lines. Times are UTC; timezone is
+advisory calendar metadata. All-day feed end dates are inclusive input, converted
+to exclusive DTEND. Individual client refresh cadence is outside the framework's
+control, even when the feed declares a suggested interval.
 
-## Calendar Store Types
+## Recurrence
 
-```typescript
-interface CalendarStore {
-  day: number
-  month: number
-  year: number
-  currentMonthYear: string
-  datesOfMonth: number[]
-  currentWeekView: WeekDates[]
-}
+parseRRule(value) returns a RecurrenceRule, or null for any rule it cannot
+follow exactly: an unsupported frequency or part (BYMONTH, BYSETPOS, BYWEEKNO,
+BYYEARDAY, BYHOUR...), a combination RFC 5545 rules out or this subset does
+not cover, or a value it cannot read. Null means "do not expand this here",
+never "expanded without the part". expandRecurrence(rule, dtstart, windowStart,
+windowEnd) returns matching UTC start instants, capped at 1000.
 
-interface Events {
-  date: string
-  title: string
-  description?: string
-  month: number
-  day: number
-  year: number
-  time?: Time
-}
+The subset: DAILY/WEEKLY/MONTHLY/YEARLY, INTERVAL, COUNT or UNTIL, WKST, BYDAY
+(a filter for DAILY and WEEKLY; within a month, `MO` is every Monday and `2TU`
+or `-1FR` an ordinal) and BYMONTHDAY for DAILY or MONTHLY (`-1` is the last
+day). Weeks start on WKST, Monday by default, as clients expand them. YEARLY
+repeats dtstart's date, skipping years without it (Feb 29). Callers own
+timezone interpretation and DST policy.
 
-interface Time { from: string, to: string }
-interface WeekDates { month: number, date: number }
-```
+## Sources and evidence
 
-## All-Day Events
-
-```typescript
-const allDayEvent: CalendarLink = {
-  title: 'Company Holiday',
-  from: new Date('2024-12-25'),
-  to: new Date('2024-12-25'),
-  allDay: true  // only date matters, no time component
-}
-```
-
-## Format Differences
-
-| Feature | Google | ICS | Outlook | Yahoo |
-|---------|--------|-----|---------|-------|
-| URL-based | Yes | No (file) | Yes | Yes |
-| Timezone | URL param | VTIMEZONE | URL param | URL param |
-| All-day | Date only | DATE value | isAllDay=true | st= format |
-| Description | details= | DESCRIPTION | body= | desc= |
-
-## Gotchas
-- Note package name is `@stacksjs/calendar-api` (not `@stacksjs/calendar`)
-- ICS export returns file content (not a URL) — serve as `.ics` download
-- All-day events use date-only format, ignoring time components
-- Timezone handling varies by provider — ICS includes VTIMEZONE block
-- Google Calendar uses UTC format in URLs
-- For task scheduling (cron), use `@stacksjs/scheduler` instead
-- ICS generates a unique UID per event for calendar deduplication
+`storage/framework/core/calendar-api/src/index.ts`, types.ts, feed.ts,
+recurrence.ts and generators/ own the contracts. Retained tests:
+core/calendar-api/tests/calendar.test.ts and feed-recurrence.test.ts.
+For scheduled application work use stacks-scheduler; for a calendar extension's
+models/dashboard use its installed package metadata, not a fictional calendar
+API in this small export package.

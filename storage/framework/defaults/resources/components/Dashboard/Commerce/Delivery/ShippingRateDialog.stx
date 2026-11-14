@@ -1,4 +1,5 @@
 <script client>
+import { minorToInput, moneyInputError, parseMoneyInput } from '@stacksjs/commerce/money'
 interface ShippingResourceOption {
   id: number
   name: string
@@ -20,7 +21,7 @@ const methods = useReactiveProp('methods', [] as ShippingResourceOption[])
 const zones = useReactiveProp('zones', [] as ShippingResourceOption[])
 const busy = useReactiveProp('busy', false)
 const error = useReactiveProp('error', '')
-const emit = defineEmits()
+const emit = defineEmits(['invalid', 'submit', 'close'])
 const methodId = state('')
 const zoneId = state('')
 const weightFrom = state('')
@@ -42,7 +43,7 @@ effect(() => {
   zoneId.set(current ? String(current.shipping_zone_id) : '')
   weightFrom.set(current ? String(current.weight_from) : '')
   weightTo.set(current ? String(current.weight_to) : '')
-  amount.set(current ? (current.rate / 100).toFixed(2) : '')
+  amount.set(current ? minorToInput(current.rate, 'USD') : '')
 })
 
 function submit(): void {
@@ -50,7 +51,6 @@ function submit(): void {
   const selectedZoneId = Number(zoneId())
   const from = Number(weightFrom())
   const to = Number(weightTo())
-  const rate = Number(amount())
 
   if (!Number.isInteger(selectedMethodId) || selectedMethodId < 1) {
     emit('invalid', 'Select a shipping method.')
@@ -68,8 +68,10 @@ function submit(): void {
     emit('invalid', 'Ending weight must be greater than or equal to the starting weight.')
     return
   }
-  if (!Number.isFinite(rate) || rate < 0) {
-    emit('invalid', 'Rate must be a non-negative amount.')
+  // Typed in dollars, stored as integer cents.
+  const rateError = moneyInputError(amount(), 'USD')
+  if (rateError) {
+    emit('invalid', `Rate: ${rateError}`)
     return
   }
 
@@ -78,7 +80,7 @@ function submit(): void {
     shippingZoneId: selectedZoneId,
     weightFrom: from,
     weightTo: to,
-    rate: Math.round(rate * 100),
+    rate: parseMoneyInput(amount(), 'USD'),
   })
 }
 </script>
@@ -98,14 +100,14 @@ function submit(): void {
             <span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Shipping method</span>
             <select x-model="methodId" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700">
               <option value="">Select a shipping method</option>
-              <template :for="method in methods()" :key="method.id"><option :value="method.id">{{ method.name }}</option></template>
+              <option :for="method in methods()" :key="method.id" :value="method.id">{{ method.name }}</option>
             </select>
           </label>
           <label class="block">
             <span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Shipping zone</span>
             <select x-model="zoneId" required class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700">
               <option value="">Select a shipping zone</option>
-              <template :for="zone in zones()" :key="zone.id"><option :value="zone.id">{{ zone.name }}</option></template>
+              <option :for="zone in zones()" :key="zone.id" :value="zone.id">{{ zone.name }}</option>
             </select>
           </label>
           <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">

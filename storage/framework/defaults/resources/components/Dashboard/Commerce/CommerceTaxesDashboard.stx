@@ -1,5 +1,6 @@
 <script client>
 import type { TaxRateRecord, TaxRateSummary } from '../../../../app/Actions/Dashboard/Commerce/tax-rate-records'
+import { taxTypeLabel } from '../../../../functions/commerce/tax-types'
 import { DashboardApiError, dashboardApi } from '../../../../functions/dashboard-api'
 import { pushToast } from '../../../../functions/toasts'
 
@@ -202,23 +203,19 @@ onMount(() => {
 })
 </script>
 
-<div class="space-y-6">
-  <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <h1 class="font-bold text-2xl text-gray-900 dark:text-white">Tax rates</h1>
-      <p class="mt-1 text-gray-500 text-sm dark:text-neutral-400">Manage native TaxRate records used by commerce calculations.</p>
-    </div>
-    <div class="flex gap-2">
-      <Button variant="secondary" :loading="loading()" @click="loadTaxes">
-        <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
-        Refresh
-      </Button>
-      <Button @click="openAdd()">
-        <span class="h-4 w-4 i-hugeicons-add-01"></span>
-        Add tax rate
-      </Button>
-    </div>
-  </header>
+<div class="flex flex-col gap-6">
+  <PageHeader title="Tax rates" description="Manage native TaxRate records used by commerce calculations.">
+  <div class="flex gap-2">
+    <Button variant="secondary" :loading="loading()" @click="loadTaxes">
+      <span :if="!loading()" class="h-4 w-4 i-hugeicons-refresh"></span>
+      Refresh
+    </Button>
+    <Button @click="openAdd()">
+      <span class="h-4 w-4 i-hugeicons-add-01"></span>
+      Add tax rate
+    </Button>
+  </div>
+  </PageHeader>
 
   <div :if="loadError()" class="p-4 text-red-700 text-sm dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg dark:border-red-900">{{ loadError() }}</div>
   <div :if="summary().defaultConflicts > 0" class="flex gap-3 items-start p-4 text-amber-800 text-sm dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg dark:border-amber-900">
@@ -226,16 +223,9 @@ onMount(() => {
     <p>{{ summary().defaultConflicts + 1 }} tax rates are marked as default. Save the intended default to clear the others.</p>
   </div>
 
-  <section aria-label="Tax rate metrics" class="grid gap-3 grid-cols-2 lg:grid-cols-4">
-    <template :for="item in metricCards()" :key="item.label">
-      <article class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 rounded-lg dark:border-neutral-700">
-        <p class="text-gray-500 text-xs dark:text-neutral-400">{{ item.label }}</p>
-        <p class="mt-2 font-semibold text-2xl text-gray-900 dark:text-white">{{ item.value }}</p>
-      </article>
-    </template>
-  </section>
+  <MetricCards label="Tax rate metrics" columns="grid-cols-2 lg:grid-cols-4" :items="metricCards()" />
 
-  <section class="space-y-3">
+  <section class="flex flex-col gap-3">
     <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
       <label class="relative sm:col-span-2">
         <span class="sr-only">Search tax rates</span>
@@ -254,14 +244,14 @@ onMount(() => {
         <span class="sr-only">Tax country</span>
         <select x-model="countryFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700">
           <option value="all">All countries</option>
-          <template :for="country in countries()" :key="country"><option :value="country">{{ country }}</option></template>
+          <option :for="country in countries()" :key="country" :value="country">{{ country }}</option>
         </select>
       </label>
       <label>
         <span class="sr-only">Tax type</span>
         <select x-model="typeFilter" class="px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-800 border border-gray-300 rounded-md dark:border-neutral-700">
           <option value="all">All tax types</option>
-          <template :for="type in taxTypes()" :key="type"><option :value="type">{{ type }}</option></template>
+          <option :for="type in taxTypes()" :key="type" :value="type">{{ taxTypeLabel(type) }}</option>
         </select>
       </label>
     </div>
@@ -279,7 +269,7 @@ onMount(() => {
       </label>
     </div>
 
-    <CommerceTaxesTable :records="visibleRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" />
+    <CommerceTaxesTable :sort-reset-key="sort()" :records="visibleRecords()" :loading="loading()" @edit="openEdit" @delete="openDelete" />
   </section>
 </div>
 

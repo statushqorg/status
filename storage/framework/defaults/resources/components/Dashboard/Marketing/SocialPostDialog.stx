@@ -10,7 +10,7 @@ const record = useReactiveProp('record', null as SocialPostRecord | null)
 const users = useReactiveProp('users', [] as SocialPostUserOption[])
 const busy = useReactiveProp('busy', false)
 const error = useReactiveProp('error', '')
-const emit = defineEmits()
+const emit = defineEmits(['submit', 'close'])
 const content = state('')
 const platform = state('twitter')
 const status = state('draft')
@@ -99,9 +99,7 @@ function submit(): void {
               <span class="font-medium text-gray-700 text-sm dark:text-neutral-200">Owner</span>
               <select x-model="userId" class="mt-1 px-3 py-2 w-full text-gray-900 text-sm dark:text-white bg-white dark:bg-neutral-900 border border-gray-300 rounded-md dark:border-neutral-700">
                 <option value="">Unassigned</option>
-                <template :for="user in users()" :key="user.id">
-                  <option :value="user.id">{{ user.name }}{{ user.email ? ' - ' + user.email : '' }}</option>
-                </template>
+                <option :for="user in users()" :key="user.id" :value="user.id">{{ user.name }}{{ user.email ? ' - ' + user.email : '' }}</option>
               </select>
             </label>
           </div>

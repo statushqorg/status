@@ -42,7 +42,7 @@ export default new Action({
     await NotificationChannel.create({
       teamId: authTeamId,
       name,
-      type,
+      type: type as 'email' | 'sms' | 'teams' | 'slack' | 'discord' | 'pagerduty' | 'opsgenie' | 'pushover' | 'ntfy' | 'webhook' | undefined,
       config: built.config,
       enabled: true,
     })

@@ -1,11 +1,18 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { slug } from '@stacksjs/strings'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Product',
   table: 'products',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
 
   traits: {
     useUuid: true,
@@ -50,9 +57,22 @@ export default defineModel({
       factory: faker => faker.commerce.productName(),
     },
 
+    // The storefront's address for a product: /products/{slug}, and what a
+    // cart line keeps in product_sku (stacksjs/stacks#3005).
+    slug: {
+      order: 1,
+      unique: true,
+      fillable: true,
+      validation: {
+        rule: schema.string().required().max(255),
+      },
+      factory: (_faker, attributes) => slug(String(attributes.name)),
+    },
+
     description: {
       order: 2,
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
@@ -133,6 +153,7 @@ export default defineModel({
     nutritionalInfo: {
       order: 10,
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
@@ -149,5 +170,9 @@ export default defineModel({
 
   dashboard: {
     highlight: true,
+    // An address that leads to a picture: shown as one.
+    fields: {
+      imageUrl: { format: 'image' },
+    },
   },
 } as const)

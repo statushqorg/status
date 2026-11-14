@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * Kanban board (stacksjs/stacks#1846).
@@ -33,9 +33,22 @@ export default defineModel({
     useApi: {
       uri: 'boards',
       routes: ['index', 'store', 'show', 'update', 'destroy'],
-      middleware: ['auth'],
+      // Team-owned since #2412, so the active-team guard applies - the
+      // contract in tests/unit/default-team-api-scope-contract.test.ts.
+      middleware: ['auth', 'team'],
     },
   },
+
+  /*
+   * A board belongs to a team, which is what makes it - and everything on it -
+   * scopable. Without this, `Board` had no foreign key at all, so row scoping
+   * had nothing to resolve and withheld `store`/`update`/`destroy`: a kanban
+   * board with no create endpoint (stacksjs/stacks#2412).
+   *
+   * `BoardColumn` and `Label` chain to here, so this one column scopes all
+   * three.
+   */
+  belongsTo: ['Team'],
 
   hasMany: ['BoardColumn', 'Label'],
 
@@ -100,5 +113,12 @@ export default defineModel({
   // not the auto-derived `/models/board` viewer — the sidebar entry is
   // hand-added in `dashboard-utils.ts` / `sidebar.ts` and points at
   // the real page. Hiding the auto-row keeps it from double-listing.
-  dashboard: { enabled: false },
+  dashboard: {
+    columns: ['name', 'team', 'archived', 'createdAt'],
+    enabled: false,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      description: { input: 'longtext' },
+    },
+  },
 } as const)

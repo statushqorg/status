@@ -1,7 +1,7 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { createToken } from '@stacksjs/auth'
 import { response } from '@stacksjs/router'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 import { normalizeTokenExpiry, normalizeTokenScopes, wantsRefreshToken } from './token-request'
 
 export default new Action({
@@ -39,7 +39,7 @@ export default new Action({
       return response.badRequest('At least one valid token scope is required')
 
     try {
-      const result = await createToken(user.id, name, scopeArray, {
+      const result = await createToken(Number(user.id), name, scopeArray, {
         expiresInMinutes,
         withRefreshToken,
         refreshExpiresInDays: 30,

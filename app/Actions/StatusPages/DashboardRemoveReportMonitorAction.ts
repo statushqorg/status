@@ -1,5 +1,4 @@
 import { Action } from '@stacksjs/actions'
-import { response } from '@stacksjs/router'
 import StatusReport from '../../Models/StatusReport'
 import StatusReportMonitor from '../../Models/StatusReportMonitor'
 import { requireTeamId } from '../../lib/teamGuard'

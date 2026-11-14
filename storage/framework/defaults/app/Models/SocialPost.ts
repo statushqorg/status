@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'SocialPost',
@@ -8,6 +8,7 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    gdpr: { erasure: 'delete', basis: 'contract', purpose: 'Social posts the user scheduled' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: {
@@ -31,6 +32,7 @@ export default defineModel({
 
   attributes: {
     content: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -139,6 +141,16 @@ export default defineModel({
         rule: schema.string().max(255),
       },
       factory: faker => faker.string.alphanumeric(20),
+    },
+  },
+
+  dashboard: {
+    columns: ['content', 'platform', 'status', 'scheduledAt', 'publishedAt', 'likes'],
+    // Prose, asked for in a box with room for it.
+    // An address that leads to a picture: shown as one.
+    fields: {
+      content: { input: 'longtext' },
+      imageUrl: { input: 'url', format: 'image' },
     },
   },
 } as const)

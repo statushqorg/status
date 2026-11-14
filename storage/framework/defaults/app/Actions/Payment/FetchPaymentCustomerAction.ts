@@ -1,5 +1,8 @@
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
+import { isBillable } from '@stacksjs/orm'
+import { BILLING_NOT_ENABLED } from '@stacksjs/payments'
 import { response } from '@stacksjs/router'
+import { paymentFailure } from './payment-response'
 
 export default new Action({
   name: 'FetchPaymentCustomerAction',
@@ -11,8 +14,16 @@ export default new Action({
     if (!user)
       return response.unauthorized('Authentication required')
 
-    const customer = await user?.asStripeUser()
+    if (!isBillable(user))
+      return response.error(BILLING_NOT_ENABLED, 503)
 
-    return response.json(customer)
+    // The provider's customer for this user - created on first use - in our
+    // terms, whichever provider is configured.
+    try {
+      return response.json(await user.paymentCustomer())
+    }
+    catch (error) {
+      return paymentFailure(error)
+    }
   },
 })

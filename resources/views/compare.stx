@@ -186,8 +186,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="verdict-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="verdict-heading">
+        <div class="left section-head">
           <h2 id="verdict-heading" class="section-title">The quick verdict.</h2>
           <p class="section-copy">Every tool here is good at something. Here is the honest version of when to pick each one.</p>
         </div>
@@ -202,7 +202,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="trade-heading">
+      <section class="section site-shell" aria-labelledby="trade-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="trade-heading">The trade-off we refused to make.</h2>
@@ -246,7 +246,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section id="table" class="site-shell section" aria-labelledby="table-heading">
+      <section id="table" class="section site-shell" aria-labelledby="table-heading">
         <div class="section-head">
           <span class="eyebrow">Side by side</span>
           <h2 id="table-heading" class="section-title">Every check, every tool.</h2>
@@ -298,8 +298,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         <p class="table-note">Sourced from each vendor's public docs, July 2026. Spot an error? <a href="https://github.com/stacksjs/status/issues" target="_blank" rel="noopener">Open an issue</a> and we will fix it.</p>
       </section>
 
-      <section class="site-shell section" aria-labelledby="honest-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="honest-heading">
+        <div class="left section-head">
           <h2 id="honest-heading" class="section-title">Where the others genuinely win.</h2>
           <p class="section-copy">A comparison page you can trust has to cut both ways. Here is what we would tell a friend.</p>
         </div>
@@ -313,7 +313,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="why-heading">
+      <section class="section site-shell" aria-labelledby="why-heading">
         <div class="note-band">
           <div>
             <h2 id="why-heading">Why open source is not optional.</h2>
@@ -325,7 +325,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Fair questions.</h2>

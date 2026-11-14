@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'Request',
@@ -22,7 +22,13 @@ export default defineModel({
     },
   ],
 
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
+
   traits: {
+    gdpr: { basis: 'legitimate_interests', purpose: 'Request log for debugging and abuse prevention' },
     useTimestamps: true,
     useSoftDeletes: true,
     useSeeder: {
@@ -31,7 +37,10 @@ export default defineModel({
     useApi: {
       uri: 'requests',
       routes: ['index', 'store', 'show', 'update', 'destroy'],
-      middleware: ['auth'],
+      // Reads stay as they were; writes need an admin.
+      // request logs are an audit trail, and carry whatever the request carried,
+      // so `auth` alone let any signed-in caller do it (stacksjs/stacks#2412).
+      middleware: { read: ['auth'], write: ['auth', 'role:admin'] },
     },
   },
 
@@ -39,9 +48,11 @@ export default defineModel({
     method: {
       fillable: true,
       validation: {
-        rule: schema.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']),
+        // Observations include rejected methods (for example PROPFIND -> 405).
+        // An enum of application verbs silently lost those requests at insert.
+        rule: schema.string().max(255),
         message: {
-          enum: 'method must be a valid HTTP method',
+          string: 'method must be an HTTP method token',
           required: 'method is required',
         },
       },
@@ -85,6 +96,7 @@ export default defineModel({
     },
 
     ip_address: {
+      personal: true,
       fillable: true,
       validation: {
         rule: schema.string(),
@@ -109,6 +121,7 @@ export default defineModel({
     },
 
     user_agent: {
+      personal: true,
       fillable: true,
       validation: {
         rule: schema.string(),
@@ -121,6 +134,7 @@ export default defineModel({
 
     error_message: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
         message: {
@@ -128,6 +142,14 @@ export default defineModel({
         },
       },
       factory: faker => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.2 }),
+    },
+  },
+
+  dashboard: {
+    columns: ['method', 'path', 'statusCode', 'durationMs', 'ipAddress', 'createdAt'],
+    // Stored in milliseconds: "634 ms", "1.2 s".
+    fields: {
+      durationMs: { label: 'Duration', format: 'duration' },
     },
   },
 } as const)

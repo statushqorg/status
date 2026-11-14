@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="watch-heading">
+      <section class="section site-shell" aria-labelledby="watch-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="watch-heading">Checked around the clock, from where your users are.</h2>
@@ -99,7 +99,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                 <div class="uptime-bars" aria-hidden="true">
                   <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="down"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="warn"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
-                <div class="panel-row !pt-[1rem] !px-0 !pb-0">
+                <div class="!pb-0 !pt-[1rem] !px-0 panel-row">
                   <span class="panel-row-sub">30 days ago</span>
                   <span class="panel-row-sub">99.94% uptime</span>
                   <span class="panel-row-sub">Today</span>
@@ -110,8 +110,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="diag-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="diag-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="diag-heading">Every failure comes with the evidence.</h2>
             <p>
@@ -125,7 +125,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             <div class="panel" aria-label="Check result example">
               <div class="panel-top">
                 <strong>Check history</strong>
-                <span class="pill down"><span class="dot"></span> Incident open</span>
+                <span class="down pill"><span class="dot"></span> Incident open</span>
               </div>
               <div class="panel-list">
                 <div class="panel-row">
@@ -146,8 +146,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What uptime monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -160,7 +160,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="api-heading">
+      <section class="section site-shell" aria-labelledby="api-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="api-heading">Scriptable from day one.</h2>
@@ -184,7 +184,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Uptime monitoring, answered.</h2>
@@ -199,8 +199,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

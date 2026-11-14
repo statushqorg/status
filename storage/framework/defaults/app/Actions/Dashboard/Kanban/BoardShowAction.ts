@@ -1,6 +1,6 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
-import { db } from '@stacksjs/database'
+import { Action } from '@stacksjs/actions/runtime'
+import { db, getDatabaseDialect, sqlHelpers } from '@stacksjs/database/runtime'
 import { modelBoolean } from './kanban-model'
 import { kanbanActionError, kanbanError } from './kanban-response'
 
@@ -83,8 +83,11 @@ export default new Action({
     }
 
     try {
+      // Postgres numbers its parameters, so the `?` these carried bound
+      // nothing there (stacksjs/stacks#2846).
+      const { param } = sqlHelpers(getDatabaseDialect())
       const boards = await db.unsafe(
-        'SELECT * FROM boards WHERE id = ? LIMIT 1',
+        `SELECT * FROM boards WHERE id = ${param(1)} LIMIT 1`,
         [id],
       ).execute() as unknown as BoardRow[]
       const board = boards[0]
@@ -94,15 +97,15 @@ export default new Action({
 
       const [columns, cards, labels] = await Promise.all([
         db.unsafe(
-          'SELECT * FROM board_columns WHERE board_id = ? ORDER BY position ASC, id ASC',
+          `SELECT * FROM board_columns WHERE board_id = ${param(1)} ORDER BY position ASC, id ASC`,
           [id],
         ).execute() as unknown as Promise<ColumnRow[]>,
         db.unsafe(
-          'SELECT * FROM cards WHERE board_id = ? AND archived = false ORDER BY column_id ASC, position ASC, id ASC',
+          `SELECT * FROM cards WHERE board_id = ${param(1)} AND archived = false ORDER BY column_id ASC, position ASC, id ASC`,
           [id],
         ).execute() as unknown as Promise<CardRow[]>,
         db.unsafe(
-          'SELECT id, board_id, name, color FROM labels WHERE board_id = ? ORDER BY name ASC',
+          `SELECT id, board_id, name, color FROM labels WHERE board_id = ${param(1)} ORDER BY name ASC`,
           [id],
         ).execute() as unknown as Promise<LabelRow[]>,
       ])
@@ -116,17 +119,17 @@ export default new Action({
           `SELECT cl.card_id, l.id, l.name, l.color
           FROM card_labels cl
           JOIN labels l ON l.id = cl.label_id
-          WHERE cl.card_id IN (SELECT id FROM cards WHERE board_id = ? AND archived = false)
+          WHERE cl.card_id IN (SELECT id FROM cards WHERE board_id = ${param(1)} AND archived = false)
           ORDER BY l.name ASC`,
           [id],
-        ).execute() as Promise<Array<{ card_id: number, id: number, name: string, color: string }>>,
+        ).execute() as unknown as Array<{ card_id: number, id: number, name: string, color: string }>,
         db.unsafe(
           `SELECT ca.card_id, ca.user_id, u.name, u.email
           FROM card_assignees ca
           LEFT JOIN users u ON u.id = ca.user_id
-          WHERE ca.card_id IN (SELECT id FROM cards WHERE board_id = ? AND archived = false)`,
+          WHERE ca.card_id IN (SELECT id FROM cards WHERE board_id = ${param(1)} AND archived = false)`,
           [id],
-        ).execute() as Promise<Array<{ card_id: number, user_id: number, name: string | null, email: string | null }>>,
+        ).execute() as unknown as Array<{ card_id: number, user_id: number, name: string | null, email: string | null }>,
       ])
 
       const labelsByCard = new Map<number, Array<{ id: number, name: string, color: string }>>()

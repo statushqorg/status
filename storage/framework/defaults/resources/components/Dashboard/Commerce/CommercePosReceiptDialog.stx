@@ -1,4 +1,5 @@
 <script client>
+import { formatCurrency } from '@stacksjs/commerce/money'
 interface PosReceiptLine {
   productId: number
   name: string
@@ -22,17 +23,10 @@ interface PosReceipt {
 
 const open = useReactiveProp('open', false)
 const receipt = useReactiveProp('receipt', null as PosReceipt | null)
-const emit = defineEmits()
+const emit = defineEmits(['close'])
 
 function formatMoney(value: number): string {
-  const current = receipt()
-  const currency = current?.currency || 'USD'
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value)
-  }
-  catch {
-    return `${value.toFixed(2)} ${currency}`
-  }
+  return formatCurrency(value, receipt()?.currency || 'USD')
 }
 
 function formatDate(value: string): string {
@@ -57,10 +51,10 @@ function formatDate(value: string): string {
     </div>
   </template>
 
-  <p :if="receipt()?.referenceNumber" class="font-mono text-gray-400 text-xs dark:text-neutral-500">{{ receipt()?.referenceNumber }}</p>
+  <p :if="receipt()?.referenceNumber" class="font-mono text-gray-500 text-xs dark:text-neutral-500">{{ receipt()?.referenceNumber }}</p>
 
   <ul class="mt-5 divide-gray-100 divide-y dark:divide-neutral-700">
-    <template :for="line in (receipt()?.lines || [])" :key="line.productId"><li class="py-3"><div class="flex gap-3 items-start justify-between"><div><p class="font-medium text-gray-900 text-sm dark:text-white">{{ line.quantity }} × {{ line.name }}</p><p :if="line.specialInstructions" class="mt-1 text-gray-500 text-xs dark:text-neutral-400">{{ line.specialInstructions }}</p></div><p class="font-medium text-gray-700 text-sm whitespace-nowrap dark:text-neutral-200">{{ formatMoney(line.lineTotal) }}</p></div></li></template>
+    <li :for="line in (receipt()?.lines || [])" :key="line.productId" class="py-3"><div class="flex gap-3 items-start justify-between"><div><p class="font-medium text-gray-900 text-sm dark:text-white">{{ line.quantity }} × {{ line.name }}</p><p :if="line.specialInstructions" class="mt-1 text-gray-500 text-xs dark:text-neutral-400">{{ line.specialInstructions }}</p></div><p class="font-medium text-gray-700 text-sm whitespace-nowrap dark:text-neutral-200">{{ formatMoney(line.lineTotal) }}</p></div></li>
   </ul>
 
   <dl class="mt-4 p-4 space-y-2 bg-gray-50 dark:bg-neutral-900/60 rounded-lg">

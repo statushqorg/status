@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'EmailList',
@@ -7,6 +7,12 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
   hasMany: ['EmailListSubscriber', 'Campaign', 'CampaignSend'],
+
+  // A reference table: no row here has a per-caller owner, so there is nothing
+  // to scope by and writes are an administrative concern gated by `middleware`.
+  // Declared rather than left silent so `security.api.rowScoping: 'deny'` can
+  // tell "considered" from "nobody thought about it" (stacksjs/stacks#2375).
+  ownership: false,
 
   traits: {
     useUuid: true,
@@ -111,24 +117,34 @@ export default defineModel({
       factory: faker => faker.helpers.arrayElement(['active', 'active', 'active', 'inactive']),
     },
 
+    // Yes or no, and declared as one: a switch in a form, `true` or `false`
+    // in a query. Declared as a number, the form asked for 0 or 1.
     isPublic: {
       required: false,
       fillable: true,
-      default: 1,
+      default: true,
       validation: {
-        rule: schema.number(),
+        rule: schema.boolean(),
       },
-      factory: faker => faker.number.int({ min: 0, max: 1 }),
+      factory: faker => faker.datatype.boolean(),
     },
 
     doubleOptIn: {
       required: false,
       fillable: true,
-      default: 1,
+      default: true,
       validation: {
-        rule: schema.number(),
+        rule: schema.boolean(),
       },
-      factory: () => 1,
+      factory: () => true,
+    },
+  },
+
+  dashboard: {
+    columns: ['name', 'status', 'subscriberCount', 'activeCount', 'isPublic', 'createdAt'],
+    // Prose, asked for in a box with room for it.
+    fields: {
+      description: { input: 'longtext' },
     },
   },
 } as const)

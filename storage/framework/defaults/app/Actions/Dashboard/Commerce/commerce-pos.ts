@@ -13,12 +13,6 @@ export interface CommercePosProduct {
   categoryName: string
 }
 
-export interface CommercePosCustomer {
-  id: string
-  label: string
-  email: string
-}
-
 export interface CommercePosCheckoutLine {
   productId: number
   quantity: number
@@ -51,8 +45,13 @@ export class CommercePosAvailabilityError extends Error {
   }
 }
 
+/**
+ * Amounts are integer minor units, as `products.price` is (stacksjs/stacks#2851).
+ * Line totals and sums of integers are already whole; tax is the one product
+ * that can land between two units, and it rounds to the nearest one.
+ */
 function money(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100
+  return Math.round(value)
 }
 
 function value(record: any, ...keys: string[]): unknown {
@@ -137,26 +136,6 @@ export function normalizeCommercePosProduct(record: CommerceProductRecord): Comm
   }
 }
 
-export function normalizeCommercePosCustomer(record: any): CommercePosCustomer {
-  const id = identifier(value(record, 'id'), 'Customer')
-  const source = `Customer ${id}`
-  const name = requiredText(value(record, 'name'), source, 'name')
-  const email = requiredText(value(record, 'email'), source, 'email')
-  return {
-    id,
-    label: name,
-    email,
-  }
-}
-
-export function isCommercePosCustomerActive(record: any): boolean {
-  const id = identifier(value(record, 'id'), 'Customer')
-  const status = requiredText(value(record, 'status'), `Customer ${id}`, 'status')
-  if (status !== 'Active' && status !== 'Inactive')
-    throw recordError(`Customer ${id}`, 'status', 'Active or Inactive')
-  return status === 'Active'
-}
-
 export function parseCommercePosLines(input: unknown): CommercePosLineInputResult {
   if (!Array.isArray(input) || input.length === 0)
     return { lines: [], error: 'Add at least one product before checkout.' }
@@ -206,8 +185,8 @@ export function calculateCommercePosSale(
     const id = Number(product.id)
     if (!Number.isSafeInteger(id) || id <= 0)
       throw new TypeError(`Product id "${product.id}" is invalid.`)
-    if (!Number.isFinite(product.price) || product.price < 0)
-      throw new TypeError(`Product ${id} has an invalid price.`)
+    if (!Number.isSafeInteger(product.price) || product.price < 0)
+      throw new TypeError(`Product ${id} has an invalid price: expected integer minor units.`)
     if (!Number.isSafeInteger(product.inventoryCount) || product.inventoryCount < 0)
       throw new TypeError(`Product ${id} has an invalid inventory count.`)
     return [id, product] as const

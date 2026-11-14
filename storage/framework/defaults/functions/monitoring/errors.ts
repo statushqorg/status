@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from '../api-url'
+import { dashboardApi } from '../dashboard-api'
 import { useStorage } from '@stacksjs/browser/composables/useStorage'
 
 export interface GroupedError {
@@ -10,7 +11,6 @@ export interface GroupedError {
   count: number
   first_seen: string
   last_seen: string
-  error_ids: number[]
 }
 
 export interface ErrorRecord {
@@ -38,8 +38,8 @@ export interface ErrorTimelinePoint {
   count: number
 }
 
-// Create persistent storage for errors data
-const groupedErrors = useStorage<GroupedError[]>('grouped-errors', [])
+// The Errors page lists the groups itself, through useServerList
+// (stacksjs/stacks#3195); these are the cards and the timeline.
 const errorStats = useStorage<ErrorStats | null>('error-stats', null)
 const errorTimeline = useStorage<ErrorTimelinePoint[]>('error-timeline', [])
 
@@ -49,29 +49,30 @@ export function errorGroupParams(type: string, message: string): URLSearchParams
   return new URLSearchParams({ type, message })
 }
 
-/**
- * Fetch all grouped errors
- */
-async function fetchGroupedErrors(): Promise<GroupedError[]> {
-  try {
-    const response = await fetch(`${baseURL}/errors`)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    const { data } = await response.json() as { data: GroupedError[] }
+/** One page of error groups, and what the pager and the type filter need. */
+export interface ErrorGroupPage {
+  groups: GroupedError[]
+  total: number
+  page: number
+  /** Every recorded type, for the filter: a page alone would list only its own. */
+  types: string[]
+}
 
-    if (Array.isArray(data)) {
-      groupedErrors.value = data
-      return data
-    }
-    else {
-      console.error('Expected array of errors but received:', typeof data)
-      return []
-    }
-  }
-  catch (error) {
-    console.error('Error fetching grouped errors:', error)
-    return groupedErrors.value
+/**
+ * One page of grouped errors, searched, filtered, sorted and paged by the
+ * server (stacksjs/stacks#3195), for the page's useServerList. It throws
+ * when the groups cannot be read, so the page can say so: this used to log
+ * to the console and leave the last list cached in localStorage on screen.
+ */
+export async function fetchErrorGroupPage(query: URLSearchParams): Promise<ErrorGroupPage> {
+  const { data } = await dashboardApi<{ data?: Partial<ErrorGroupPage> }>(`${baseURL}/errors?${query}`)
+  if (!data || !Array.isArray(data.groups))
+    throw new TypeError('Error groups were not returned in the expected shape.')
+  return {
+    groups: data.groups,
+    total: Number(data.total || 0),
+    page: Number(data.page || 1),
+    types: Array.isArray(data.types) ? data.types.map(String) : [],
   }
 }
 
@@ -154,24 +155,10 @@ async function fetchErrorTimeline(): Promise<ErrorTimelinePoint[]> {
  */
 async function resolveErrorGroup(type: string, message: string): Promise<boolean> {
   try {
-    const response = await fetch(`${baseURL}/errors/resolve`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ type, message }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    // Update local state
-    const group = groupedErrors.value.find(
-      e => e.type === type && e.message === message,
-    )
-    if (group)
-      group.status = 'resolved'
+    // Through dashboardApi, which sends the CSRF token: a bare fetch was
+    // refused with 403, so every resolve from this page did nothing
+    // (stacksjs/stacks#3194).
+    await dashboardApi(`${baseURL}/errors/resolve`, { method: 'PATCH', body: { type, message } })
 
     return true
   }
@@ -186,24 +173,10 @@ async function resolveErrorGroup(type: string, message: string): Promise<boolean
  */
 async function ignoreErrorGroup(type: string, message: string): Promise<boolean> {
   try {
-    const response = await fetch(`${baseURL}/errors/ignore`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ type, message }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    // Update local state
-    const group = groupedErrors.value.find(
-      e => e.type === type && e.message === message,
-    )
-    if (group)
-      group.status = 'ignored'
+    // Through dashboardApi, which sends the CSRF token: a bare fetch was
+    // refused with 403, so every ignore from this page did nothing
+    // (stacksjs/stacks#3194).
+    await dashboardApi(`${baseURL}/errors/ignore`, { method: 'PATCH', body: { type, message } })
 
     return true
   }
@@ -218,24 +191,10 @@ async function ignoreErrorGroup(type: string, message: string): Promise<boolean>
  */
 async function unresolveErrorGroup(type: string, message: string): Promise<boolean> {
   try {
-    const response = await fetch(`${baseURL}/errors/unresolve`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ type, message }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    // Update local state
-    const group = groupedErrors.value.find(
-      e => e.type === type && e.message === message,
-    )
-    if (group)
-      group.status = 'unresolved'
+    // Through dashboardApi, which sends the CSRF token: a bare fetch was
+    // refused with 403, so every unresolve from this page did nothing
+    // (stacksjs/stacks#3194).
+    await dashboardApi(`${baseURL}/errors/unresolve`, { method: 'PATCH', body: { type, message } })
 
     return true
   }
@@ -250,18 +209,8 @@ async function unresolveErrorGroup(type: string, message: string): Promise<boole
  */
 async function deleteErrorGroup(type: string, message: string): Promise<boolean> {
   try {
-    const response = await fetch(`${baseURL}/errors?${errorGroupParams(type, message)}`, {
-      method: 'DELETE',
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    // Update local state
-    groupedErrors.value = groupedErrors.value.filter(
-      e => !(e.type === type && e.message === message),
-    )
+    // Through dashboardApi for the CSRF token, as the triage writes above.
+    await dashboardApi(`${baseURL}/errors?${errorGroupParams(type, message)}`, { method: 'DELETE' })
 
     return true
   }
@@ -273,10 +222,8 @@ async function deleteErrorGroup(type: string, message: string): Promise<boolean>
 
 export function useErrors() {
   return {
-    groupedErrors,
     errorStats,
     errorTimeline,
-    fetchGroupedErrors,
     fetchErrorById,
     fetchErrorGroup,
     fetchErrorStats,

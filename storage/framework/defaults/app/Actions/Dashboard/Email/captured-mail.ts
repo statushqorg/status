@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { log as logDriver } from '@stacksjs/email'
-import { logsPath } from '@stacksjs/path'
+import { decodeHtmlEntities } from '@stacksjs/strings'
 
 const { LogEmailDriver } = logDriver
 
@@ -36,8 +36,9 @@ export interface CapturedMailListing {
   problems: CapturedMailProblem[]
 }
 
+// The driver's own answer, so the page reads exactly where captures are written.
 function capturedMailDirectory(): string {
-  return process.env.LOG_MAIL_DIR || logsPath('mail')
+  return LogEmailDriver.directory()
 }
 
 function formatAddress(value: unknown): string {
@@ -59,11 +60,18 @@ function formatAddress(value: unknown): string {
   return name ? `${name} <${address}>` : address
 }
 
+/**
+ * The first 140 characters a reader would see. Character references are
+ * decoded after the tags go, or an order email previewed as
+ * `Trail Runner &times; 3`; the list prints it as text, so a decoded `<` stays
+ * text.
+ */
 function previewFor(input: string): string {
-  return input
+  const stripped = input
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<[^>]+>/g, ' ')
+  return decodeHtmlEntities(stripped)
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 140)

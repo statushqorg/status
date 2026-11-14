@@ -25,6 +25,7 @@ import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { serverFormErrorFields, serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
+import { rowsOrEmpty } from '~/app/lib/rows'
 
 const agoLabel = relativeTime
 const pillFor = serverStatusPill
@@ -51,7 +52,7 @@ const invalidFields = flashError ? serverFormErrorFields(flashError, 'server-') 
 // Raw rows, `__`-prefixed so the bridge never collects them, projected on the
 // next line. Nothing below this point can reach a token.
 const __serverRows = AUTH_USER
-  ? await teamScope(db.selectFrom('servers')).execute().catch(() => [])
+  ? await rowsOrEmpty(() => teamScope(db.selectFrom('servers')).execute())
   : []
 
 const serverIds = __serverRows.map(r => Number(r.id))
@@ -62,12 +63,11 @@ const serverIds = __serverRows.map(r => Number(r.id))
 const WORST_WINDOW_MS = 10 * 60 * 1000
 const worstSince = new Date(Date.now() - WORST_WINDOW_MS).toISOString()
 const sampleRows = serverIds.length
-  ? await db.selectFrom('server_metric_samples')
+  ? await rowsOrEmpty(() => db.selectFrom('server_metric_samples')
       .where('server_id', 'in', serverIds)
       .where('sampled_at', '>=', worstSince)
       .select(['server_id', 'cpu_percent', 'ram_percent', 'disk_percent'])
-      .execute()
-      .catch(() => [])
+      .execute())
   : []
 
 /** The highest reading in the window, which is what a threshold is judged on. */
@@ -92,7 +92,7 @@ for (const id of serverIds) {
 }
 
 const monitorRows = serverIds.length
-  ? await db.selectFrom('monitors').where('server_id', 'in', serverIds).select(['server_id']).execute().catch(() => [])
+  ? await rowsOrEmpty(() => db.selectFrom('monitors').where('server_id', 'in', serverIds).select(['server_id']).execute())
   : []
 const monitorCountByServer = new Map()
 for (const row of monitorRows) {
@@ -159,7 +159,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
     @endif
 
     @if (flashError)
-      <div id="server-form-error" class="flash error" role="alert">{{ errorLabel(flashError) }}</div>
+      <div id="server-form-error" class="error flash" role="alert">{{ errorLabel(flashError) }}</div>
     @endif
 
     @if (serverCount === 0)
@@ -172,9 +172,9 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
     @endif
 
     @if (serverCount > 0)
-      <section class="card scroll-x" aria-label="Server list">
+      <section class="scroll-x card" aria-label="Server list">
         <div class="rows" role="table" aria-label="Server list">
-          <div class="trow thead cols-servers" role="row">
+          <div class="cols-servers thead trow" role="row">
             <span>Name</span>
             <span>Status</span>
             <span>CPU</span>
@@ -184,7 +184,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
             <span>Monitors</span>
           </div>
           @foreach (servers as server)
-            <StxLink class="trow cols-servers" role="row" to="/dashboard/servers/{{ server.id }}">
+            <StxLink class="cols-servers trow" role="row" to="/dashboard/servers/{{ server.id }}">
               <span class="name">{{ server.name }}</span>
               <span><span class="{{ server.pillClass }}"><span class="dot"></span>{{ server.pillLabel }}</span></span>
               <span class="mono">{{ server.cpu }}</span>
@@ -196,7 +196,7 @@ useHead({ title: 'Servers · StatusHQ', meta: [{ name: 'robots', content: 'noind
           @endforeach
         </div>
       </section>
-      <p class="sub !mt-[0.75rem]">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
+      <p class="!mt-[0.75rem] sub">CPU, memory and disk are the highest reading in the last 10 minutes, which is what a threshold is judged on.</p>
     @endif
 
     <dialog ref="createDialog" class="dlg" aria-labelledby="server-create-title" @click="backdropCreate">

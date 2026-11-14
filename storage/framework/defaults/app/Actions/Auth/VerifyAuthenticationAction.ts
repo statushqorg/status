@@ -1,14 +1,17 @@
 import type { AuthenticationCredential } from '@stacksjs/auth'
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import {
+  Auth,
+  authCookieForBrowserSession,
   consumeWebAuthnChallenge,
+  findAuthUserByEmail,
   getUserPasskey,
+  resolveBrowserSessionPolicy,
   updatePasskeyCounter,
   verifyAuthenticationResponse,
 } from '@stacksjs/auth'
 import { config } from '@stacksjs/config'
 import { response } from '@stacksjs/router'
-import { User } from '@stacksjs/orm'
 
 export default new Action({
   name: 'VerifyAuthenticationAction',
@@ -20,7 +23,7 @@ export default new Action({
 
     const email = request.get('email') ?? ''
 
-    const user = await User.where('email', email).first()
+    const user = await findAuthUserByEmail(email)
 
     if (!user)
       return response.notFound('User not found')
@@ -86,7 +89,27 @@ export default new Action({
         }
       }
 
-      return response.json(verification)
+      const policy = resolveBrowserSessionPolicy(false)
+      const session = await Auth.loginUsingId(user.id as number, {
+        expiresInMinutes: policy.expiresInMinutes,
+        withRefreshToken: policy.withRefreshToken,
+      })
+      if (!session)
+        return response.serverError('Authentication session could not be created')
+
+      return response.json({
+        ...verification,
+        access_token: session.token,
+        refresh_token: session.refreshToken,
+        token_type: 'Bearer',
+        expires_in: session.expiresIn,
+        token: session.token,
+        user: {
+          id: session.user?.id,
+          email: session.user?.email,
+          name: session.user?.name,
+        },
+      }, { headers: { 'Set-Cookie': authCookieForBrowserSession(session.token, session.expiresIn) } })
     }
     catch (error) {
       console.error('Authentication verification failed:', error)

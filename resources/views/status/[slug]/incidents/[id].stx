@@ -193,42 +193,42 @@ function statusBadgeClass(status) {
 @section('description', 'Incident detail and timeline')
 
 @section('content')
-  <div class="mx-auto max-w-2xl px-6 py-16">
+  <div class="mx-auto px-6 py-16 max-w-2xl">
 
     @if (!incident)
       <div class="py-24 text-center">
-        <p class="text-sm font-medium uppercase tracking-wide text-gray-400">404</p>
-        <h1 class="mt-2 text-2xl font-semibold text-gray-900">Incident not found</h1>
+        <p class="font-medium text-gray-400 text-sm tracking-wide uppercase">404</p>
+        <h1 class="mt-2 font-semibold text-2xl text-gray-900">Incident not found</h1>
       </div>
     @endif
 
     @if (incident)
-      <StxLink to="/status/{{ pageSlug }}" class="text-sm text-gray-500 hover:text-gray-900">&larr; Back to status</StxLink>
+      <StxLink to="/status/{{ pageSlug }}" class="text-gray-500 text-sm hover:text-gray-900">&larr; Back to status</StxLink>
 
-      <header class="mt-4 mb-8">
+      <header class="mb-8 mt-4">
         <p class="{{ statusBadgeClass(incident.status) }}">{{ incident.status }}</p>
-        <h1 class="mt-2 text-2xl font-semibold text-gray-900">{{ incident.monitor_name }}</h1>
+        <h1 class="mt-2 font-semibold text-2xl text-gray-900">{{ incident.monitor_name }}</h1>
         <p class="mt-2 text-gray-600">{{ incident.cause }}</p>
       </header>
 
-      <div class="space-y-6 border-l-2 border-gray-200 pl-6">
+      <div class="pl-6 space-y-6 border-gray-200 border-l-2">
         <div>
-          <p class="text-sm font-medium text-gray-900">Incident started</p>
-          <p class="text-sm text-gray-500">{{ formatDate(incident.started_at) }}</p>
+          <p class="font-medium text-gray-900 text-sm">Incident started</p>
+          <p class="text-gray-500 text-sm">{{ formatDate(incident.started_at) }}</p>
         </div>
 
         @foreach (updates as update)
           <div>
             <p class="{{ statusBadgeClass(update.status) }}">{{ update.status }}</p>
-            <p class="mt-1 text-sm text-gray-700">{{ update.message }}</p>
-            <p class="mt-1 text-sm text-gray-500">{{ formatDate(update.posted_at) }}</p>
+            <p class="mt-1 text-gray-700 text-sm">{{ update.message }}</p>
+            <p class="mt-1 text-gray-500 text-sm">{{ formatDate(update.posted_at) }}</p>
           </div>
         @endforeach
 
         @if (incident.resolved_at)
           <div>
-            <p class="text-sm font-medium text-emerald-700">Resolved</p>
-            <p class="text-sm text-gray-500">{{ formatDate(incident.resolved_at) }}</p>
+            <p class="font-medium text-emerald-700 text-sm">Resolved</p>
+            <p class="text-gray-500 text-sm">{{ formatDate(incident.resolved_at) }}</p>
           </div>
         @endif
       </div>

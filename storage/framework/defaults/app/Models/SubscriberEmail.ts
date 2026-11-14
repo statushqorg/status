@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'SubscriberEmail',
@@ -9,6 +9,7 @@ export default defineModel({
   belongsTo: ['Subscriber'],
 
   traits: {
+    gdpr: { subject: { via: 'Subscriber' }, erasure: 'delete', basis: 'consent', purpose: 'Newsletter subscription addresses' },
     useUuid: true,
     useTimestamps: true,
     useApi: {
@@ -24,6 +25,7 @@ export default defineModel({
 
   attributes: {
     email: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {

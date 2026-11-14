@@ -8,7 +8,8 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Object Utilities
 
-Type-safe object manipulation helpers. All functions are exported from a single file.
+Type-safe object manipulation helpers, with core functions in index.ts and
+additional transforms re-exported from transform.ts.
 
 ## Key Path
 - Core package: `storage/framework/core/objects/src/index.ts` (single file, all functions)
@@ -22,10 +23,10 @@ Type-safe object manipulation helpers. All functions are exported from a single 
 
 ### objectMap -- Transform Object Key/Value Pairs
 ```typescript
-function objectMap<K extends string, V, NK = K, NV = V>(
+function objectMap<K extends string, V, NK extends PropertyKey = K, NV = V>(
   obj: Record<K, V>,
   fn: (key: K, value: V) => [NK, NV] | undefined,
-): Record<K, V>
+): Partial<Record<NK, NV>>
 ```
 
 The callback receives `(key, value)` and must return either:
@@ -60,7 +61,7 @@ function deepMerge<T extends object = object, S extends object = T>(
 ): DeepMerge<T, S>
 ```
 
-Recursively merges source objects into target. Handles multiple sources via recursive spread.
+Recursively merges source objects into target, overlaying sources from left to right.
 
 Key behaviors:
 - Only merges "mergeable objects" (objects that are not arrays, checked via `isObject()` and `!Array.isArray()`)
@@ -80,16 +81,15 @@ const result = deepMerge(target, source)
 const merged = deepMerge(defaults, userConfig, overrides)
 ```
 
-The `DeepMerge<T, S>` type (from `@stacksjs/types`) provides full type inference:
-```typescript
-type DeepMerge<F, S> = MergeInsertions<{
-  [K in keyof F | keyof S]: K extends keyof S & keyof F
-    ? DeepMerge<F[K], S[K]>
-    : K extends keyof S ? S[K]
-    : K extends keyof F ? F[K]
-    : never
-}>
-```
+The `DeepMerge<T, S>` type from `@stacksjs/types` preserves primitive, array and
+built-in instance values while merging record keys recursively. A replaced Date
+target no longer exposes Date methods. The authoritative type is in
+`core/types/src/utils.ts`; verify consumers against built declarations.
+
+Plain-record graph merges track source nodes per overlay. Self/mutual cycles
+and shared nodes terminate and reuse the first destination for that source node.
+Arrays and non-plain values remain atomic; later source overlays use fresh graph
+tracking while updating the same target.
 
 ### objectPick -- Pick Properties by Key
 ```typescript
@@ -152,7 +152,7 @@ if (isKeyOf(config, key)) {
 
 ### objectKeys -- Strictly Typed Object.keys
 ```typescript
-function objectKeys<T extends object>(obj: T): Array<`${keyof T & (string | number | boolean | null | undefined)}`>
+function objectKeys<T extends object>(obj: T): Array<ObjectStringKey<T>>
 ```
 
 Returns `Object.keys(obj)` with a stricter return type than the built-in `Object.keys()` (which returns `string[]`).
@@ -165,10 +165,13 @@ const keys = objectKeys(user)
 
 ### objectEntries -- Strictly Typed Object.entries
 ```typescript
-function objectEntries<T extends object>(obj: T): Array<[keyof T, T[keyof T]]>
+function objectEntries<T extends object>(obj: T): Array<ObjectStringEntry<T>>
 ```
 
 Returns `Object.entries(obj)` with a stricter return type than the built-in `Object.entries()` (which returns `[string, any][]`).
+`ObjectStringKey<T>` stringifies numeric keys and excludes symbols;
+`ObjectStringEntry<T>` pairs those keys with the visited values. Both functions
+declare their return types explicitly so built declarations preserve the arrays.
 
 ```typescript
 const user = { name: 'John', age: 30 }
@@ -190,16 +193,50 @@ hasOwnProperty(null, 'a')          // false (no throw)
 hasOwnProperty(undefined, 'a')     // false (no throw)
 ```
 
-## Gotchas
+## Additional native transforms
+
+The root also exports `omit`, `pickBy`, `omitBy`, `mapValues`, `mapKeys`,
+`invert`, `isEmptyObject`, `getPath` and `setPath` from `transform.ts`.
+Use a path array such as `['items', 0, 'name']`, not an assumed dot-string
+parser. `getPath(source, path, fallback?)` reads a nested value;
+`getPath` returns `unknown` even with a fallback; narrow a present value before use.
+`mapValues` preserves optional properties and omits symbol keys in its result type,
+matching its enumerable string-key traversal. The pure `@stacksjs/objects/transform`
+entry ships both JavaScript and declarations.
+`omit` normalizes numeric exclusions to string property keys, as JavaScript does.
+`objectMap` returns a partial record: a callback may omit entries, so narrow a
+result value before assuming it exists.
+
+`setPath(source, path, value)` performs a persistent update by copying containers
+along the path and sharing unaffected siblings. Treat paths as application-owned
+inputs; this helper is not a path authorization boundary. Array `length` updates
+use native length semantics on the copy and reject invalid lengths. Choose `objectPick` for key-based selection and
+`pickBy` for predicate selection. Read transform signatures for callback
+argument order; `objectMap`'s `(key, value)` is not a universal convention.
+Retained evidence: `core/objects/tests/transform.test.ts`.
+
+## Mutation and typing gotchas
 - `deepMerge` **mutates the target object** -- it does not create a new object. The return value is the same reference as `target`.
 - `clearUndefined` **mutates the input object** -- it deletes properties in place.
 - `objectPick` creates a NEW object -- original is not affected.
 - `objectMap` creates a NEW object via `Object.fromEntries`.
 - `deepMerge` does NOT deeply merge arrays -- arrays from source replace arrays in target entirely.
+- `deepMerge` merges only plain objects key by key: a Date, Map, Set or class instance from a source is assigned as
+  is, and a string, array or number in the target is replaced by a source's object.
+  A non-plain nested target also gives way to a plain source record.
 - `deepMerge` uses `isObject()` from `@stacksjs/validation` combined with `!Array.isArray()` to determine mergeability.
+- A `"__proto__"` key is data, never a prototype. `JSON.parse` and the router's request input keep one as an own key:
+  `deepMerge` skips it and merges only into the target's own properties, and the transform helpers keep it as an own
+  key (`Object.fromEntries`), so input that carries one cannot set a prototype.
 - `objectMap` can filter entries by returning `undefined` from the callback -- filtered via `notNullish` from `@stacksjs/utils`.
 - `objectKeys` return type uses a template literal type to handle non-string keys.
 - `clearUndefined` only removes `undefined` -- `null` values are preserved.
 - `hasOwnProperty` accepts `null`/`undefined` objects without throwing.
 - `objectPick` with `omitUndefined=false` (default) includes keys even if their values are `undefined`, as long as the key exists in the object.
-- These utilities are also re-exported through `@stacksjs/utils`.
+- `@stacksjs/utils` does not re-export these. Its `merge` / `defu` is a separate merge that builds a new object.
+
+Path inference normalizes numeric/string aliases and distributes finite union
+steps. Broad string/number/template steps and open index-signature object sources
+return `unknown`; narrow before using them. Length changes drop fixed tuple index
+guarantees, and generic array results include possible holes. Numeric-looking
+named siblings such as `-1` and `1.5` retain their own value types.

@@ -1,4 +1,5 @@
-import { Action } from '@stacksjs/actions'
+import type { RequestInstance } from '@stacksjs/types'
+import { Action } from '@stacksjs/actions/runtime'
 import { EmailList, EmailListSubscriber, Subscriber } from '@stacksjs/orm'
 
 export default new Action({

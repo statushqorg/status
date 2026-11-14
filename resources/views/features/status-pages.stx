@@ -78,7 +78,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="domain-heading">
+      <section class="section site-shell" aria-labelledby="domain-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="domain-heading">Your domain, your brand, no watermark.</h2>
@@ -99,7 +99,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
                 <div class="uptime-bars" aria-hidden="true">
                   <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="warn"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span class="down"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
-                <div class="panel-row !pt-[1rem] !px-0 !pb-0">
+                <div class="!pb-0 !pt-[1rem] !px-0 panel-row">
                   <span class="panel-row-sub">90 days ago</span>
                   <span class="panel-row-sub">99.96% uptime</span>
                   <span class="panel-row-sub">Today</span>
@@ -124,8 +124,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="access-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="access-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="access-heading">Public for customers, gated for everyone else.</h2>
             <p>
@@ -164,8 +164,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What ships on every status page.</h2>
         </div>
         <ul class="check-list">
@@ -178,7 +178,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="import-heading">
+      <section class="section site-shell" aria-labelledby="import-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="import-heading">Leaving another provider takes one request.</h2>
@@ -201,7 +201,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-label="Subscribers and feeds">
+      <section class="section site-shell" aria-label="Subscribers and feeds">
         <div class="note-band">
           <div>
             <h2>Subscribers keep themselves in the loop.</h2>
@@ -213,7 +213,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Status pages, answered.</h2>
@@ -228,8 +228,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

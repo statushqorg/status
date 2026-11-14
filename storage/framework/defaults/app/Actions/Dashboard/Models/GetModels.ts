@@ -1,8 +1,9 @@
 import type { Model } from '@stacksjs/types'
 import { Glob } from 'bun'
-import { Action } from '@stacksjs/actions'
+import { Action } from '@stacksjs/actions/runtime'
 import { path } from '@stacksjs/path'
 import { countRows } from '../../../../resources/functions/dashboard/data'
+import { dashboardModelSources, resolveDashboardModel } from '../../../../resources/functions/dashboard/model-access'
 import { dashboardOperationalError } from '../dashboard-response'
 
 export default new Action({
@@ -15,24 +16,29 @@ export default new Action({
       const glob = new Glob('**/*.ts')
       const scanOptions = { cwd: path.userModelsPath(), onlyFiles: true }
       const displayModels: Model[] = []
+      const sources = dashboardModelSources()
 
-    for await (const file of glob.scan(scanOptions)) {
-      const model = (await import(path.userModelsPath(file))).default as Model
-      if (model.dashboard?.highlight !== undefined && model.dashboard?.highlight !== false)
-        displayModels.push(model)
-    }
-
-    if (!displayModels.length) {
-      // If no models should be highlighted, we can just return up to 8 models in alphabetical order
       for await (const file of glob.scan(scanOptions)) {
-        const model = (await import(path.userModelsPath(file))).default as Model
-        displayModels.push(model)
+        const candidate = (await import(path.userModelsPath(file))).default as Model
+        const model = await resolveDashboardModel(candidate.name || '', candidate, sources)
+        if (!model) continue
+        if (model.dashboard?.highlight !== undefined && model.dashboard?.highlight !== false)
+          displayModels.push(model)
       }
-    }
 
-    if (displayModels.length > 8)
-      displayModels.length = 8
-    displayModels.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      if (!displayModels.length) {
+        // If no models should be highlighted, return up to 8 accessible models.
+        for await (const file of glob.scan(scanOptions)) {
+          const candidate = (await import(path.userModelsPath(file))).default as Model
+          const model = await resolveDashboardModel(candidate.name || '', candidate, sources)
+          if (!model) continue
+          displayModels.push(model)
+        }
+      }
+
+      if (displayModels.length > 8)
+        displayModels.length = 8
+      displayModels.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
 
       return await Promise.all(displayModels.map(async model => ({
         model: model.name,

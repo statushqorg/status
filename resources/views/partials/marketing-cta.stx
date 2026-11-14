@@ -2,7 +2,7 @@
   Shared closing CTA band for marketing subpages. Same copy intent
   everywhere: one signup CTA, one GitHub CTA (matches the homepage).
 -->
-<section class="site-shell section" aria-labelledby="cta-heading">
+<section class="section site-shell" aria-labelledby="cta-heading">
   <div class="cta-band">
     <h2 id="cta-heading">Start monitoring in under 2 minutes.</h2>
     <p>No credit card required for the self-hosted, open-source version.</p>

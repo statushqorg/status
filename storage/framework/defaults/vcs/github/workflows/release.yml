@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Pantry
-        uses: pantry-pm/pantry/packages/action@c1417d98f5613290bc3b1f96d35086b834684659 # v0.10.47 + the socket-hang-up retry fix
+        uses: pantry-pm/pantry/packages/action@cdb82193cb344c2b881a88ea79f88243f5522e0f # v0.11.75
         with:
           install: 'false'
 

@@ -1,6 +1,6 @@
 ---
 name: stacks-cms
-description: Use when working with the CMS in a Stacks application - posts, authors, pages, categories, tags, comments, blog configuration, RSS feeds, or sitemaps. Covers @stacksjs/cms, CMS models, routes, and actions.
+description: Use when working with Stacks CMS posts, authors, block-document pages, revisions, menus, redirects, scheduled publishing, blog feeds, or public page serving. Covers @stacksjs/cms, site-scoped CMS models, routes, and actions.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -19,7 +19,8 @@ allowed-tools: Read Edit Write Bash Grep Glob
 ## Source Files
 ```
 cms/src/
-├── index.ts              # CmsNamespace — top-level API
+├── index.ts              # CmsNamespace - top-level API
+├── blog.ts               # Markdown posts in content/blog: loadPosts, loadPost, renderPostBody, bylines
 ├── posts/
 │   ├── fetch.ts          # fetchById, fetchAll, fetchByStatus, fetchByCategory, fetchByAuthor
 │   ├── store.ts          # store, attach, detach, sync (pivot tables)
@@ -41,6 +42,12 @@ cms/src/
 
 ## CMS Namespace
 
+Enable/install the CMS feature through its supported lifecycle, then generate
+and review migrations for changed models. The legacy posts/authors/pages
+namespace below coexists with the document-page exports described in
+[PAGES.md](PAGES.md). For a real page editor or public CMS fallback, start with
+the validated document APIs rather than raw `pages` column writes.
+
 ```typescript
 interface CmsNamespace {
   posts: PostsModule
@@ -61,14 +68,14 @@ interface CmsNamespace {
 
 | Field | Type | Validation | Default |
 |-------|------|------------|---------|
-| title | string | required, 3-255 chars | — |
-| content | string | required, 10-1000 chars | — |
-| excerpt | string | optional, 10-500 chars | — |
-| poster | string | optional, valid URL | — |
-| views | number | — | 0 |
-| publishedAt | timestamp | optional | — |
+| title | string | required, 3-255 chars | - |
+| content | string | required, 10-1000 chars | - |
+| excerpt | string | optional, 10-500 chars | - |
+| poster | string | optional, valid URL | - |
+| views | number | - | 0 |
+| publishedAt | timestamp | optional | - |
 | status | enum | published/draft/archived | draft |
-| isFeatured | number | 0 or 1 | — |
+| isFeatured | boolean | yes or no | - |
 
 ### Author
 - **Table**: `authors`, **Relationships**: `hasMany(['Post'])`, `belongsTo(['User'])`
@@ -95,7 +102,7 @@ cms.posts.fetchById(id: number): Promise<PostJsonResponse | undefined>
 cms.posts.fetchAll(): Promise<PostJsonResponse[]>
 cms.posts.fetchByStatus(status: 'published' | 'draft' | 'archived'): Promise<PostJsonResponse[]>
 cms.posts.fetchByCategory(category: string): Promise<PostJsonResponse[]>
-cms.posts.fetchByAuthor(author: string): Promise<PostJsonResponse[]>
+cms.posts.fetchByAuthor(authorId: number): Promise<PostJsonResponse[]>
 cms.posts.fetchByMinViews(minViews: number): Promise<PostJsonResponse[]>
 cms.posts.fetchPublishedAfter(timestamp: number): Promise<PostJsonResponse[]>
 
@@ -121,8 +128,10 @@ cms.authors.findByName(name: string): Promise<AuthorJsonResponse | undefined>
 cms.authors.findByUserId(userId: number): Promise<AuthorJsonResponse | undefined>
 cms.authors.fetchAll(): Promise<AuthorJsonResponse[]>
 cms.authors.fetchById(id: number): Promise<AuthorJsonResponse | undefined>
-cms.authors.update(id, data): Promise<AuthorJsonResponse>
-cms.authors.destroy(id): Promise<boolean>
+cms.authors.findByUuid(uuid: string): Promise<AuthorJsonResponse | undefined>
+cms.authors.update(id, data): Promise<AuthorJsonResponse | undefined>
+cms.authors.destroy(id): Promise<AuthorJsonResponse>
+cms.authors.destroyMany(ids: number[]): Promise<number>
 ```
 
 ## Tags API
@@ -147,6 +156,21 @@ cms.comments.approveComment(id: number): Promise<CommentablesTable>
 cms.comments.rejectComment(id: number): Promise<CommentablesTable>
 cms.comments.deleteComment(id: number): Promise<void>
 ```
+
+### The `commentable` trait
+A model with `traits: { commentable: true }` (singular; `commentables` is inert) gains instance methods
+keyed to the record's own id:
+
+```typescript
+await post.addComment({ body, author_name?, author_email?, user_id?, title? }, { status: 'pending' | 'approved' })
+await post.comments() / post.approvedComments() / post.pendingComments() / post.rejectedComments() // oldest first
+await post.commentCount()
+```
+
+Only those five fields are written, so a validated form body can go straight in; status and owner come
+from the trait. `author_name` / `author_email` are for guest commenters (no account); never render the
+email. Moderate without a dashboard with `buddy comments:list [--status] [--type]`,
+`comments:approve <id>`, `comments:reject <id>`, `comments:delete <id>`.
 
 ## Routes
 
@@ -175,6 +199,47 @@ cms.comments.deleteComment(id: number): Promise<void>
 | GET | `/blog/feed.xml` | RSS 2.0 feed (20 recent) |
 | GET | `/blog/sitemap.xml` | XML sitemap for SEO |
 
+The site-wide `/sitemap.xml` merges the published posts in, so crawlers find them from the root sitemap too (see `stacks-server`, "Sitemap and robots.txt").
+
+## Markdown Blog (content/blog, `@stacksjs/cms/blog`)
+
+The simplest blog has no tables: each post is `content/blog/<slug>.md`, shipped with the commit that adds it. Add `resources/views/blog.stx` (index) and `resources/views/blog/[slug].stx` (post); once `blog.stx` exists the views server serves only `/blog/feed.xml` and `/blog/sitemap.xml` itself and leaves the pages to stx, and `/sitemap.xml` lists the posts. Pages, feed and sitemap all read posts through `@stacksjs/cms/blog`, so they agree on what is published.
+
+```ts
+import { articleHead } from '@stacksjs/cms/article'
+import { bylineOf, createAuthorResolver, formatPostDate, loadPost, loadPosts, renderPostBody } from '@stacksjs/cms/blog'
+
+const posts = loadPosts()                       // published, featured first then newest; no bodies
+const post = loadPost(useRoute().params?.slug)  // null for a draft, unknown or path-like slug -> notFound()
+const html = renderPostBody(post.body)          // Bun markdown + renderPostHtml; {!! html !!} plus {!! articleHead() !!}
+
+// Bylines: create once at module scope (it caches lookups for ten minutes).
+export const resolveAuthors = createAuthorResolver({
+  lookup: async username => /* the app's profile */ ({ name, avatar, bio, url: `/${username}` }),
+})
+const byline = bylineOf(await resolveAuthors(post)) // [{ name, initials, avatar, bio, url, joiner, avatarStyle }]
+```
+
+Frontmatter is one `key: value` per line: `title` and `date` (YYYY-MM-DD) are required, `draft: true` hides a post everywhere, `featured: true` lists it first, `description` is the excerpt and the feed text, `author` is the feed's plain-text byline, `image`/`imageAlt` the preview picture. Several authors: `authors: ada, grace` plus flat fallbacks `author.ada.name`, `author.ada.avatar`, `author.ada.bio` (a frontmatter bio wins over the profile's). One author may use `authorUsername`/`authorAvatar`/`authorBio`. Every key is also on `post.frontmatter`. Also exported: `parseFrontmatter`, `isPublished`, `authorsOf`, `readingMinutes` (`post.minutes`), `formatPostDate`, `joinNames`, `initialsOf`, `sortPosts`, `isPostSlug`, `blogContentDir`.
+
+## Post Bodies: Images, Grids, Zoom and Embeds
+
+Blog post HTML goes through `renderPostHtml` from `@stacksjs/cms/article`, built on ts-medium-editor's article renderer. The BunPress blog (`core/actions/src/blog.ts`) does this already; an stx-native blog calls it from its post view:
+
+```ts
+const { renderPostHtml, articleHead, articleScript } = require('@stacksjs/cms/article')
+post.html = renderPostHtml(markdownHtml) // then {!! articleHead() !!} in @push('head'), {!! articleScript() !!} in @push('scripts')
+```
+
+What authors get from plain markdown:
+
+- `![alt](/images/a.jpg "Caption")` alone in a paragraph becomes a figure with a caption.
+- Images in consecutive paragraphs become a grid: two side by side, three with the tallest on the left and two stacked on the right, four as 2x2, more in rows of three and two. Sizes are read from the files in `public/`, so columns are proportioned and nothing crops or shifts.
+- Lazy loading after the first image, click-to-zoom on every unlinked image.
+- A bare YouTube, Vimeo or `https://hq.training/a/<id>` link on its own line becomes an embed.
+
+Tune the look with custom properties (`--me-radius`, `--me-gap`, `--me-block-space`, `--me-caption-color`, `--me-zoom-backdrop`) on the post body. `imageSize(bytes)` and `publicImageResolver(dir)` are exported for other uses.
+
 ## Blog Configuration (config/blog.ts)
 
 ```typescript
@@ -183,10 +248,10 @@ cms.comments.deleteComment(id: number): Promise<void>
   title: 'Stacks Blog',
   description: 'The official Stacks.js blog',
   postsPerPage: 10,
-  enableComments: true,
-  enableRss: true,
-  enableSitemap: true,
-  enableSearch: true,
+  enableComments: true,   // declared, NOT yet honoured by the static builder
+  enableRss: true,        // generates feed.xml
+  enableSitemap: true,    // generates sitemap.xml
+  enableSearch: true,     // declared, NOT yet honoured by the static builder
   social: { twitter: '@stacksjs', github: 'stacksjs/stacks' },
   theme: { primaryColor: '#3451b2', logo: '/images/logos/logo-transparent.svg' },
 }
@@ -206,12 +271,18 @@ cms.comments.deleteComment(id: number): Promise<void>
 | `categorizable_models` | Polymorphic pivot: category ↔ model |
 
 ## Gotchas
-- **Polymorphic relations** — categories, tags, and comments use `*_type` fields to support multiple model types
-- **Post `content` maps from `body`** — the model attribute is `content` but the DB column mapping comes from `body`
-- **Author uses findOrCreate** — `PostStoreAction` auto-creates authors if they don't exist
-- **Post store auto-attaches** — creating a post with category/tag data automatically calls `attach()` on pivot tables
-- **Post update uses sync** — updating categories/tags uses `sync()` (detaches removed, attaches new)
-- **Views increment is atomic** — `PATCH /cms/posts/{id}/views` increments by 1
-- **RSS returns 20 items** — hardcoded to 20 most recent published posts
-- **Sitemap priorities** — posts 0.8, categories 0.6, blog homepage 0.9
-- **Comment status flow** — starts `pending`, can be approved, rejected (→ spam), or trashed
+- CMS document pages are scoped to an explicit site id. Pair them with
+  `stacks-sites`; background work has no implicit request site.
+- CMS post categories use `categorizables`. The Post model's
+  `belongsToMany(Category)` currently resolves commerce `categories`, a separate
+  id space (tracked in #2584). Use the CMS categorization module for CMS ids;
+  do not treat that relationship as an interchangeable alias.
+- **Polymorphic relations** - categories, tags, and comments use `*_type` fields to support multiple model types
+- **Post `content` maps from `body`** - the model attribute is `content` but the DB column mapping comes from `body`
+- **Author uses findOrCreate** - `PostStoreAction` auto-creates authors if they don't exist
+- **Post store auto-attaches** - creating a post with category/tag data automatically calls `attach()` on pivot tables
+- **Post update uses sync** - updating categories/tags uses `sync()` (detaches removed, attaches new)
+- **Views increment is atomic** - `PATCH /cms/posts/{id}/views` increments by 1
+- **RSS returns 20 items** - hardcoded to 20 most recent published posts
+- **Sitemap priorities** - posts 0.8, categories 0.6, blog homepage 0.9
+- **Comment status flow** - starts `pending`, can be approved, rejected (→ spam), or trashed

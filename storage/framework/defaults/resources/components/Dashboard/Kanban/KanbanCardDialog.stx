@@ -1,5 +1,6 @@
 <script client>
-import { kanbanStore } from '~/storage/framework/defaults/views/dashboard/stores/kanban'
+import { kanbanStore } from '@stacksjs/defaults/views/dashboard/stores/kanban'
+import { useTimeoutFn } from '@stacksjs/composables'
 
 const kanban = kanbanStore
 const openCard = derived(() => kanban.openCard())
@@ -7,6 +8,7 @@ const loadingCard = derived(() => kanban.loadingCard())
 const errorCard = derived(() => kanban.errorCard())
 const allLabels = derived(() => kanban.currentLabels())
 const cardComments = derived(() => openCard()?.comments ?? [])
+const cardAttachments = derived(() => openCard()?.attachments ?? [])
 const cardLabels = derived(() => openCard()?.labels ?? [])
 const cardAssignees = derived(() => openCard()?.assignees ?? [])
 const titleDraft = state('')
@@ -17,6 +19,14 @@ const commentEditDraft = state('')
 const savingCommentId = state<number | null>(null)
 const showLabelPicker = state(false)
 const showAssigneePicker = state(false)
+const assigneeQuery = state('')
+// One search per pause in typing, not one per keystroke.
+const { start: searchAssigneesSoon } = useTimeoutFn(() => { void kanban.loadUsers(assigneeQuery()) }, 250, { immediate: false })
+const moreAssigneesLabel = derived(() => {
+  const shown = kanban.users().length
+  const total = kanban.usersTotal()
+  return total > shown ? `Showing ${shown} of ${total.toLocaleString()} matching users. Search to narrow it down.` : ''
+})
 const showNewLabelComposer = state(false)
 const newLabelName = state('')
 const newLabelColor = state('slate')
@@ -214,6 +224,15 @@ function initialsOf(name: string | null, email: string | null): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
+function formatBytes(bytes: number): string {
+  const value = Number(bytes)
+  if (!Number.isFinite(value) || value <= 0)
+    return ''
+  const units = ['B', 'KB', 'MB', 'GB']
+  const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)))
+  return `${Math.round((value / 1024 ** index) * 10) / 10} ${units[index]}`
+}
+
 function formatTimestamp(iso: string | null | undefined): string {
   if (!iso)
     return ''
@@ -234,7 +253,7 @@ function formatTimestamp(iso: string | null | undefined): string {
 >
   <div :if="openCard()" class="grid gap-6">
     <label class="grid gap-2">
-      <span class="font-medium text-zinc-500 text-xs tracking-wide uppercase">Title</span>
+      <span class="font-medium text-xs text-zinc-500 tracking-wide uppercase">Title</span>
       <input
         x-model="titleDraft"
         name="card_title"
@@ -246,7 +265,7 @@ function formatTimestamp(iso: string | null | undefined): string {
       />
     </label>
 
-    <div :if="loadingCard()" role="status" class="flex gap-2 items-center text-zinc-500 text-sm">
+    <div :if="loadingCard()" role="status" class="flex gap-2 items-center text-sm text-zinc-500">
       <span class="h-4 w-4 animate-spin i-hugeicons-loading-03"></span>
       Refreshing card details
     </div>
@@ -258,19 +277,39 @@ function formatTimestamp(iso: string | null | undefined): string {
     <div class="grid gap-6 grid-cols-1 md:grid-cols-3">
       <div class="md:col-span-2 space-y-6">
         <section>
-          <h4 class="mb-2 font-medium text-zinc-500 text-xs tracking-wide uppercase">Description</h4>
+          <h4 class="mb-2 font-medium text-xs text-zinc-500 tracking-wide uppercase">Description</h4>
           <textarea
             x-model="descDraft"
             name="card_description"
             @blur="commitDescription()"
             rows="4"
             placeholder="Add a more detailed description"
-            class="px-3 py-2 w-full text-zinc-800 text-sm dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none dark:focus:border-violet-600 resize-y"
+            class="px-3 py-2 w-full text-sm text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none dark:focus:border-violet-600 resize-y"
           ></textarea>
         </section>
 
+        <section :if="cardAttachments().length">
+          <h4 class="mb-2 font-medium text-xs text-zinc-500 tracking-wide uppercase">Attachments</h4>
+          <ul class="grid gap-3 grid-cols-2 sm:grid-cols-3">
+            <li :for="attachment in cardAttachments" class="overflow-hidden bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800">
+              <!-- The URL is signed and expires, so it is opened in a new tab rather than linked anywhere that outlives the modal. -->
+              <a :if="attachment.url" :href="attachment.url" target="_blank" rel="noopener noreferrer" class="block">
+                <img :src="attachment.url" :alt="'Attachment ' + attachment.id" loading="lazy" class="object-cover h-28 w-full bg-zinc-50 dark:bg-zinc-900" />
+              </a>
+              <!-- Listed even without a URL: a screenshot nobody can open is worth chasing, and is not the same as no screenshot. -->
+              <div :else class="flex items-center justify-center h-28 bg-zinc-50 dark:bg-zinc-900">
+                <span class="h-5 w-5 text-zinc-400 i-hugeicons-image-not-found-01"></span>
+              </div>
+              <div class="px-2 py-1.5">
+                <p class="text-[10px] text-zinc-500 dark:text-zinc-400" :text="attachment.mimeType"></p>
+                <p class="text-[10px] text-zinc-500 dark:text-zinc-400" :text="formatBytes(attachment.sizeBytes)"></p>
+              </div>
+            </li>
+          </ul>
+        </section>
+
         <section>
-          <h4 class="mb-2 font-medium text-zinc-500 text-xs tracking-wide uppercase">Activity</h4>
+          <h4 class="mb-2 font-medium text-xs text-zinc-500 tracking-wide uppercase">Activity</h4>
           <div class="mb-4">
             <textarea
               x-model="commentDraft"
@@ -279,27 +318,27 @@ function formatTimestamp(iso: string | null | undefined): string {
               @keydown.ctrl.enter.prevent="submitComment()"
               rows="2"
               placeholder="Add a comment, then press Command+Enter to send"
-              class="px-3 py-2 w-full text-zinc-800 text-sm dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none dark:focus:border-violet-600 resize-none"
+              class="px-3 py-2 w-full text-sm text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none dark:focus:border-violet-600 resize-none"
             ></textarea>
             <div class="flex justify-end mt-2">
               <Button size="sm" :disabled="!commentDraft().trim()" @click="submitComment()">Comment</Button>
             </div>
           </div>
 
-          <div :if="cardComments().length === 0 && !loadingCard()" class="italic text-zinc-400 text-xs">No comments yet.</div>
+          <div :if="cardComments().length === 0 && !loadingCard()" class="italic text-xs text-zinc-500 dark:text-zinc-400">No comments yet.</div>
           <ul class="space-y-3">
             <li :for="comment in cardComments" class="flex gap-3">
               <span class="inline-flex flex-shrink-0 items-center justify-center h-7 w-7 font-medium text-[10px] text-white bg-violet-500 rounded-full" :text="initialsOf(comment.authorName, comment.authorEmail)"></span>
               <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap gap-2 items-baseline">
-                  <span class="font-medium text-zinc-700 text-xs dark:text-zinc-200" :text="comment.authorName || comment.authorEmail || 'Unknown'"></span>
-                  <span class="text-[10px] text-zinc-400" :text="formatTimestamp(comment.createdAt)"></span>
+                  <span class="font-medium text-xs text-zinc-700 dark:text-zinc-200" :text="comment.authorName || comment.authorEmail || 'Unknown'"></span>
+                  <span class="text-[10px] text-zinc-500 dark:text-zinc-400" :text="formatTimestamp(comment.createdAt)"></span>
                   <template :if="editingCommentId() !== comment.id">
                     <Button variant="ghost" size="xs" @click="startCommentEdit(comment.id, comment.body)">Edit</Button>
                     <Button variant="ghost" size="xs" @click="requestDelete('comment', comment.id)"><span class="text-red-500">Delete</span></Button>
                   </template>
                 </div>
-                <p :if="editingCommentId() !== comment.id" class="mt-0.5 text-zinc-700 text-xs whitespace-pre-wrap dark:text-zinc-300" :text="comment.body"></p>
+                <p :if="editingCommentId() !== comment.id" class="mt-0.5 text-xs text-zinc-700 whitespace-pre-wrap dark:text-zinc-300" :text="comment.body"></p>
                 <div :if="editingCommentId() === comment.id" class="mt-2">
                   <textarea
                     x-model="commentEditDraft"
@@ -309,7 +348,7 @@ function formatTimestamp(iso: string | null | undefined): string {
                     rows="3"
                     maxlength="10000"
                     :aria-label="'Edit comment by ' + (comment.authorName || comment.authorEmail || 'Unknown')"
-                    class="px-3 py-2 w-full text-zinc-800 text-sm dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none dark:focus:border-violet-600 resize-y"
+                    class="px-3 py-2 w-full text-sm text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none dark:focus:border-violet-600 resize-y"
                   ></textarea>
                   <div class="flex gap-2 justify-end mt-2">
                     <Button variant="secondary" size="xs" :disabled="savingCommentId() === comment.id" @click="cancelCommentEdit()">Cancel</Button>
@@ -325,7 +364,7 @@ function formatTimestamp(iso: string | null | undefined): string {
       <aside class="space-y-5">
         <section>
           <div class="flex items-center justify-between mb-2">
-            <h4 class="font-medium text-zinc-500 text-xs tracking-wide uppercase">Labels</h4>
+            <h4 class="font-medium text-xs text-zinc-500 tracking-wide uppercase">Labels</h4>
             <Button variant="ghost" size="xs" interaction="toggle" :pressed="showLabelPicker()" @click="showLabelPicker.set(!showLabelPicker())">
               <span :if="!showLabelPicker()">Edit</span>
               <span :if="showLabelPicker()">Done</span>
@@ -334,10 +373,10 @@ function formatTimestamp(iso: string | null | undefined): string {
 
           <div :if="!showLabelPicker()" class="flex flex-wrap gap-1">
             <span :for="label in cardLabels" :class="`px-2 py-0.5 text-xs font-medium rounded ${labelChipClass(label.color)}`" :text="label.name"></span>
-            <span :if="cardLabels().length === 0" class="italic text-zinc-400 text-xs">None</span>
+            <span :if="cardLabels().length === 0" class="italic text-xs text-zinc-500 dark:text-zinc-400">None</span>
           </div>
 
-          <div :if="showLabelPicker()" class="space-y-2">
+          <div :if="showLabelPicker()" class="flex flex-col gap-2">
             <div :for="label in allLabels" :class="`flex items-center gap-1 px-1 py-0.5 w-full rounded ${labelChipClass(label.color)}`">
               <button type="button" class="flex flex-1 items-center justify-between px-1 py-0.5 min-w-0 text-left text-xs rounded hover:opacity-90" :aria-pressed="String(cardLabels().some(cardLabel => cardLabel.id === label.id))" @click="toggleLabel(label.id)">
                 <span class="truncate" :text="label.name"></span>
@@ -364,7 +403,7 @@ function formatTimestamp(iso: string | null | undefined): string {
 
         <section>
           <div class="flex items-center justify-between mb-2">
-            <h4 class="font-medium text-zinc-500 text-xs tracking-wide uppercase">Assignees</h4>
+            <h4 class="font-medium text-xs text-zinc-500 tracking-wide uppercase">Assignees</h4>
             <Button variant="ghost" size="xs" interaction="toggle" :pressed="showAssigneePicker()" @click="showAssigneePicker.set(!showAssigneePicker())">
               <span :if="!showAssigneePicker()">Edit</span>
               <span :if="showAssigneePicker()">Done</span>
@@ -372,15 +411,27 @@ function formatTimestamp(iso: string | null | undefined): string {
           </div>
 
           <div :if="!showAssigneePicker()" class="flex flex-wrap gap-2">
-            <div :for="assignee in cardAssignees" class="flex gap-1.5 items-center text-zinc-700 text-xs dark:text-zinc-200">
+            <div :for="assignee in cardAssignees" class="flex gap-1.5 items-center text-xs text-zinc-700 dark:text-zinc-200">
               <span class="inline-flex items-center justify-center h-6 w-6 font-medium text-[10px] text-white bg-violet-500 rounded-full" :text="initialsOf(assignee.name, assignee.email)"></span>
               <span :text="assignee.name || assignee.email || 'Unknown'"></span>
             </div>
-            <span :if="cardAssignees().length === 0" class="italic text-zinc-400 text-xs">Unassigned</span>
+            <span :if="cardAssignees().length === 0" class="italic text-xs text-zinc-500 dark:text-zinc-400">Unassigned</span>
           </div>
 
+          <input
+            :if="showAssigneePicker()"
+            type="search"
+            name="assignee_search"
+            aria-label="Search users to assign"
+            placeholder="Search by name or email"
+            x-model="assigneeQuery"
+            @input="searchAssigneesSoon()"
+            class="mb-2 px-2 py-1 w-full text-xs text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none"
+          />
+          <p :if="showAssigneePicker() && moreAssigneesLabel()" class="mb-2 text-[11px] text-zinc-500 dark:text-zinc-400" :text="moreAssigneesLabel()"></p>
           <div :if="showAssigneePicker()" class="overflow-y-auto space-y-1 max-h-48">
-            <p :if="kanban.users().length === 0" class="italic text-zinc-400 text-xs">No users to assign.</p>
+            <p :if="kanban.users().length === 0 && !kanban.userSearch()" class="italic text-xs text-zinc-500 dark:text-zinc-400">No users to assign.</p>
+            <p :if="kanban.users().length === 0 && kanban.userSearch()" class="italic text-xs text-zinc-500 dark:text-zinc-400">No users match that search.</p>
             <button :for="user in kanban.users" type="button" :aria-pressed="String(cardAssignees().some(assignee => assignee.userId === user.id))" @click="toggleAssignee(user.id)" class="flex gap-2 items-center px-2 py-1.5 w-full text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded">
               <span class="inline-flex flex-shrink-0 items-center justify-center h-6 w-6 font-medium text-[10px] text-white bg-violet-500 rounded-full" :text="initialsOf(user.name, user.email)"></span>
               <span class="flex-1 text-zinc-700 truncate dark:text-zinc-200" :text="user.name || user.email"></span>
@@ -390,13 +441,13 @@ function formatTimestamp(iso: string | null | undefined): string {
         </section>
 
         <section>
-          <h4 class="mb-2 font-medium text-zinc-500 text-xs tracking-wide uppercase">Due date</h4>
-          <input type="date" x-model="dueDateDraft" name="due_date" @change="commitDueDate()" class="px-2 py-1 w-full text-zinc-800 text-xs dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none" />
+          <h4 class="mb-2 font-medium text-xs text-zinc-500 tracking-wide uppercase">Due date</h4>
+          <input type="date" x-model="dueDateDraft" name="due_date" @change="commitDueDate()" class="px-2 py-1 w-full text-xs text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-950 border border-zinc-200 rounded dark:border-zinc-800 focus:border-violet-400 focus:outline-none" />
         </section>
 
         <section class="pt-3 border-t border-zinc-200 dark:border-zinc-800">
-          <p class="text-[10px] text-zinc-400">Created <span :text="formatTimestamp(openCard()?.createdAt)"></span></p>
-          <p :if="openCard()?.updatedAt && openCard()?.updatedAt !== openCard()?.createdAt" class="text-[10px] text-zinc-400">Updated <span :text="formatTimestamp(openCard()?.updatedAt)"></span></p>
+          <p class="text-[10px] text-zinc-500 dark:text-zinc-400">Created <span :text="formatTimestamp(openCard()?.createdAt)"></span></p>
+          <p :if="openCard()?.updatedAt && openCard()?.updatedAt !== openCard()?.createdAt" class="text-[10px] text-zinc-500 dark:text-zinc-400">Updated <span :text="formatTimestamp(openCard()?.updatedAt)"></span></p>
         </section>
       </aside>
     </div>

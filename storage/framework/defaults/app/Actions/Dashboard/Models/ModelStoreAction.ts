@@ -1,9 +1,10 @@
 import type { RequestInstance } from '@stacksjs/types'
-import { Action } from '@stacksjs/actions'
-import { toSnakeCaseKeys } from '@stacksjs/orm'
+import { Action } from '@stacksjs/actions/runtime'
+import { ModelValidationError, toSnakeCaseKeys } from '@stacksjs/orm'
 import { response } from '@stacksjs/router'
 import { dashboardOperationalError } from '../dashboard-response'
-import { prepareModelFields, resolveWritableModel } from './model-write'
+import { missingRelationErrors } from './model-relations'
+import { humanizeIdentifier, prepareModelFields, resolveWritableModel } from './model-write'
 
 interface ModelWriteInput {
   fields?: unknown
@@ -35,6 +36,15 @@ export default new Action({
       return { ok: true, id }
     }
     catch (error) {
+      // The model's own rules rejected the row: the caller's mistake, named
+      // field by field, not a server failure (stacksjs/stacks#3007).
+      if (error instanceof ModelValidationError)
+        return response.json({ message: 'Validation failed.', errors: error.errors }, 422)
+      // A record this one points at was deleted while the form was open. The
+      // person can pick another, so it is said on that field.
+      const missing = missingRelationErrors(resolved.Model, error, Object.keys(toSnakeCaseKeys(data)), humanizeIdentifier)
+      if (Object.keys(missing).length > 0)
+        return response.json({ message: 'Validation failed.', errors: missing }, 422)
       return dashboardOperationalError(error, 'The model record could not be created.', 'ModelStoreAction', 500)
     }
   },

@@ -1,5 +1,4 @@
 import { Action } from '@stacksjs/actions'
-import { response } from '@stacksjs/router'
 import Incident from '../../Models/Incident'
 import IncidentUpdate from '../../Models/IncidentUpdate'
 import { incidentBelongsToTeam } from '../../lib/incidentOwnership'

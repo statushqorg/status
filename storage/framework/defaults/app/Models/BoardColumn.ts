@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { defineModel, parentOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * Column on a kanban board (stacksjs/stacks#1846).
@@ -40,6 +40,9 @@ export default defineModel({
   },
 
   belongsTo: ['Board'],
+
+  // Owned by whoever owns the board it sits on (stacksjs/stacks#2412).
+  ownership: parentOwnership('Board', 'board_id'),
   hasMany: ['Card'],
 
   attributes: {
@@ -47,7 +50,6 @@ export default defineModel({
       order: 1,
       fillable: true,
       validation: { rule: schema.number().required() },
-      factory: () => 1,
     },
 
     name: {
@@ -84,5 +86,8 @@ export default defineModel({
     },
   },
 
-  dashboard: { enabled: false },
+  dashboard: {
+    columns: ['name', 'board', 'position', 'cardLimit'],
+    enabled: false,
+  },
 } as const)

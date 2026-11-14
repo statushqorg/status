@@ -19,6 +19,8 @@ export interface DashboardUser {
   id: number
   name: string
   email: string
+  /** Erased under the app's data-subject rules: the name and email are placeholders. */
+  anonymized?: boolean
   emailVerifiedAt: string
   createdAt: string
   updatedAt: string
@@ -62,4 +64,13 @@ const endpointByMode: Record<DataMode, string> = {
 
 export async function fetchDashboardData<T>(mode: DataMode): Promise<DashboardDataResponse<T>> {
   return dashboardApi<DashboardDataResponse<T>>(endpointByMode[mode])
+}
+
+/**
+ * A page's row of numbers, without the rows. Users, Teams and Subscribers
+ * are listed by the model browser; their pages ask here for the stats alone.
+ */
+export async function fetchDashboardStats(mode: DataMode): Promise<DataStats> {
+  const answer = await dashboardApi<{ stats?: DataStats }>(`${endpointByMode[mode]}?only=stats`)
+  return answer.stats ?? { total: 0 }
 }

@@ -126,7 +126,7 @@ export default new Job({
       if (changed) {
         await DnsSnapshot.create({
           monitor_id: monitor.id,
-          recordType: recordType,
+          recordType: recordType as 'A' | 'AAAA' | 'MX' | 'TXT' | 'NS' | 'CAA' | 'CNAME' | undefined,
           recordValues: serialized,
           checkedAt: checkedAt,
         })

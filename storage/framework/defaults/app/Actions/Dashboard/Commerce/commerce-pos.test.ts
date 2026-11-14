@@ -2,8 +2,6 @@ import { describe, expect, it } from 'bun:test'
 import {
   calculateCommercePosSale,
   deriveCommercePosTaxRate,
-  isCommercePosCustomerActive,
-  normalizeCommercePosCustomer,
   parseCommercePosLines,
   selectCommercePosTaxRate,
 } from './commerce-pos'
@@ -25,8 +23,30 @@ describe('dashboard commerce POS helpers', () => {
     expect(result.error).toContain('between 1 and 999')
   })
 
-  it('recomputes server-authoritative totals from persisted prices', () => {
+  it('recomputes server-authoritative totals from persisted prices, in minor units', () => {
     const sale = calculateCommercePosSale([
+      {
+        id: '4',
+        name: 'Widget',
+        description: '',
+        price: 1250,
+        isAvailable: true,
+        inventoryCount: 20,
+        preparationTime: 4,
+        allergens: [],
+        categoryId: '',
+        categoryName: 'Unassigned category',
+      },
+    ], [{ productId: 4, quantity: 3, specialInstructions: '' }], 8.25)
+    // $12.50 x 3 = $37.50; 8.25% of it is 309.375 cents, which rounds to 309.
+    expect(sale.lines[0]?.lineTotal).toBe(3750)
+    expect(sale.subtotal).toBe(3750)
+    expect(sale.taxAmount).toBe(309)
+    expect(sale.totalAmount).toBe(4059)
+  })
+
+  it('refuses a product whose price is not integer minor units (stacksjs/stacks#2851)', () => {
+    expect(() => calculateCommercePosSale([
       {
         id: '4',
         name: 'Widget',
@@ -39,10 +59,8 @@ describe('dashboard commerce POS helpers', () => {
         categoryId: '',
         categoryName: 'Unassigned category',
       },
-    ], [{ productId: 4, quantity: 3, specialInstructions: '' }], 8.25)
-    expect(sale.subtotal).toBe(37.5)
-    expect(sale.taxAmount).toBe(3.09)
-    expect(sale.totalAmount).toBe(40.59)
+    ], [{ productId: 4, quantity: 1, specialInstructions: '' }], 0))
+      .toThrow('expected integer minor units')
   })
 
   it('chooses an active default tax rate', () => {
@@ -61,16 +79,7 @@ describe('dashboard commerce POS helpers', () => {
     expect(() => deriveCommercePosTaxRate(100, -1)).toThrow('non-negative')
   })
 
-  it('validates persisted customers and tax rates', () => {
-    const customer = { id: 1, name: 'Chris', email: 'chris@example.com', status: 'Active' }
-    expect(isCommercePosCustomerActive(customer)).toBeTrue()
-    expect(normalizeCommercePosCustomer(customer)).toEqual({
-      id: '1',
-      label: 'Chris',
-      email: 'chris@example.com',
-    })
-    expect(() => normalizeCommercePosCustomer({ id: 1, name: '', email: '' }))
-      .toThrow('Customer 1.name must be a non-empty string')
+  it('validates persisted tax rates', () => {
     expect(() => selectCommercePosTaxRate([{ id: 1, status: 'active', is_default: false, rate: 'invalid' }]))
       .toThrow('TaxRate 1.rate must be a finite number')
   })
@@ -81,7 +90,7 @@ describe('dashboard commerce POS helpers', () => {
         id: '4',
         name: 'Widget',
         description: '',
-        price: 12.5,
+        price: 1250,
         isAvailable: true,
         inventoryCount: 2,
         preparationTime: 4,

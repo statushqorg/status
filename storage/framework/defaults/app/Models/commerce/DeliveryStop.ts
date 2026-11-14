@@ -1,5 +1,5 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { defineModel, parentOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * One address on a delivery route.
@@ -18,7 +18,13 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
 
+  // No owner of its own: these rows are owned by whoever owns the order's customer
+  // (stacksjs/stacks#2375). Resolved through the parent so it follows any change
+  // to how Order decides ownership.
+  ownership: parentOwnership('Order', 'order_id'),
+
   traits: {
+    gdpr: { subject: { via: 'Order' }, erasure: 'anonymize', basis: 'contract', purpose: 'Delivering an order' },
     useUuid: true,
     useTimestamps: true,
 
@@ -73,6 +79,7 @@ export default defineModel({
     },
 
     address: {
+      personal: true,
       order: 3,
       required: true,
       fillable: true,
@@ -86,6 +93,7 @@ export default defineModel({
      * complete; it just cannot be drawn.
      */
     latitude: {
+      personal: true,
       order: 4,
       fillable: true,
       validation: { rule: schema.number().min(-90).max(90) },
@@ -93,6 +101,7 @@ export default defineModel({
     },
 
     longitude: {
+      personal: true,
       order: 5,
       fillable: true,
       validation: { rule: schema.number().min(-180).max(180) },
@@ -100,6 +109,7 @@ export default defineModel({
     },
 
     recipientName: {
+      personal: true,
       order: 6,
       fillable: true,
       validation: { rule: schema.string().max(255) },
@@ -107,6 +117,7 @@ export default defineModel({
     },
 
     recipientPhone: {
+      personal: true,
       order: 7,
       fillable: true,
       validation: { rule: schema.string().max(40) },
@@ -153,6 +164,7 @@ export default defineModel({
 
     /** Why a stop failed, or anything the courier needs to record. */
     notes: {
+      personal: true,
       order: 12,
       fillable: true,
       validation: { rule: schema.string().max(1000) },
@@ -185,5 +197,9 @@ export default defineModel({
 
   dashboard: {
     highlight: true,
+    // Prose, asked for in a box with room for it.
+    fields: {
+      notes: { input: 'longtext' },
+    },
   },
 } as const)

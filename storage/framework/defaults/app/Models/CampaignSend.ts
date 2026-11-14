@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'CampaignSend',
@@ -17,6 +17,9 @@ export default defineModel({
   ],
 
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 20 },
+    gdpr: { subject: { via: 'Subscriber' }, erasure: 'anonymize', basis: 'legitimate_interests', purpose: 'Campaign delivery statistics' },
     useUuid: true,
     useTimestamps: true,
     useApi: {
@@ -36,7 +39,6 @@ export default defineModel({
       validation: {
         rule: schema.number(),
       },
-      factory: faker => faker.number.int({ min: 1, max: 10 }),
     },
 
     subscriberId: {
@@ -45,7 +47,6 @@ export default defineModel({
       validation: {
         rule: schema.number(),
       },
-      factory: () => null,
     },
 
     emailListId: {
@@ -54,7 +55,6 @@ export default defineModel({
       validation: {
         rule: schema.number(),
       },
-      factory: () => null,
     },
 
     status: {
@@ -81,6 +81,7 @@ export default defineModel({
     },
 
     recipient: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -110,6 +111,7 @@ export default defineModel({
     error: {
       required: false,
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
@@ -187,5 +189,9 @@ export default defineModel({
       },
       factory: () => JSON.stringify({}),
     },
+  },
+
+  dashboard: {
+    columns: ['recipient', 'campaign', 'channel', 'status', 'sentAt', 'openedAt'],
   },
 } as const)

@@ -1,6 +1,6 @@
 import type { Attributes } from '@stacksjs/types'
 import { defineModel, formatDate } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 function receiptTimestamp(value: unknown): string {
   if (typeof value === 'number')
@@ -18,6 +18,14 @@ export default defineModel({
   primaryKey: 'id',
   autoIncrement: true,
   belongsTo: ['PrintDevice'],
+
+  /*
+   * A receipt is a record OF a device, not of a customer - it chains to
+   * `PrintDevice`, an unscoped catalog. Saying so explicitly is the honest
+   * declaration; its writes want an admin gate rather than row scoping
+   * (stacksjs/stacks#2412).
+   */
+  ownership: false,
   traits: {
     useUuid: true,
     useTimestamps: true,
@@ -71,7 +79,7 @@ export default defineModel({
       validation: {
         rule: schema.timestampTz().required(),
         message: {
-          invalid: 'Invalid date format',
+          timestampTz: 'Invalid date format',
         },
       },
       factory: faker => faker.date.recent().toISOString(),
@@ -128,6 +136,7 @@ export default defineModel({
       order: 8,
       fillable: true,
       default: '{}',
+      type: 'text',
       validation: {
         rule: schema.string(),
       },

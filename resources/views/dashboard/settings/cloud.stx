@@ -129,7 +129,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
         <StxLink to="/dashboard/settings/team" class="chip">Team</StxLink>
         <StxLink to="/dashboard/settings/notifications" class="chip">Notifications</StxLink>
         <StxLink to="/dashboard/settings/security" class="chip">Security</StxLink>
-        <StxLink to="/dashboard/settings/cloud" class="chip active">Cloud</StxLink>
+        <StxLink to="/dashboard/settings/cloud" class="active chip">Cloud</StxLink>
         <StxLink to="/dashboard/settings/billing" class="chip">Billing</StxLink>
       </div>
     </div>
@@ -139,7 +139,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
     @endif
 
     @if (errorMessage)
-      <div id="aws-form-error" class="flash error" role="alert">{{ errorMessage }}</div>
+      <div id="aws-form-error" class="error flash" role="alert">{{ errorMessage }}</div>
     @endif
 
     <section class="card" aria-label="AWS credentials">
@@ -174,7 +174,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
       </div>
     </section>
 
-    <section class="card !mt-[1.25rem]" aria-label="Minimal IAM permissions">
+    <section class="!mt-[1.25rem] card" aria-label="Minimal IAM permissions">
       <div class="card-head">
         <h3>Minimal IAM permissions</h3>
         <span class="sub">least privilege</span>

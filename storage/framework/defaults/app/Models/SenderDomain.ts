@@ -1,11 +1,13 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'SenderDomain',
   table: 'sender_domains',
   belongsTo: ['Team'],
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 3 },
     useUuid: true,
     useTimestamps: true,
     useApi: { uri: 'sender-domains', routes: ['index', 'store', 'show', 'update', 'destroy'], middleware: ['auth', 'team'] },
@@ -18,5 +20,9 @@ export default defineModel({
     dnsRecords: { required: false, fillable: true, validation: { rule: schema.json() }, factory: () => JSON.stringify([]) },
     verifiedAt: { required: false, fillable: true, validation: { rule: schema.timestamp() }, factory: () => null },
     lastCheckedAt: { required: false, fillable: true, validation: { rule: schema.timestamp() }, factory: () => null },
+  },
+
+  dashboard: {
+    columns: ['domain', 'status', 'team', 'verifiedAt', 'lastCheckedAt'],
   },
 } as const)

@@ -1,5 +1,4 @@
 import { Action } from '@stacksjs/actions'
-import { response } from '@stacksjs/router'
 import { parseMaintenanceForm } from '../../lib/maintenanceForm'
 import MaintenanceWindow from '../../Models/MaintenanceWindow'
 import { requireTeamId } from '../../lib/teamGuard'

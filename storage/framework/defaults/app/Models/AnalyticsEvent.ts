@@ -1,11 +1,16 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'AnalyticsEvent',
   table: 'analytics_events',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // An infrastructure table: rows are written by the system, not on behalf of a
+  // caller, so no row has a per-caller owner to scope by. Writes are gated by
+  // `middleware` instead. Declared rather than left silent (stacksjs/stacks#2375).
+  ownership: false,
 
   traits: {
     useUuid: true,
@@ -62,9 +67,14 @@ export default defineModel({
 
     properties: {
       fillable: true,
+      type: 'text',
       validation: {
         rule: schema.string(),
       },
     },
+  },
+
+  dashboard: {
+    columns: ['name', 'category', 'path', 'value', 'createdAt'],
   },
 } as const)

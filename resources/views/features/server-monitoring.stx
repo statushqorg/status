@@ -83,7 +83,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="inside-heading">
+      <section class="section site-shell" aria-labelledby="inside-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="inside-heading">Outages usually announce themselves first, from the inside.</h2>
@@ -119,8 +119,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="push-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="push-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="push-heading">Push-based, so your firewall stays closed.</h2>
             <p>
@@ -143,8 +143,8 @@ curl -fsS -X POST \
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What server monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -157,19 +157,19 @@ curl -fsS -X POST \
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="edge-heading">
+      <section class="section site-shell" aria-labelledby="edge-heading">
         <div class="note-band">
           <div>
             <h2 id="edge-heading">Most uptime tools stop at the network edge.</h2>
             <p>
-              Oh Dear, for one, offers no server metrics at all: the inside of the machine is your problem. {{ appName }} treats the host as part of the same story as the endpoint, in one dashboard, on one incident timeline. <StxLink class="text-[var(--fg)] font-semibold border-b border-[var(--border-strong)]" to="/compare">See the full comparison</StxLink> for the feature-by-feature view.
+              Oh Dear, for one, offers no server metrics at all: the inside of the machine is your problem. {{ appName }} treats the host as part of the same story as the endpoint, in one dashboard, on one incident timeline. <StxLink class="font-semibold text-[var(--fg)] border-[var(--border-strong)] border-b" to="/compare">See the full comparison</StxLink> for the feature-by-feature view.
             </p>
           </div>
           <div class="oss-code">POST /api/agent/&lt;token&gt;/metrics</div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Server monitoring, answered.</h2>
@@ -184,8 +184,8 @@ curl -fsS -X POST \
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

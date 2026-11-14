@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * A single-use invitation to join a team.
@@ -34,6 +34,7 @@ export default defineModel({
   belongsTo: ['Team'],
 
   traits: {
+    gdpr: { subject: { email: 'email' }, erasure: 'delete', basis: 'contract', purpose: 'Team invitations' },
     useUuid: true,
     useTimestamps: true,
     useSeeder: { count: 0 },
@@ -60,6 +61,7 @@ export default defineModel({
     },
 
     email: {
+      personal: true,
       required: true,
       fillable: true,
       validation: {
@@ -154,6 +156,7 @@ export default defineModel({
   },
 
   dashboard: {
+    columns: ['email', 'team', 'role', 'status', 'deliveryStatus', 'expiresAt'],
     enabled: false,
   },
 } as const)

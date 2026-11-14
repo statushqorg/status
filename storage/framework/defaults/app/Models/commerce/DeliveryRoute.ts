@@ -1,11 +1,16 @@
-import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { defineModel, parentOwnership } from '@stacksjs/orm'
+import { schema } from '@stacksjs/validation/runtime'
 
 export default defineModel({
   name: 'DeliveryRoute',
   table: 'delivery_routes',
   primaryKey: 'id',
   autoIncrement: true,
+
+  // No owner of its own: these rows are owned by whoever owns the courier, who is a user
+  // (stacksjs/stacks#2375). Resolved through the parent so it follows any change
+  // to how Courier decides ownership.
+  ownership: parentOwnership('Courier', 'courier_id'),
 
   traits: {
     useUuid: true,

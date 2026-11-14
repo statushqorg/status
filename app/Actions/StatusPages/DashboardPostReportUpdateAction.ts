@@ -43,13 +43,13 @@ export default new Action({
     await StatusReportUpdate.create({
       status_report_id: report.id,
       message,
-      status,
+      status: status as 'resolved' | 'investigating' | 'identified' | 'monitoring' | null | undefined,
       postedAt: new Date().toISOString(),
     })
 
     // Reflect the new state on the parent report.
     await report.update({
-      status,
+      status: status as 'resolved' | 'investigating' | 'identified' | 'monitoring' | null | undefined,
       resolved_at: status === 'resolved' ? new Date().toISOString() : undefined,
     })
 

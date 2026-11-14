@@ -79,7 +79,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="scores-heading">
+      <section class="section site-shell" aria-labelledby="scores-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="scores-heading">You ran Lighthouse at launch. Then the site kept changing.</h2>
@@ -119,8 +119,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="regress-heading">
-        <div class="split-row flip">
+      <section class="section site-shell" aria-labelledby="regress-heading">
+        <div class="flip split-row">
           <div class="split-copy">
             <h2 id="regress-heading">A 15-point performance drop opens an incident.</h2>
             <p>
@@ -155,8 +155,8 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="included-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="included-heading">
+        <div class="left section-head">
           <h2 id="included-heading" class="section-title">What Lighthouse monitoring includes.</h2>
         </div>
         <ul class="check-list">
@@ -169,7 +169,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </ul>
       </section>
 
-      <section class="site-shell section" aria-labelledby="oss-heading">
+      <section class="section site-shell" aria-labelledby="oss-heading">
         <div class="note-band">
           <div>
             <h2 id="oss-heading">The same audit you would run by hand.</h2>
@@ -181,7 +181,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="api-heading">
+      <section class="section site-shell" aria-labelledby="api-heading">
         <div class="split-row">
           <div class="split-copy">
             <h2 id="api-heading">Reports are data, not screenshots.</h2>
@@ -203,7 +203,7 @@ curl https://statushq.org/api/lighthouse-reports/142</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="faq-heading">
+      <section class="section site-shell" aria-labelledby="faq-heading">
         <div class="section-head">
           <span class="eyebrow">FAQ</span>
           <h2 id="faq-heading" class="section-title">Lighthouse monitoring, answered.</h2>
@@ -218,8 +218,8 @@ curl https://statushq.org/api/lighthouse-reports/142</pre></div>
         </div>
       </section>
 
-      <section class="site-shell section" aria-labelledby="related-heading">
-        <div class="section-head left">
+      <section class="section site-shell" aria-labelledby="related-heading">
+        <div class="left section-head">
           <h2 id="related-heading" class="section-title">Pairs well with.</h2>
         </div>
         <div class="feature-grid">

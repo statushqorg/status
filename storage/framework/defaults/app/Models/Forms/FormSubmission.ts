@@ -1,5 +1,5 @@
 import { defineModel } from '@stacksjs/orm'
-import { schema } from '@stacksjs/validation'
+import { schema } from '@stacksjs/validation/runtime'
 
 /**
  * One submission of a Form. `values` is the validated field map; `email` and
@@ -18,6 +18,9 @@ export default defineModel({
   autoIncrement: true,
 
   traits: {
+    // So a fresh seed fills its dashboard page (stacksjs/stacks#3000).
+    useSeeder: { count: 10 },
+    gdpr: { subject: { email: 'email' }, erasure: 'anonymize', basis: 'consent', purpose: 'Form submissions' },
     useUuid: true,
     useTimestamps: true,
   },
@@ -27,6 +30,7 @@ export default defineModel({
   attributes: {
     /** Validated { [fieldName]: value } JSON. Named data, not values - values is a SQL keyword. */
     data: {
+      personal: true,
       required: true,
       order: 1,
       fillable: true,
@@ -37,6 +41,7 @@ export default defineModel({
     },
 
     email: {
+      personal: true,
       required: false,
       order: 2,
       fillable: true,
@@ -47,6 +52,7 @@ export default defineModel({
     },
 
     name: {
+      personal: true,
       required: false,
       order: 3,
       fillable: true,
@@ -89,6 +95,7 @@ export default defineModel({
     },
 
     ip: {
+      personal: true,
       required: false,
       order: 7,
       fillable: true,

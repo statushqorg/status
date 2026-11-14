@@ -1,5 +1,4 @@
 import { Action } from '@stacksjs/actions'
-import { response } from '@stacksjs/router'
 import StatusReport from '../../Models/StatusReport'
 import { requireTeamId } from '../../lib/teamGuard'
 
@@ -34,7 +33,7 @@ export default new Action({
       teamId: authTeamId,
       title,
       body: body || undefined,
-      status,
+      status: status as 'investigating' | 'identified' | 'monitoring' | 'resolved' | null | undefined,
       startedAt: new Date().toISOString(),
       resolvedAt: status === 'resolved' ? new Date().toISOString() : undefined,
     })
