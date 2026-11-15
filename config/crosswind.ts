@@ -2524,7 +2524,14 @@ html:has(meta[name="stx-layout-group"][content="auth"]) {
   .sso-icon-okta { --sso-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z'/%3E%3C/svg%3E"); }
   .sso-icon-oidc { --sso-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z'/%3E%3C/svg%3E"); }
   .sso-icon-passkey { --sso-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 14a2 2 0 0 1-2-2 2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2m5.65-4A5.99 5.99 0 0 0 7 6a6 6 0 0 0-6 6 6 6 0 0 0 6 6 5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65z'/%3E%3C/svg%3E"); }
-  .row-between { display: flex; align-items: center; justify-content: space-between; }
+  /* The password label and its "Forgot?" link share one baseline. The label's
+     own bottom margin moved onto the row: with it on the label alone the link
+     was centred against a taller box and sat lower than the label, at body
+     size and in body colour. */
+  .row-between { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.4rem; }
+  .row-between label { margin-bottom: 0; }
+  .row-between a { color: var(--muted); font-size: 0.82rem; font-weight: 500; }
+  .row-between a:hover { color: var(--accent); }
   .hide { display: none !important; }
 }`
 }
