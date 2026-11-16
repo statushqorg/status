@@ -1,7 +1,9 @@
 import process from 'node:process'
 import { log } from '@stacksjs/logging'
 import { Job } from '@stacksjs/queue'
+import type { RouteSuite } from '../Hq/routeSuite'
 import { evaluateAssertions } from '../Support/evaluateAssertions'
+import { checkableOrigin, evaluateSuite, runSuite, suiteFromConfig } from '../Hq/routeSuite'
 import { coerceHealthReport, DEFAULT_MAX_AGE_SECONDS, evaluateAppHealth } from '../lib/appHealth'
 import CheckResult from '../Models/CheckResult'
 import Monitor from '../Models/Monitor'
@@ -51,6 +53,37 @@ import { broadcastMonitorUpdate } from '../Realtime/broadcastMonitorUpdate'
  * `checks.database.latency_ms` less-than `100`. See
  * docs/monitors/health-checks.md and app/lib/assertionEval.ts.
  */
+/** Ask every route of a suite and record the round as one check result. */
+async function recordRouteSuite(monitor: { id: number, update: (values: { last_checked_at: string }) => unknown }, suite: RouteSuite): Promise<void> {
+  const checkedAt = new Date().toISOString()
+  // Checked again here, not only at sync: the address was written by a key
+  // holder, and this is the process that sends requests to it.
+  const baseUrl = checkableOrigin(suite.baseUrl)
+  const results = baseUrl ? await runSuite({ baseUrl, checks: suite.checks }) : []
+  const verdict = baseUrl
+    ? evaluateSuite(results)
+    : { status: 'down' as const, message: 'The app\'s address is not one a check can be sent to', failing: [], slowestMs: 0 }
+
+  await CheckResult.create({
+    monitor_id: monitor.id,
+    status: verdict.status,
+    responseTimeMs: verdict.slowestMs,
+    message: verdict.message,
+    metadata: JSON.stringify({
+      routes: {
+        total: results.length,
+        failing: verdict.failing.map(result => ({ id: result.id, status: result.status, why: result.why })),
+      },
+    }),
+    region: process.env.WORKER_REGION || 'default',
+    checkedAt,
+  })
+
+  // As for every check: the verdict is EvaluateMonitorConsensus's to act on.
+  await monitor.update({ last_checked_at: checkedAt })
+  void broadcastMonitorUpdate(monitor.id)
+}
+
 export default new Job({
   name: 'RunHealthCheck',
   description: 'Poll an application health endpoint for a monitor',
@@ -72,6 +105,15 @@ export default new Job({
     }
     catch {
       // malformed config JSON — use the monitor URL as-is
+    }
+
+    // A connected app's routes, sent by `buddy hq:sync`: every route is asked
+    // and the monitor answers for all of them (app/Hq/routeSuite.ts). Nothing
+    // below applies to it, so it is handed over whole.
+    const suite = suiteFromConfig(config as Record<string, unknown>)
+    if (suite) {
+      await recordRouteSuite(monitor, suite)
+      return
     }
 
     const url = config.path ? new URL(config.path, monitor.url).toString() : monitor.url

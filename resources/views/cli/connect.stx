@@ -1,0 +1,150 @@
+<script server>
+/**
+ * The approve page for `buddy hq:connect statushq` (routes/api.ts).
+ *
+ * The CLI opens this URL with the code it was issued. Somebody signed in
+ * confirms, and the CLI collects the app's keys on its next poll. Loading the
+ * page creates nothing: only the button does.
+ *
+ * The confirmation code is deliberately NOT rendered here. The person types
+ * what their own terminal shows, and the server checks it. A page that showed
+ * it could be agreed with by somebody who was sent the link and has no
+ * terminal at all.
+ */
+import { resolveHealedTeamContext } from '~/app/lib/teamContext'
+import { authRequest } from '~/app/lib/authRequest'
+import { hq } from '~/app/Hq/service'
+
+const appName = process.env.APP_NAME || 'StatusHQ'
+
+useHead({
+  title: 'Connect an app · ' + appName,
+  meta: [
+    // Auth-walled and single-use: nothing here is worth an index entry. The
+    // connect code is in the address, so it must not travel in a Referer.
+    { name: 'robots', content: 'noindex, nofollow' },
+    { name: 'referrer', content: 'no-referrer' },
+  ],
+})
+
+const queryParams = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
+const code = String(queryParams.get('code') || '')
+
+// Who is reading this page, and for which team: the same resolution the
+// dashboard uses, so the app lands in the workspace they have switched to.
+let signedIn = false
+let teamName = ''
+try {
+  const ctx = await resolveHealedTeamContext(authRequest(typeof cookies !== 'undefined' ? cookies : null))
+  signedIn = !!(ctx && ctx.user && ctx.teamId != null)
+  if (signedIn)
+    teamName = ((ctx.teams || []).find(t => t.id === ctx.teamId) || {}).name || ''
+}
+catch { signedIn = false }
+
+// Looked up only for a signed-in viewer. A pending code answers the app's
+// name. An unknown, expired or already approved one answers nothing, and the
+// page says the same thing for all three so it cannot be used to test codes.
+let connectApp = ''
+let pending = false
+if (signedIn && code) {
+  try {
+    const described = await hq.describeConnect(code)
+    if (described) {
+      connectApp = described.app
+      pending = true
+    }
+  }
+  catch { pending = false }
+}
+</script>
+
+<script client>
+// The connect code is read from the address rather than handed over from the
+// server script, so no server value crosses into client code.
+const error = state('')
+const loading = state(false)
+const connected = state('')
+const confirm = state('')
+
+async function approve(e) {
+  e.preventDefault()
+  if (loading())
+    return
+  const typed = confirm().trim()
+  if (!typed) {
+    error.set('Enter the confirmation code your terminal is showing.')
+    return
+  }
+  const code = useSearchParams().get('code') || ''
+  loading.set(true)
+  error.set('')
+  try {
+    const res = await fetch('/api/cli/connect/' + encodeURIComponent(code) + '/approve', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', 'accept': 'application/json' },
+      body: JSON.stringify({ confirm: typed }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (res.status === 401) {
+      navigate('/login', { replace: true, reload: true })
+      return
+    }
+    if (!res.ok) {
+      error.set(data.error || data.message || 'Could not approve the connection.')
+      loading.set(false)
+      return
+    }
+    connected.set((data.project && data.project.name) || 'your app')
+  }
+  catch {
+    error.set('Something went wrong. Please try again.')
+    loading.set(false)
+  }
+}
+</script>
+
+@extends('layouts/auth')
+
+@section('content')
+    <div class="auth-card">
+      <StxLink class="brand" to="/">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12h3.5l2-5 3 10 2-7 1.5 3.5h6.5"/></svg></span>
+        <span class="brand-name">{{ appName }}</span>
+      </StxLink>
+
+      @if (!signedIn)
+        <h1>Sign in to connect your app</h1>
+        <p class="sub">Your terminal is waiting for you to approve this connection. Sign in, then come back to this tab and reload it.</p>
+        <a class="button" href="/login" target="_blank" rel="noopener" data-no-router>Sign in</a>
+        <p class="alt">No account yet? <a href="/register" target="_blank" rel="noopener" data-no-router>Create one</a></p>
+      @endif
+
+      @if (signedIn && !pending)
+        <h1>This link is no longer valid</h1>
+        <p class="sub">A connection request lasts ten minutes and can be approved once. Run the connect command again to get a new one.</p>
+      @endif
+
+      @if (signedIn && pending)
+        <div :class="connected() ? '' : 'hide'" role="status">
+          <h1>Connected</h1>
+          <p class="sub">{{ connected() }} is connected to {{ appName }}. You can close this tab and return to your terminal, which is sending the app's routes now.</p>
+        </div>
+
+        <form :class="connected() ? 'hide' : ''" @submit="approve">
+          <h1>Connect {{ connectApp }} to {{ appName }}?</h1>
+          <p class="sub">This adds an app called {{ connectApp }} to {{ teamName || 'your team' }}, or reuses the one it already has, and sends its keys to the terminal that asked. The app then sends its routes, which are checked as one monitor.</p>
+
+          <div id="connect-error" :class="error() ? 'error show' : 'error'" role="alert">{{ error() }}</div>
+
+          <div class="field">
+            <label for="connect-confirm">Confirmation code from your terminal</label>
+            <input id="connect-confirm" name="confirm" type="text" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABC-DEF" :model="confirm" :aria-invalid="error() ? 'true' : 'false'" aria-describedby="connect-confirm-help">
+          </div>
+          <button class="button" type="submit" :disabled="loading()" :aria-busy="loading()">{{ loading() ? 'Connecting…' : 'Approve connection' }}</button>
+          <p id="connect-confirm-help" class="alt">The command you ran printed this code. If you did not just run a connect command yourself, or you were sent this link, close this page.</p>
+        </form>
+      @endif
+    </div>
+@endsection
