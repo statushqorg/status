@@ -1,4 +1,5 @@
 <script server>
+import { withConnectReturn } from '../../data/connect-return'
 /**
  * The approve page for `buddy hq:connect statushq` (routes/api.ts).
  *
@@ -30,6 +31,12 @@ useHead({
 const queryParams = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const code = String(queryParams.get('code') || '')
 
+// Signing in comes straight back here, in this tab, where the confirmation
+// code is asked for. A sign-in that ended on the dashboard read as the connect
+// having worked, and the terminal was left waiting.
+const signInHref = withConnectReturn('/login', code)
+const registerHref = withConnectReturn('/register', code)
+
 // Who is reading this page, and for which team: the same resolution the
 // dashboard uses, so the app lands in the workspace they have switched to.
 let signedIn = false
@@ -60,6 +67,8 @@ if (signedIn && code) {
 </script>
 
 <script client>
+import { withConnectReturn } from '../../data/connect-return'
+
 // The connect code is read from the address rather than handed over from the
 // server script, so no server value crosses into client code.
 const error = state('')
@@ -88,7 +97,7 @@ async function approve(e) {
     })
     const data = await res.json().catch(() => ({}))
     if (res.status === 401) {
-      navigate('/login', { replace: true, reload: true })
+      navigate(withConnectReturn('/login', code), { replace: true, reload: true })
       return
     }
     if (!res.ok) {
@@ -116,9 +125,9 @@ async function approve(e) {
 
       @if (!signedIn)
         <h1>Sign in to connect your app</h1>
-        <p class="sub">Your terminal is waiting for you to approve this connection. Sign in, then come back to this tab and reload it.</p>
-        <a class="button" href="/login" target="_blank" rel="noopener" data-no-router>Sign in</a>
-        <p class="alt">No account yet? <a href="/register" target="_blank" rel="noopener" data-no-router>Create one</a></p>
+        <p class="sub">Your terminal is waiting for you to approve this connection. Sign in and you will come straight back here to enter the confirmation code it is showing.</p>
+        <a class="button" href="{{ signInHref }}" data-no-router>Sign in</a>
+        <p class="alt">No account yet? <a href="{{ registerHref }}" data-no-router>Create one</a></p>
       @endif
 
       @if (signedIn && !pending)

@@ -34,6 +34,12 @@ useHead({
 
 
 <script client>
+import { connectReturn } from '../data/connect-return'
+
+// Read for `next`, which is honoured only when it is this site's connect
+// approve page; `connectReturn` explains why nothing else is followed.
+const route = useRoute()
+
 // Creating an account, as stx client code rather than the DOM-walking script
 // this used to be (stx-standards rule 8). The same conversion as login.stx,
 // which carries the longer note on why each replacement is the one it is;
@@ -133,7 +139,7 @@ async function handleSubmit(event: SubmitEvent): Promise<void> {
     }
 
     if (res.ok && data.token) {
-      navigate(REDIRECT, { reload: true })
+      navigate(connectReturn(route.query.next) || REDIRECT, { reload: true })
       return
     }
     error.set(data.message || data.error || firstValidationMessage(data.errors) || 'Could not create your account. Please try again.')
