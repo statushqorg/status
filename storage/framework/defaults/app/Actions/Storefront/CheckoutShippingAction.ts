@@ -1,6 +1,7 @@
 import { Action } from '@stacksjs/actions/runtime'
 import { db } from '@stacksjs/database/runtime'
-import { response } from '@stacksjs/router'
+import { refuse } from '@stacksjs/router'
+import { schema } from '@stacksjs/validation/runtime'
 import { readCartCookie } from '../../Storefront/CartCookie'
 
 const CART_COOKIE = 'stacks_cart'
@@ -13,6 +14,19 @@ export default new Action({
   name: 'CheckoutShippingAction',
   description: 'Save shipping address on the active cart.',
   method: 'POST',
+  // A browser form goes on to the next step; a script gets `next` in the body.
+  next: '/checkout/payment',
+
+  // Declared, so a missing field is answered the way the caller asked: the
+  // checkout page gets the shopper back with the message under the field and
+  // what they typed kept (stacksjs/stacks#3311). A field of spaces is missing.
+  validations: {
+    shipping_name: { rule: schema.string().matches(/\S/).required(), message: 'Enter the name to ship to.' },
+    shipping_address: { rule: schema.string().matches(/\S/).required(), message: 'Enter the street address.' },
+    shipping_city: { rule: schema.string().matches(/\S/).required(), message: 'Enter the city.' },
+    shipping_state: { rule: schema.string().matches(/\S/).required(), message: 'Enter the state.' },
+    shipping_zip: { rule: schema.string().matches(/\S/).required(), message: 'Enter the ZIP or postal code.' },
+  },
 
   async handle(request: any) {
     const name = String(request.get('shipping_name') ?? '').trim()
@@ -21,12 +35,13 @@ export default new Action({
     const state = String(request.get('shipping_state') ?? '').trim()
     const zip = String(request.get('shipping_zip') ?? '').trim()
 
+    // For a caller that runs the action without the router in front of it.
     if (!name || !address || !city || !state || !zip)
-      return response.json({ error: 'All shipping fields are required.' }, { status: 422 })
+      return refuse('All shipping fields are required.')
 
     const token = readCartCookie(request, CART_COOKIE)
     if (!token)
-      return response.json({ error: 'Your cart is empty.' }, { status: 400 })
+      return refuse('Your cart is empty.', { status: 400 })
 
     const cart = await (db as any)
       .selectFrom('carts')
@@ -36,7 +51,7 @@ export default new Action({
       .executeTakeFirst()
 
     if (!cart)
-      return response.json({ error: 'Your cart is empty.' }, { status: 400 })
+      return refuse('Your cart is empty.', { status: 400 })
 
     await (db as any)
       .updateTable('carts')
@@ -51,11 +66,6 @@ export default new Action({
       .where('id', '=', cart.id)
       .execute()
 
-    const wantsHtml = (request.headers?.get?.('accept') || '').includes('text/html')
-    const xhr = request.headers?.get?.('x-requested-with') === 'XMLHttpRequest'
-    if (wantsHtml && !xhr)
-      return response.redirect('/checkout/payment')
-
-    return response.json({ ok: true, next: '/checkout/payment' })
+    return { ok: true, next: '/checkout/payment' }
   },
 })

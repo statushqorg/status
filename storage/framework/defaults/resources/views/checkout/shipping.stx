@@ -28,16 +28,17 @@ interface StorefrontLineItem { lineTotal: number }
 const { verifyCartCookie } = require('../../../app/Storefront/CartCookie')
 const { readStorefront } = require('../../../app/Storefront/StorefrontDatabase')
 const { storefrontCurrency, storefrontMoney, storefrontSummary } = require('../../../app/Storefront/StorefrontMoney')
+const { storefrontCartSummary } = require('../../../app/Storefront/StorefrontPricing')
 
 // Signed by the storefront actions as the token, a dot and its HMAC. An
 // unsigned or tampered cookie is no cart, and is never looked up.
 const token = verifyCartCookie(requestContext.cookie('stacks_cart'))
 
 const found = token
-  ? readStorefront('views/checkout/shipping.stx', { cart: null, items: [] }, (db: import('bun:sqlite').Database) => {
+  ? readStorefront('views/checkout/shipping.stx', { cart: null, items: [], summary: null }, (db: import('bun:sqlite').Database) => {
       const row = db.query<CartRow, [string]>(`SELECT * FROM carts WHERE session_token = ?1 AND status = 'active' LIMIT 1`).get(token)
       if (!row)
-        return { cart: null, items: [] }
+        return { cart: null, items: [], summary: null }
 
       // Every amount below is integer minor units of the cart's currency.
       const currency = storefrontCurrency(row.currency)
@@ -55,9 +56,10 @@ const found = token
         }
       })
 
-      return { cart: row, items: lines }
+      // Priced with the store's automatic discounts, exactly as PlaceOrderAction charges.
+      return { cart: row, items: lines, summary: storefrontCartSummary(db, row.id, currency) }
     })
-  : { cart: null, items: [] }
+  : { cart: null, items: [], summary: null }
 
 const cart = found.cart
 const items = found.items
@@ -66,7 +68,9 @@ const items = found.items
 // (app/Actions/Storefront/_shipping.ts), in minor units, so the running
 // totals on every checkout step match what gets charged.
 const subtotal = items.reduce((s: number, i: StorefrontLineItem) => s + i.lineTotal, 0)
-const summary = storefrontSummary(subtotal, storefrontCurrency(cart?.currency))
+const summary = found.summary ?? { ...storefrontSummary(subtotal, storefrontCurrency(cart?.currency)), discountLabel: '', discountTitle: '' }
+const discountLabel = summary.discountLabel
+const discountTitle = summary.discountTitle
 const subtotalLabel = summary.subtotalLabel
 const shippingLabel = summary.shippingLabel
 const totalLabel = summary.totalLabel
@@ -79,11 +83,30 @@ const ship = {
   state: cart?.shipping_state || '',
   zip: cart?.shipping_zip || '',
 }
+
+// After a refused submission: each field's message and what was typed, so
+// the form is drawn as it was left. The saved address on a first visit.
+const shipField = (field: string, saved: string): { value: string, error: string } => ({
+  value: requestContext.old(field, saved),
+  error: requestContext.error(field),
+})
+const shipName = shipField('shipping_name', ship.name)
+const shipAddress = shipField('shipping_address', ship.address)
+const shipCity = shipField('shipping_city', ship.city)
+const shipState = shipField('shipping_state', ship.state)
+const shipZip = shipField('shipping_zip', ship.zip)
+// Why the form this page posted was refused, when it was not about one field
+// ("Your cart is empty."). Shown once (stacksjs/stacks#3311).
+const formError = requestContext.formError()
 </script>
 
 @section('content')
   <div class="mx-auto px-6 py-12 max-w-5xl">
     <CheckoutSteps current="shipping" />
+
+    @if (formError)
+      <p role="alert" class="mb-6 px-4 py-3 font-medium text-red-800 text-sm bg-red-50 border border-red-200 rounded-xl">{{ formError }}</p>
+    @endif
 
     @if (items.length === 0 || !cart?.email)
       <div class="p-12 text-center border border-dashed border-stone-300 rounded-3xl">
@@ -99,28 +122,43 @@ const ship = {
           <form action="/api/checkout/shipping" method="POST" class="mt-8 space-y-5">
             <div>
               <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">Full name</label>
-              <input type="text" name="shipping_name" required autocomplete="name" value="{{ ship.name }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              <input type="text" name="shipping_name" required autocomplete="name" value="{{ shipName.value }}" aria-invalid="{{ shipName.error ? 'true' : 'false' }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              @if (shipName.error)
+                <p role="alert" class="mt-2 text-red-700 text-sm">{{ shipName.error }}</p>
+              @endif
             </div>
 
             <div>
               <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">Street address</label>
-              <input type="text" name="shipping_address" required autocomplete="street-address" value="{{ ship.address }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              <input type="text" name="shipping_address" required autocomplete="street-address" value="{{ shipAddress.value }}" aria-invalid="{{ shipAddress.error ? 'true' : 'false' }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              @if (shipAddress.error)
+                <p role="alert" class="mt-2 text-red-700 text-sm">{{ shipAddress.error }}</p>
+              @endif
             </div>
 
             <div class="grid gap-4 grid-cols-2">
               <div>
                 <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">City</label>
-                <input type="text" name="shipping_city" required autocomplete="address-level2" value="{{ ship.city }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+                <input type="text" name="shipping_city" required autocomplete="address-level2" value="{{ shipCity.value }}" aria-invalid="{{ shipCity.error ? 'true' : 'false' }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+                @if (shipCity.error)
+                  <p role="alert" class="mt-2 text-red-700 text-sm">{{ shipCity.error }}</p>
+                @endif
               </div>
               <div>
                 <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">State</label>
-                <input type="text" name="shipping_state" required autocomplete="address-level1" value="{{ ship.state }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+                <input type="text" name="shipping_state" required autocomplete="address-level1" value="{{ shipState.value }}" aria-invalid="{{ shipState.error ? 'true' : 'false' }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+                @if (shipState.error)
+                  <p role="alert" class="mt-2 text-red-700 text-sm">{{ shipState.error }}</p>
+                @endif
               </div>
             </div>
 
             <div class="max-w-[200px]">
               <label class="font-semibold text-stone-500 text-xs tracking-wider uppercase">ZIP / Postal</label>
-              <input type="text" name="shipping_zip" required autocomplete="postal-code" value="{{ ship.zip }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              <input type="text" name="shipping_zip" required autocomplete="postal-code" value="{{ shipZip.value }}" aria-invalid="{{ shipZip.error ? 'true' : 'false' }}" class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none">
+              @if (shipZip.error)
+                <p role="alert" class="mt-2 text-red-700 text-sm">{{ shipZip.error }}</p>
+              @endif
             </div>
 
             <div class="flex gap-4 items-center justify-between pt-2">
@@ -138,6 +176,8 @@ const ship = {
           shippingLabel="{{ shippingLabel }}"
           totalLabel="{{ totalLabel }}"
           freeShippingNote="{{ freeShippingNote }}"
+          discountLabel="{{ discountLabel }}"
+          discountTitle="{{ discountTitle }}"
           :showItems="true"
         />
       </div>

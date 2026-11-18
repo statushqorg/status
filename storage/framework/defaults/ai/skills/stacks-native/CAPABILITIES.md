@@ -115,7 +115,7 @@ Limitations:
 - SQLite SQL over Hrana HTTP: each statement outside a transaction is one request, and a transaction holds one server stream for its duration.
 - sqld refuses VACUUM, ATTACH, temporary tables and every PRAGMA except the read-only ones and foreign_keys.
 - Embedded replicas are not supported; the connection is always remote.
-- Inside transaction(), write through the tx handle: model writes use their own connection, as on PostgreSQL and MySQL, and wait while the transaction holds the write lock.
+- Model writes inside transaction() have not been measured on libSQL: on SQLite, PostgreSQL and MySQL they are part of the transaction (stacksjs/stacks#3269), but here write through the tx handle until a live sqld test shows the same.
 - Scheduler onOneServer() locks stay per-host, as they are on SQLite.
 - `buddy db:backup` does not dump a Turso database; rely on Turso's own point-in-time restore.
 
@@ -488,6 +488,25 @@ Limitations:
 Retained evidence:
 
 - [storage/framework/core/email/tests/driver-credentials.test.ts](https://github.com/stacksjs/stacks/blob/main/storage/framework/core/email/tests/driver-credentials.test.ts)
+
+## mail: commshq
+
+Status: **partial**. Topology: managed-service.
+
+Implementation: [storage/framework/core/email/src/drivers/commshq.ts](https://github.com/stacksjs/stacks/blob/main/storage/framework/core/email/src/drivers/commshq.ts).
+
+Prerequisites:
+
+- COMMSHQ_KEY, written by `buddy hq:connect commshq`
+
+Limitations:
+
+- CI validates the request against a stand-in for CommsHQ without a live delivery assertion.
+- Attachments are refused: use the smtp driver for a message that carries one.
+
+Retained evidence:
+
+- [storage/framework/core/email/tests/commshq-driver.test.ts](https://github.com/stacksjs/stacks/blob/main/storage/framework/core/email/tests/commshq-driver.test.ts)
 
 ## realtime: websocket
 

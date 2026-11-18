@@ -1,6 +1,7 @@
 import { Action } from '@stacksjs/actions/runtime'
 import { db } from '@stacksjs/database/runtime'
-import { response } from '@stacksjs/router'
+import { refuse } from '@stacksjs/router'
+import { schema } from '@stacksjs/validation/runtime'
 import { readCartCookie } from '../../Storefront/CartCookie'
 
 const CART_COOKIE = 'stacks_cart'
@@ -14,15 +15,27 @@ export default new Action({
   name: 'CheckoutContactAction',
   description: 'Save the shopper email on the active cart.',
   method: 'POST',
+  // A browser form goes on to the next step; a script gets `next` in the body.
+  next: '/checkout/shipping',
+
+  // Declared, so the router answers a wrong address the way the caller asked
+  // to be answered: the checkout page gets the shopper back on the contact
+  // step with the message under the field and what they typed still in it,
+  // and a script gets the 422 body. Checked by hand in `handle`, a form was
+  // answered with a page of JSON (stacksjs/stacks#3309).
+  validations: {
+    email: { rule: schema.string().email().required(), message: 'Enter a valid email address.' },
+  },
 
   async handle(request: any) {
     const email = String(request.get('email') ?? '').trim().toLowerCase()
+    // For a caller that runs the action without the router in front of it.
     if (!email || !email.includes('@'))
-      return response.json({ error: 'A valid email is required.' }, { status: 422 })
+      return refuse('Enter a valid email address.', { field: 'email' })
 
     const token = readCartCookie(request, CART_COOKIE)
     if (!token)
-      return response.json({ error: 'Your cart is empty.' }, { status: 400 })
+      return refuse('Your cart is empty.', { status: 400 })
 
     const cart = await (db as any)
       .selectFrom('carts')
@@ -32,7 +45,7 @@ export default new Action({
       .executeTakeFirst()
 
     if (!cart)
-      return response.json({ error: 'Your cart is empty.' }, { status: 400 })
+      return refuse('Your cart is empty.', { status: 400 })
 
     await (db as any)
       .updateTable('carts')
@@ -40,11 +53,6 @@ export default new Action({
       .where('id', '=', cart.id)
       .execute()
 
-    const wantsHtml = (request.headers?.get?.('accept') || '').includes('text/html')
-    const xhr = request.headers?.get?.('x-requested-with') === 'XMLHttpRequest'
-    if (wantsHtml && !xhr)
-      return response.redirect('/checkout/shipping')
-
-    return response.json({ ok: true, next: '/checkout/shipping' })
+    return { ok: true, next: '/checkout/shipping' }
   },
 })

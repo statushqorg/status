@@ -1,6 +1,6 @@
 ---
 name: stacks-dashboard
-description: Use when building or customizing the Stacks admin dashboard, including dashboard pages, model management views, analytics widgets, commerce dashboards, content management, settings panels, deployment monitoring, job/queue management, or the 432 built-in dashboard components. Covers the dashboard system at storage/framework/defaults/.
+description: Use when building or customizing the Stacks admin dashboard, including dashboard pages, model management views, analytics widgets, commerce dashboards, content management, settings panels, deployment monitoring, job/queue management, or the 445 built-in dashboard components. Covers the dashboard system at storage/framework/defaults/.
 license: MIT
 compatibility: Bun >= 1.3.0, TypeScript
 allowed-tools: Read Edit Write Bash Grep Glob
@@ -8,7 +8,7 @@ allowed-tools: Read Edit Write Bash Grep Glob
 
 # Stacks Dashboard
 
-The Stacks admin dashboard provides a full-featured admin panel with 100+ route views, 432 components, and a multi-section layout.
+The Stacks admin dashboard provides a full-featured admin panel with 100+ route views, 445 components, and a multi-section layout.
 
 ## Key Paths
 - Dashboard components: `storage/framework/defaults/resources/components/Dashboard/`
@@ -635,6 +635,115 @@ this save only ("Clear stored password"), an acknowledgement, and "remember
 me" or the terms on the sign-in forms. `tests/unit/dashboard-switch-contract.test.ts`
 lists every one by file with its reason and fails on any other.
 
+### A dialog asks with the shared controls
+
+A hand-built dialog asks for a value with `Dashboard/UI/Input.stx`,
+`Select.stx` and `Textarea.stx`, as a model's form does, never with a native
+`<input>`, `<select>` or `<textarea>` and a copy of their classes
+(stacksjs/stacks#3310). Every dashboard dialog is converted;
+`tests/unit/dashboard-form-controls.test.ts` fails if one writes its own again,
+and names the one native control a converted dialog keeps (the upload
+dialog's file picker) with its reason.
+
+```html
+<Input v-model:value="name" label="Name" :maxLength="50" :required="true" />
+<Input v-model:value="price" :label="'Price (' + currency() + ')'" type="number" min="0" :step="moneyInputStep(currency())" inputmode="decimal" :required="true" :error="price() !== '' ? priceError() : ''" />
+<Select v-model:value="parentCategoryId" label="Parent category" placeholder="" :options="[{ value: '', label: 'Root category' }, ...parentOptions().map(option => ({ value: option.id, label: option.name }))]" />
+<Textarea v-model:value="notes" label="Notes" :rows="3" :maxLength="500" />
+```
+
+- **Input** takes what the browser holds a value to: `min`, `max`, `step`,
+  `maxLength`, `minLength`, `inputmode`, `:spellcheck="false"`, `list` (the id
+  of a `<datalist>` kept beside it), plus `monospace` for a code, a key or a
+  slug and `class` for what is added to the input itself (`uppercase`). A
+  number input gets digits of one width without being asked.
+- **Select** takes its choices as `:options`, each `{ value, label }`. A choice
+  that may be left empty is one of the options and `placeholder=""`; a choice
+  that must be made keeps a `placeholder`, which is shown and cannot be
+  chosen. It keeps its choice when the options arrive after the value, which a
+  search-then-pick field does every time.
+- **A hint and an error are props.** `hint` is the sentence under the field;
+  `error` takes its place and marks the field. Both can follow what is typed
+  (`:hint`, `:error`).
+- **The input reports text.** There is no `.number` or `.trim`: make a value a
+  number, or trim it, where it is checked and where it is sent. `@input`,
+  `@change` and `@blur` hand the handler the value, not the event.
+- **Do not name a field as the Modal names its own.** A prop bound inside a
+  `Modal`'s slot is first read in the Modal's own script, so a field called
+  `description` opened showing the dialog's description text. The Modal's
+  names are its props: `title`, `description`, `size`, `position`, `role` and
+  the rest. Call the field `descriptionText`, `reviewTitle`. The test reads
+  the Modal's props and fails on a collision.
+- **Give it a box of its own inside a `space-y-*` stack**, as a switch needs.
+- **Several of many is a `Checkbox` per option**, ticked when its id is in the
+  list and adding or removing it as it is ticked. Loop on a wrapper, not on
+  the component (a loop on a component tag loses its item in slot content):
+
+  ```html
+  <span :for="tagOption in tags()" class="contents">
+    <Checkbox size="sm" :label="tagOption.name" :checked="tagIds().includes(tagOption.id)" @update:checked="chooseTag(tagOption.id, $event)" />
+  </span>
+  ```
+- `Input` takes `autofocus` for the field a dialog focuses when it opens and
+  `pattern` as a native input does, and `Textarea` takes `minLength`.
+- **Keys arrive as the event.** `@keydown` on either hands over the
+  `KeyboardEvent`, so the dialog says what Enter, Command+Enter or Escape
+  does and can call `preventDefault()` or `stopPropagation()`; there are no
+  `.enter` or `.meta` modifiers on a component.
+
+### A list page filters with the shared controls
+
+A list page's filter row is `UI/SearchFilter.stx` and `Select`, never a native
+search box or dropdown with copied classes (stacksjs/stacks#3310). The same
+test fails if one comes back, and names the few native ones left (a settings
+form, a console, the search palette) with what they are.
+
+```html
+<div class="sm:col-span-2"><SearchFilter v-model:searchValue="search" placeholder="Search codes or products" ariaLabel="Search coupons" /></div>
+<Select v-model:value="statusFilter" ariaLabel="Coupon status" placeholder="" :options="[{ value: 'all', label: 'All statuses' }, ...statuses().map(status => ({ value: status, label: status }))]" @change="reloadFilters" />
+```
+
+- **SearchFilter is the shared input with a search icon**, so it matches the
+  dropdowns beside it. `ariaLabel` names the list it searches; a `class` on
+  it sizes the whole field (`class="w-56"`).
+- **It reports only what is typed**: `@search` does not fire as the page
+  mounts, nor when the page sets the box itself (`search.set('')` to clear
+  it), so a page that reloads on `@search` loads once.
+- **A dropdown updates its value before `@change`**, so a handler that reloads
+  reads the choice just made.
+- A hidden label becomes `ariaLabel`. A visible word beside the dropdown
+  ("Sort") stays, with the dropdown inside its label at `size="sm"`.
+
+### The project switcher
+
+The top of the sidebar names the project being served and opens a menu of
+every Stacks project on the machine (`resources/components/Dashboard/ProjectSwitcher.stx`,
+placed in the layout's `#header` slot under the window-controls strip).
+
+A dashboard process serves exactly one project: its config, database
+connection, routes and model globals are bound when it starts. Switching
+therefore goes to the other project's dashboard, at that project's own
+address, and never re-points the running one. Do not try to make a dashboard
+page read another project's data.
+
+- The button is rendered on the server with the project's name
+  (`dashboardProjectIdentity()` in `resources/functions/dashboard/project-switcher.ts`),
+  so the sidebar does not shift on hydration. The list is fetched in the
+  browser when the menu opens, because the layout is rendered once and kept.
+- The client lives in `functions/projects.ts` and talks to the dev dashboard
+  server's `/__buddy/` routes. Picking a project whose dashboard is up goes
+  straight there; otherwise the server asks the background daemon to start it
+  and answers with the address once it is ready.
+- It is drawn only on the developer's machine. The dev dashboard server sets
+  `STACKS_DASHBOARD_PROJECTS=1`; a deployed dashboard has one project and no
+  switcher.
+- Each project has its own origin (a port reserved for it, the same every
+  time), so appearance settings, the sign-in token and kept state are per
+  project by construction.
+- The sidebar's header and its scroll area are stacked at the same level, so
+  the layout lifts the header (`:has([data-project-switcher][data-open="true"])`)
+  while the menu is open. A new header control with a menu needs the same.
+
 ### Sidebar-aware overlays
 
 The desktop sidebar is fixed and publishes its current width through
@@ -1240,12 +1349,45 @@ pages use (`POST`, `PATCH` and `DELETE /api/dashboard/models/{slug}`), so
 casts, observers, validation and soft deletes apply and nothing new is
 opened. The panels are read again afterwards.
 
-There is no form that saves a record and its rows together, all or nothing.
-A write made through a model takes no part in `transaction()`
-(stacksjs/stacks#3269), so a combined save could leave the record changed
-and a row not. Until the model layer joins a transaction, an operation that
-must be atomic across models belongs in an action that writes through the
-transaction's own handle.
+Here each row is saved on its own, and stays saved when the next is
+refused. To change a record and its rows together, use its edit page.
+
+### The edit page saves a record and its rows together
+
+A record's edit page (`ModelRecordEdit.stx`) shows the same panels under its
+fields, wherever the related model lets the dashboard write its rows
+(stacksjs/stacks#3315). There, adding, editing or deleting a row does not
+write it: the row is kept as a draft (`functions/dashboard-model-drafts.ts`),
+marked New, Edited or Will be deleted, and "Save changes" sends the record's
+changed fields and every panel's drafts in one request:
+
+```
+PATCH /api/dashboard/models/{slug}/{id}/save
+{ fields: { status: 'paid' },
+  related: [{ slug: 'order-line',
+              create: [{ key: 'new-1', fields: { sku: 'A-1' } }],
+              update: [{ id: 5, fields: { quantity: 2 } }],
+              destroy: [7] }] }
+```
+
+`ModelSaveAction` runs every write inside one `transaction()`, through the
+same steps the single-row endpoints use (`model-row-writes.ts`), so each row
+gets every rule a single save has. The first refusal rolls all of it back,
+and the answer says where it was, in `at`:
+
+- `{ operation: 'update' }` for the record's own fields;
+- `{ operation, panel, row }` for one row: its id, or the key a new row was
+  sent with.
+
+The page then says "Nothing was saved." It shows the record's messages under
+its fields, and a row's message on that row and in its form.
+
+It allows no more than the record's page does. A panel must be one of the
+record's `hasMany`/`hasOne` that allows that write, decided by `relatedPanel`
+as the page decides it. A row edited or deleted must point at this record,
+and a new one is pointed at it: the link back is never taken from the form,
+so no row moves to another record from here. Bulk actions on a list stay one
+record at a time (below).
 
 The link between the two models is the foreign key the declaration names,
 else the related model's own `belongsTo`, else the conventional
@@ -1395,9 +1537,8 @@ applies to each record (`when`, `authorize`, `validations`, the self-delete
 guard, anonymizing a user others refer to), and the page shows how far it
 has got.
 
-It is not all or nothing, and does not claim to be: a write through a model
-takes no part in a transaction (stacksjs/stacks#3269). The toast says what
-happened: how many were done and, for the rest, which and why ("Order 8:
+It is not all or nothing, and does not claim to be: one record refused does
+not take back the others. The toast says what happened: how many were done and, for the rest, which and why ("Order 8:
 Already shipped."). A refusal about the record (any 4xx) goes on to the
 next. A failure that is not (a 5xx, no answer at all) stops the run and says
 where, so a broken backend is not pressed once per row.

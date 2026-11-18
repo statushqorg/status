@@ -1,7 +1,7 @@
 import { Action } from '@stacksjs/actions/runtime'
 import { config } from '@stacksjs/config'
 import { db, sqlDateTime } from '@stacksjs/database/runtime'
-import { response } from '@stacksjs/router'
+import { refuse } from '@stacksjs/router'
 import { randomUUIDv7 } from 'bun'
 import { readCartCookie, writeCartCookie } from '../../Storefront/CartCookie'
 import { storefrontCurrency } from '../../Storefront/StorefrontMoney'
@@ -22,21 +22,26 @@ const COOKIE_OPTS = {
  *   on first add so empty visitors don't litter the table.
  * - Idempotent per product: if the same slug is already in the cart we
  *   bump the existing line's quantity instead of inserting a duplicate.
- * - Form vs XHR: a normal HTML form post redirects to /cart so the
- *   back button works; XHR callers (the cart drawer) get JSON and
- *   stay on the current page.
+ * - Form vs XHR: a normal HTML form post goes on to the cart, or to the
+ *   page its `redirect` field names when that is a page of this shop
+ *   (`next` below never follows another site); XHR callers (the cart
+ *   drawer) get JSON and stay on the current page.
  */
 export default new Action({
   name: 'AddToCartAction',
   description: 'Add a product to the anonymous cart, keyed by cookie session.',
   method: 'POST',
+  // The field was followed wherever it pointed, so a link could send a
+  // shopper to any site after adding to the cart. The router follows only a
+  // path of this application, and goes back to the form's page otherwise.
+  next: (_result: unknown, request: any) => String(request.get('redirect') ?? '') || '/cart',
 
   async handle(request: any) {
     const slug = String(request.get('slug') ?? '').trim()
     const quantity = Math.max(1, Math.min(99, Number(request.get('quantity') ?? 1) || 1))
 
     if (!slug)
-      return response.json({ error: 'A product slug is required.' }, { status: 422 })
+      return refuse('Choose a product to add.', { field: 'slug' })
 
     const product = await (db as any)
       .selectFrom('products')
@@ -47,7 +52,7 @@ export default new Action({
       .executeTakeFirst()
 
     if (!product)
-      return response.json({ error: `Product "${slug}" not found` }, { status: 404 })
+      return refuse('That product is no longer available.', { status: 404 })
 
     // readCartCookie verifies the HMAC; tampered cookies return null
     // and the action falls through to the "create new cart" branch as
@@ -129,15 +134,7 @@ export default new Action({
 
     await recomputeCartTotals(cart.id)
 
-    // Browser form post → redirect; XHR (cart drawer) → JSON.
-    const wantsHtml = (request.headers?.get?.('accept') || '').includes('text/html')
-    const xhr = request.headers?.get?.('x-requested-with') === 'XMLHttpRequest'
-    const redirectTarget = String(request.get('redirect') ?? '/cart')
-
-    if (wantsHtml && !xhr)
-      return response.redirect(redirectTarget)
-
-    return response.json({ ok: true, cart_id: cart.id })
+    return { ok: true, cart_id: cart.id }
   },
 })
 

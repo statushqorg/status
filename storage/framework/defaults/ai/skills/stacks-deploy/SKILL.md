@@ -219,6 +219,8 @@ session in a deployed app starts from, instead of asking for a host and a path.
 It needs `@stacksjs/ts-cloud` 0.16.126 or newer and says so on an older one.
 
 ## Gotchas
+
+- **The web firewall comes from `security.waf`.** Box deploys run zig-waf in detection mode by default; `config/security.ts` `waf` tunes it (see `stacks-security`), and `infrastructure.compute.waf` in `config/cloud.ts` overrides it field by field. `compute.waf: false` turns it off.
 - The API reachability guard recognises `serve:api`, source `serve/api.js`
   entrypoints and compiled `storage/framework/runtime/production/api.js`
   bundles, including wrapper commands and custom site names. Page sites still
@@ -273,3 +275,14 @@ For an intentional hostname handoff, the old owner removes its site and runs
 `buddy deploy --prod --retire-domains old.example.com`. This operator input retires
 omitted names without committing tenant names to the host's config. It cannot
 retire a domain the configuration still declares.
+
+## ReviewOS application pipeline
+
+Declare owned runner labels, scoped secret names and application argv hooks in
+`config/workflows.ts` using `WorkflowConfig`. `buddy workflow:setup` generates
+the normal checks and ordered deployment, and `--check` verifies committed
+workflow freshness. The deployment defaults to `buddy deploy --prod --yes`.
+Declare `after-deploy` to verify the actual application before native acceptance.
+Production and iOS signing secrets belong to their protected environments;
+check jobs receive only their declared check secrets. Do not copy per-app
+provider polling scripts or bypass the acceptance graph when switching hosts.

@@ -23,16 +23,17 @@ interface StorefrontLineItem { lineTotal: number }
 const { verifyCartCookie } = require('../../../app/Storefront/CartCookie')
 const { readStorefront } = require('../../../app/Storefront/StorefrontDatabase')
 const { storefrontCurrency, storefrontMoney, storefrontSummary } = require('../../../app/Storefront/StorefrontMoney')
+const { storefrontCartSummary } = require('../../../app/Storefront/StorefrontPricing')
 
 // Signed by the storefront actions as the token, a dot and its HMAC. An
 // unsigned or tampered cookie is no cart, and is never looked up.
 const token = verifyCartCookie(requestContext.cookie('stacks_cart'))
 
 const found = token
-  ? readStorefront('views/checkout/contact.stx', { cart: null, items: [] }, (db: import('bun:sqlite').Database) => {
+  ? readStorefront('views/checkout/contact.stx', { cart: null, items: [], summary: null }, (db: import('bun:sqlite').Database) => {
       const row = db.query<CartRow, [string]>(`SELECT * FROM carts WHERE session_token = ?1 AND status = 'active' LIMIT 1`).get(token)
       if (!row)
-        return { cart: null, items: [] }
+        return { cart: null, items: [], summary: null }
 
       // Every amount below is integer minor units of the cart's currency.
       const currency = storefrontCurrency(row.currency)
@@ -50,9 +51,10 @@ const found = token
         }
       })
 
-      return { cart: row, items: lines }
+      // Priced with the store's automatic discounts, exactly as PlaceOrderAction charges.
+      return { cart: row, items: lines, summary: storefrontCartSummary(db, row.id, currency) }
     })
-  : { cart: null, items: [] }
+  : { cart: null, items: [], summary: null }
 
 const cart = found.cart
 const items = found.items
@@ -61,18 +63,30 @@ const items = found.items
 // (app/Actions/Storefront/_shipping.ts), in minor units, so the running
 // totals on every checkout step match what gets charged.
 const subtotal = items.reduce((s: number, i: StorefrontLineItem) => s + i.lineTotal, 0)
-const summary = storefrontSummary(subtotal, storefrontCurrency(cart?.currency))
+const summary = found.summary ?? { ...storefrontSummary(subtotal, storefrontCurrency(cart?.currency)), discountLabel: '', discountTitle: '' }
+const discountLabel = summary.discountLabel
+const discountTitle = summary.discountTitle
 const subtotalLabel = summary.subtotalLabel
 const shippingLabel = summary.shippingLabel
 const totalLabel = summary.totalLabel
 const freeShippingNote = summary.freeShippingNote
 
 const prefilledEmail = cart?.email || ''
+// After a refused submission: why, and what was typed. Empty on a first visit.
+const emailError = requestContext.error('email')
+const emailValue = requestContext.old('email', prefilledEmail)
+// Why the form this page posted was refused, when it was not about one field
+// ("Your cart is empty."). Shown once (stacksjs/stacks#3311).
+const formError = requestContext.formError()
 </script>
 
 @section('content')
   <div class="mx-auto px-6 py-12 max-w-5xl">
     <CheckoutSteps current="contact" />
+
+    @if (formError)
+      <p role="alert" class="mb-6 px-4 py-3 font-medium text-red-800 text-sm bg-red-50 border border-red-200 rounded-xl">{{ formError }}</p>
+    @endif
 
     @if (items.length === 0)
       <div class="p-12 text-center border border-dashed border-stone-300 rounded-3xl">
@@ -93,9 +107,13 @@ const prefilledEmail = cart?.email || ''
                 name="email"
                 required
                 autocomplete="email"
-                value="{{ prefilledEmail }}"
+                value="{{ emailValue }}"
+                aria-invalid="{{ emailError ? 'true' : 'false' }}"
                 class="mt-1 px-4 py-3 w-full text-sm border border-stone-300 rounded-2xl focus:border-stone-900 focus:outline-none"
               >
+              @if (emailError)
+                <p role="alert" class="mt-2 text-red-700 text-sm">{{ emailError }}</p>
+              @endif
             </div>
             <div class="flex gap-4 items-center justify-between">
               <a href="/cart" class="text-sm text-stone-500 hover:text-stone-900">← Back to cart</a>
@@ -112,6 +130,8 @@ const prefilledEmail = cart?.email || ''
           shippingLabel="{{ shippingLabel }}"
           totalLabel="{{ totalLabel }}"
           freeShippingNote="{{ freeShippingNote }}"
+          discountLabel="{{ discountLabel }}"
+          discountTitle="{{ discountTitle }}"
           :showItems="true"
         />
       </div>
