@@ -20,7 +20,8 @@ export interface EnvironmentFileIssue {
 }
 
 export interface EnvironmentFileState {
-  path: '.env'
+  /** The file's name in the project directory: `.env`, `.env.development`, ... */
+  path: string
   content: string
   revision: string
   exists: boolean
@@ -33,16 +34,31 @@ export interface EnvironmentFileState {
 }
 
 export interface EnvironmentFileOptions {
+  /** The file's name in the project directory. Default `.env`. */
+  name?: string
+  /** Where it is. Default: `name` in the project root. */
   envPath?: string
+  /** Where the content it replaced is kept. Default: {@link environmentBackupPath}. */
   backupPath?: string
+}
+
+/**
+ * Where the dashboard keeps the content an env file had before its latest
+ * save: one backup per file, so saving `.env.development` does not replace
+ * the copy of `.env`. `.env` keeps the location it always had.
+ */
+export function environmentBackupPath(file: string): string {
+  return frameworkRuntimePath(file === '.env' ? 'dashboard/environment.backup' : `dashboard/environment${file.slice('.env'.length)}.backup`)
 }
 
 export type EnvironmentEntryUpdates = Record<string, string>
 
-function resolvedPaths(options: EnvironmentFileOptions = {}): { envPath: string, backupPath: string } {
+function resolvedPaths(options: EnvironmentFileOptions = {}): { name: string, envPath: string, backupPath: string } {
+  const name = options.name ?? '.env'
   return {
-    envPath: options.envPath ?? projectPath('.env'),
-    backupPath: options.backupPath ?? frameworkRuntimePath('dashboard/environment.backup'),
+    name,
+    envPath: options.envPath ?? projectPath(name),
+    backupPath: options.backupPath ?? environmentBackupPath(name),
   }
 }
 
@@ -101,7 +117,11 @@ function serializeEnvironmentValue(value: string): string {
     .replace(/\n/g, '\\n')}"`
 }
 
-async function atomicWrite(path: string, content: string): Promise<void> {
+/**
+ * Write a file the way an env file has to be written: whole or not at all
+ * (a same-directory rename), and readable by its owner only.
+ */
+export async function atomicWrite(path: string, content: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
   const temporaryPath = join(
     dirname(path),
@@ -232,7 +252,7 @@ export async function readEnvironmentFile(options: EnvironmentFileOptions = {}):
   ])
 
   return {
-    path: '.env',
+    path: paths.name,
     content: environment.content,
     revision: revisionFor(environment.content),
     exists: environment.exists,

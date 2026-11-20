@@ -585,6 +585,8 @@ export const actions = {
   'Actions/Dashboard/Infrastructure/ServerShowAction': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/ServerShowAction.ts',
   'Actions/Dashboard/Infrastructure/dns-overview': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/dns-overview.ts',
   'Actions/Dashboard/Infrastructure/environment-file': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/environment-file.ts',
+  'Actions/Dashboard/Infrastructure/environment-layers': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/environment-layers.ts',
+  'Actions/Dashboard/Infrastructure/environment-page': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/environment-page.ts',
   'Actions/Dashboard/Infrastructure/insights-dashboard': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/insights-dashboard.ts',
   'Actions/Dashboard/Infrastructure/log-dashboard': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/log-dashboard.ts',
   'Actions/Dashboard/Infrastructure/log-provider': '@stacksjs/defaults/app/Actions/Dashboard/Infrastructure/log-provider.ts',
