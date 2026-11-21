@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@stacksjs/logging": "^0.75.635",
-    "@stacksjs/queue": "^0.75.635",
+    "@stacksjs/queue": "^0.75.639",
     "@stacksjs/router": "^0.75.635",
     "@stacksjs/storage": "^0.75.635",
     "@stacksjs/utils": "^0.75.635"
