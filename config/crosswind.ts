@@ -3061,10 +3061,11 @@ html:has(meta[name="stx-layout-group"][content="default"]) {
  * per-theme rule. Sized in em, so the 2rem date-picker select gets a smaller
  * caret, closer in, than a 42px form field.
  *
- * These are the declarations ts-css ships as SELECT_CARET for its forms
- * preflight (stacksjs/ts-css#45, a3133c0), which is merged but not in a
- * release yet (npm is on 0.3.27). Delete this once the app is on a ts-css that
- * carries it.
+ * These are the declarations ts-css 0.3.28 ships as `form-select`
+ * (stacksjs/ts-css#45). That one is opt-in per element and brings a base input
+ * look with it, and a `background` or `padding` shorthand in a component rule
+ * after it erases the caret. This rule needs no class in the markup, outranks
+ * those shorthands, and reaches a select added later, so it stays.
  *
  * padding-right is !important because this lands in the preflight layer and an
  * unlayered px-* utility on the element would otherwise win and run a long
