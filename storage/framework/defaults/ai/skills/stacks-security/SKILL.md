@@ -197,6 +197,21 @@ import { eraseSubject, exportSubjectData, pruneRetainedData } from '@stacksjs/or
   `compute.waf` in `config/cloud.ts` still wins field by field and the deploy warns about it.
   Nothing ever switches to `blocking` by itself: read the detection log first. On AWS deploys the
   zig-waf-only options are reported, not applied.
+- An app not behind rpx (`buddy dev`, serverless, a host of your own) can run the same engine in
+  process: add the `waf` middleware to a route or group (`.middleware('waf')`). It is
+  `@stacksjs/waf`, zig-waf's C ABI through `bun:ffi`, and reads the same `security.waf` plus two
+  settings of its own: `rules`, the SecLang files to load in order (usually an OWASP CRS checkout:
+  `crs-setup.conf` then `rules/*.conf`; zig-waf ships none, so it refuses to start without them),
+  and `library`, the path to zig-waf's shared library (or `ZIG_WAF_LIBRARY`; it is in `lib/` of a
+  zig-waf release or `zig-out/lib/` after `zig build`). Detection mode logs a match and lets the
+  request through; blocking refuses it with the rule's status. `dataDir` (default: the last rule
+  file's directory, a CRS checkout's `rules/`) is where `.data` files resolve, and `allowedMethods`
+  defaults to CRS's GET HEAD POST OPTIONS plus PUT, PATCH and DELETE, which CRS alone would refuse.
+  At most `maxBodyBytes` of a body is read; blocking refuses a larger one with 413. In blocking mode a WAF that cannot
+  start answers 503 instead of letting everything through; in detection mode it logs and passes. A
+  request built in-process has no socket and is not inspected. With zig-utils/zig-waf#84 a two-rule set
+  costs about 15 us per request and full CRS about 10 ms for a GET and more for a form post, most of
+  it zig-waf recompiling operators per request (zig-utils/zig-waf#83); see `core/waf/README.md`.
 - The firewall rate limit is per-minute per-IP at the WAF (`firewall.rateLimitPerMinute`)
 - Application rate limits (`.rateLimit()`, `rateLimit()`, the login lockout) share the Redis cache when it is configured and count per process otherwise; see `stacks-router`
 

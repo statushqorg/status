@@ -32,4 +32,5 @@ export const middleware = {
   'Site': '@stacksjs/defaults/app/Middleware/Site.ts',
   'Team': '@stacksjs/defaults/app/Middleware/Team.ts',
   'Throttle': '@stacksjs/defaults/app/Middleware/Throttle.ts',
+  'Waf': '@stacksjs/defaults/app/Middleware/Waf.ts',
 } as const
