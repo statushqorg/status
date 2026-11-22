@@ -3051,6 +3051,43 @@ html:has(meta[name="stx-layout-group"][content="default"]) {
 }`
 }
 
+/*
+ * One caret for every single-line <select>, drawn in the text's own colour.
+ *
+ * The browser's arrow sat about 3px from the rounded border whatever the
+ * padding, because Chrome does not apply padding-right to it. Two gradients
+ * paint the caret instead: unlike an SVG in a data URI they read currentColor,
+ * so it follows light and dark (prefers-color-scheme or data-theme) with no
+ * per-theme rule. Sized in em, so the 2rem date-picker select gets a smaller
+ * caret, closer in, than a 42px form field.
+ *
+ * These are the declarations ts-css 0.3.28 ships as `form-select`
+ * (stacksjs/ts-css#45). That one is opt-in per element and brings a base input
+ * look with it, and a `background` or `padding` shorthand in a component rule
+ * after it erases the caret. This rule needs no class in the markup, outranks
+ * those shorthands, and reaches a select added later, so it stays.
+ *
+ * padding-right is !important because this lands in the preflight layer and an
+ * unlayered px-* utility on the element would otherwise win and run a long
+ * label under the caret. The :not()s keep list boxes, which draw no arrow,
+ * out of it; they also put this above a bare class like .select or .drp-sel.
+ */
+// Scoped to any layout group, like every entry after the palette (see the
+// design-tokens test): every page here has one, so this reaches all of them.
+const SELECT_CARET_CSS = `
+html:has(meta[name="stx-layout-group"]) select:not([multiple]):not([size]) {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 1.3125em) 50%, calc(100% - 1em) 50%;
+  background-size: 0.3125em 0.3125em;
+  background-repeat: no-repeat;
+  padding-right: 2.25em !important;
+  print-color-adjust: exact;
+}
+`
+
 export default {
   content: [
     './resources/views/**/*.{stx,html}',
@@ -3072,6 +3109,8 @@ export default {
     { getCSS: authCss },
     { getCSS: statusPageCss },
     { getCSS: dashboardPagesCss },
+    // Last, so it is the final word on a <select>'s arrow (see SELECT_CARET_CSS).
+    { getCSS: () => SELECT_CARET_CSS },
   ],
   /*
    * One column template per table, named for the table (stx-standards 11.5).
