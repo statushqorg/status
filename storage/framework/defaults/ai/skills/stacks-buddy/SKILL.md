@@ -57,7 +57,7 @@ config.
 
 Machine-level commands are never handed to a project and run from any
 directory: `new`, `create`, `projects`, `projects:*`, `cd`, `daemon`,
-`daemon:*`, `dashboard`.
+`daemon:*`, `dashboard`, `tray`.
 
 ```bash
 buddy projects                 # the projects on this machine, most recently used first
@@ -72,10 +72,11 @@ buddy cd <name>                # print a project's path (--eval for a shell func
 buddy dashboard [project]      # open a project's dashboard, started in the background if needed
   --no-open                    # print the address without opening a browser
   --stop                       # stop that project's background dashboard
+buddy tray                     # native macOS menu-bar app (requires Craft)
 
 buddy daemon                   # is buddy running in the background, and what is it running
-buddy daemon:start             # start it (nothing requires this; it starts on demand)
-buddy daemon:stop              # stop it and the dashboards it started
+buddy daemon:start             # start it to watch opted-in projects
+buddy daemon:stop              # stop generation and its dashboards
 buddy daemon:restart
 buddy daemon:logs              # --lines <count>
 ```
@@ -90,12 +91,32 @@ projects. `findStacksProjects()` in `@stacksjs/utils` is the disk scan behind
 `projects:scan` and nothing else should need it.
 
 The daemon (`core/actions/src/daemon/`) starts a project's dashboard through
-that project's own `./buddy dev:dashboard`, on a port reserved for that project
-(3900 upwards, the same one every time), with no native window and an idle
-limit. It listens on a unix socket in `~/.stacks/buddy/`, loads no project
-code, polls nothing, and exits once it has no dashboards left. Reach it through
+that project's own `./buddy dev:dashboard`, on a port reserved for that project.
+It also watches registered projects with `generation.enabled: true` in
+`config/buddy.json`, debounces native source events, and starts one project-local
+`generate:project` worker at a time for barrels, migrations, and declarations.
+The policy supports individual `imports`, `migrations`, and `types` switches
+and `generation.autoCommit` defaults to false. The daemon loads no project
+code and exits when it has no dashboards or active generation watches. Reach it through
 `openProjectDashboard()` / `daemonStatus()` in `@stacksjs/actions/daemon/client`,
 which start it when it is not running.
+
+Set `generation.commitApproval: true` to require explicit approval and receive a
+macOS notification when generated files are ready. `buddy generate:review`
+shows the proposed diff and asks before making a local commit. This setting
+takes precedence over `generation.autoCommit`.
+`buddy daemon:status` lists pending reviews even when a desktop alert is
+missed. Approval-enabled generation protects local edits to its artifacts
+and retains successful outputs when another generator fails.
+
+`buddy tray` uses a Craft popover and an stx view for machine-wide generation
+status, project dashboards, and pending reviews. The tray connects to the
+existing daemon and opens the project’s `generate:review` in Terminal. It
+uses a private loopback server and quitting it leaves the daemon running.
+The Overview pane samples CPU and memory while visible. The Pantry pane
+uses `ts-pantry/desktop` for installed inventory and package jobs, and
+`ts-pantry/catalog` for local catalog search. Pair with the user’s existing
+Pantry Desktop service and keep the connection credential in Keychain.
 
 ## Architecture
 
@@ -334,6 +355,10 @@ buddy make:job [name]         # create background job
   -c/--class                  # class-based job
   -t/--tries [n]              # retry attempts (default: 3)
   -b/--backoff [n]            # backoff delay in seconds (default: 3)
+buddy make:auth               # copy the sign-in pages, components and actions into the app
+  --api                       # actions only, no pages or components
+  -f/--force                  # overwrite the copies the app already has
+  --dry-run                   # list the files, copy nothing
 buddy make:lang [name]        # create i18n language file
 buddy make:migration [name]   # create database migration
 buddy make:model [name]       # create data model
