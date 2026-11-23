@@ -19,7 +19,7 @@
  * its 1,270-char block live, and a fresh `<div class="cloud-form">` appended
  * to the notifications page still computed `display: grid; gap: 17.6px`.
  *
- * Every one of those blocks is a `preflights` entry in config/crosswind.ts
+ * Every one of those blocks is a `preflights` entry in config/css.ts
  * now (rule 3 / §11.1), which is the arrangement that ends the question: the
  * generated sheet is the one tag the router treats as durable, so nothing
  * outlives anything. The collisions the old note named did not vanish with
@@ -31,7 +31,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import theme from '../../config/crosswind'
+import theme from '../../config/css'
 
 const ROOT = join(import.meta.dir, '../..')
 const VIEWS = join(ROOT, 'resources/views')

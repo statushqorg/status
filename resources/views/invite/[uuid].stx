@@ -87,10 +87,10 @@ useHead({
     body rule never sets, so nothing would have stopped them applying to the
     whole app. In one shared sheet a bare `main` is that same bug one element
     down: it grid-centred every dashboard page's <main> until this class went
-    on. The rules are `main.invite-shell` in config/crosswind.ts. --}}
+    on. The rules are `main.invite-shell` in config/css.ts. --}}
 <main class="invite-shell">
 {{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
-     config/crosswind.ts.
+     config/css.ts.
 
      This page is a fragment with no @include, so it never shipped the
      dashboard sheet; being in the `default` layout group, it gets it now.

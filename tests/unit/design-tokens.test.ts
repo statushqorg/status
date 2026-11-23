@@ -4,7 +4,7 @@
  * They were declared in FOUR `<style>` blocks -- partials/app-head.stx,
  * partials/marketing-head.stx, layouts/auth.stx and invite/[uuid].stx -- and
  * app-head's own comment asked that they "stay in sync if the brand changes".
- * stx-standards rule 3 / §11.2 puts a custom property in config/crosswind.ts
+ * stx-standards rule 3 / §11.2 puts a custom property in config/css.ts
  * and nowhere else, which is also the only arrangement where that request
  * cannot be forgotten.
  *
@@ -23,7 +23,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import theme from '../../config/crosswind'
+import theme from '../../config/css'
 // The installed STX package does not export these subpaths by bare specifier.
 import { loadCssEngine } from '../../node_modules/@stacksjs/stx/dist/dev-server/ts-css.js'
 import { mergeCssConfig } from '../../node_modules/@stacksjs/stx/dist/ts-css-config.js'

@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import theme from '../../config/crosswind'
+import theme from '../../config/css'
 
 const PARTIALS = join(import.meta.dir, '../../resources/views/partials')
 const nav = readFileSync(join(PARTIALS, 'marketing-nav.stx'), 'utf8')
 
 /*
  * The marketing stylesheet was partials/marketing-head.stx's <style> block;
- * it is config/crosswind.ts's `marketingCss()` preflight now (rule 3 /
+ * it is config/css.ts's `marketingCss()` preflight now (rule 3 /
  * §11.1), scoped to the `home` and `marketing` layout groups. Read from
  * there, so these assertions follow the rules rather than their old address.
  */

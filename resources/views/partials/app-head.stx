@@ -6,7 +6,7 @@
   dark with the persisted toggle) so signing in never feels like
   switching products. The tokens used to be copied here from index.stx /
   partials/marketing-head.stx, with a note asking that they stay in sync;
-  they are declared once in config/crosswind.ts now, so there is nothing
+  they are declared once in config/css.ts now, so there is nothing
   left to keep in sync.
 
   Corner-radius rule (one system, documented): containers 16px
@@ -23,7 +23,7 @@
      fragments, so the document shell merges them into the generated
      head. --}}
 {{-- No <style> block: rule 3 / §11.1. This partial's 157 rules are
-     config/crosswind.ts's `appCss()` preflight, wrapped once in the layout
+     config/css.ts's `appCss()` preflight, wrapped once in the layout
      group this app's pages are served under -- `default` -- because a
      preflight reaches every page and forty class names in this app mean
      different things on different surfaces. The design tokens went to

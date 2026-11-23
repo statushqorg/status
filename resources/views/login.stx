@@ -70,7 +70,7 @@ const route = useRoute()
 //
 // ## Why the forms toggle a class rather than the hidden attribute
 //
-// config/crosswind.ts declares `.hide { display: none !important }`, and the
+// config/css.ts declares `.hide { display: none !important }`, and the
 // !important is the point: a display utility on the element cannot outrank it.
 // The plain `hidden` attribute can be outranked, and is -- that exact mistake
 // was shipped in reportshq, where a form with a display class stayed on screen

@@ -94,7 +94,7 @@ useHead({ title: 'Notification settings \u00b7 StatusHQ', meta: [{ name: 'robots
 
 <main class="app-shell">
 {{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
-     config/crosswind.ts. Its `.chan-ico` pair was byte-identical to
+     config/css.ts. Its `.chan-ico` pair was byte-identical to
      monitors/[id].stx's and is declared once there. --}}
   @if (!AUTH_USER)
     <EmptyState

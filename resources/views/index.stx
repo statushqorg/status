@@ -390,7 +390,7 @@ if (!statusPageForHost && faqs && faqs.length)
          script's useSeoMeta + useHead calls (stx-standards 04). --}}
     @include('../partials/marketing-head.stx')
     {{-- No <style> block: rule 3 / §11.1. These 99 rules are
-         config/crosswind.ts's `homeCss()` preflight, scoped to the `home`
+         config/css.ts's `homeCss()` preflight, scoped to the `home`
          layout group. Nineteen of their selectors are also declared by
          `marketingCss()`, and this file's old comment asked that they stay
          AFTER the include for that reason -- they still do, because that

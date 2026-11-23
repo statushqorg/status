@@ -21,7 +21,7 @@
      via the document shell, so pages including this partial must not
      re-add them. --}}
 {{-- No <style> block: rule 3 / §11.1. This partial's 219 rules are
-     config/crosswind.ts's `marketingCss()` preflight, wrapped once in the two
+     config/css.ts's `marketingCss()` preflight, wrapped once in the two
      layout groups that include it -- `home` for index.stx, which includes this
      directly, and `marketing` for layouts/marketing.stx, which every feature,
      comparison and docs page extends. The scope matters: a preflight reaches

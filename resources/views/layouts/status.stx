@@ -16,7 +16,7 @@
          no-JS visitor on a 'system' page still sees the light default, the
          same acceptable edge as before. --}}
     {{-- No <style> block: rule 3 / §11.1. These 23 rules are
-         config/crosswind.ts's `statusPageCss()` preflight, scoped to the
+         config/css.ts's `statusPageCss()` preflight, scoped to the
          `status` layout group, and every declaration in them is marked
          !important there. That is not decoration: they repaint crosswind
          UTILITIES when the theme is dark, and they used to win on specificity

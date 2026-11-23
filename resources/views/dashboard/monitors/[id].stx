@@ -693,7 +693,7 @@ const HEARTBEAT_HAS_FAILED = !!__heartbeat?.hasFailed
 
 <main class="app-shell">
 {{-- No <style> block: rule 3 / §11.1. These rules are in
-     config/crosswind.ts's `dashboardPagesCss()` preflight. `.chan-ico`,
+     config/css.ts's `dashboardPagesCss()` preflight. `.chan-ico`,
      `.mon-chart` and `.mon-legend` are declared once there rather than in
      each of the pages that had a copy. --}}
   @if (!AUTH_USER)

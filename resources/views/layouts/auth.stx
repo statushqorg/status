@@ -31,7 +31,7 @@
          Costs /register one 5KB file it does not use. --}}
     <script src="/assets/scripts/webauthn-client.js"></script>
     {{-- No <style> block: rule 3 / §11.1. These 54 rules are
-         config/crosswind.ts's `authCss()` preflight, scoped to the `auth`
+         config/css.ts's `authCss()` preflight, scoped to the `auth`
          layout group -- it has to be scoped, because this chrome and
          invite/[uuid].stx and the dashboard sheet all declare `.button`,
          `.brand`, `.field`, `.error` and `.sub`, with different values. The

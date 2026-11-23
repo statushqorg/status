@@ -112,7 +112,7 @@ via the `/api/passkeys/*` URL strings.
   `resources/functions/` keeps a README — the framework scans it
   unconditionally. `site-mode.js` is live (index.stx) and stays.
 - Toolchain sees the config now: tsconfig `include` gains `.stx/*.d.ts`,
-  `config/ui.ts`, `config/crosswind.ts` (so `satisfies UiOptions` is
+  `config/ui.ts`, `config/css.ts` (so `satisfies UiOptions` is
   finally evaluated) and drops the phantom `app/Services|Support` globs.
   Pre-commit lint glob gains `stx`. Full `config/**` and `app/**`
   inclusion is Phase 7 (measured: 11 upstream-type errors in stock config

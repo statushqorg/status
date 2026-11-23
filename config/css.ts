@@ -2420,7 +2420,7 @@ function authCss(): string {
 html:has(meta[name="stx-layout-group"][content="auth"]) {
   /* The design tokens were here, and in partials/app-head.stx and
      partials/marketing-head.stx as well -- three copies of one palette.
-     They are one \`paletteCss()\` preflight in config/crosswind.ts now:
+     They are one \`paletteCss()\` preflight in config/css.ts now:
      rule 3 / §11.2 puts a custom property in that file and nowhere else.
      This copy was the one that had drifted -- light --danger-soft at 0.08
      where the other two said 0.09 -- and it was missing --success,
@@ -2976,7 +2976,7 @@ html:has(meta[name="stx-layout-group"][content="default"]) {
 
   /* The design tokens were here -- a fourth copy of the one palette, after
      partials/app-head.stx, partials/marketing-head.stx and layouts/auth.stx.
-     They are one \`paletteCss()\` preflight in config/crosswind.ts now:
+     They are one \`paletteCss()\` preflight in config/css.ts now:
      rule 3 / §11.2 puts a custom property in that file and nowhere else.
      This copy carried auth's drift -- light --danger-soft at 0.08 against
      the other two at 0.09 -- and lacked --success, --amber, --shadow and

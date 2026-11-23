@@ -62,7 +62,7 @@
     "types/**/*.d.ts",
     ".stx/*.d.ts",
     "config/ui.ts",
-    "config/crosswind.ts",
+    "config/css.ts",
     "app/Models/**/*.ts",
     // Phase 7 ratchet. app/lib and app/Actions are gated (the latter also
     // pulls in app/Jobs transitively, so those are covered too). The test

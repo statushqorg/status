@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import theme from '../../config/crosswind'
+import theme from '../../config/css'
 
 /*
  * The shared dashboard chrome used to be a <style> block in
- * partials/app-head.stx. It is config/crosswind.ts's `appCss()` preflight now
+ * partials/app-head.stx. It is config/css.ts's `appCss()` preflight now
  * (rule 3 / §11.1), scoped to the `default` layout group, so "shared" is read
  * from there. What this file guards is unchanged and still worth guarding:
  * a per-page block is emitted only on the page that declares it, so a view

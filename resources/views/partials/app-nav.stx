@@ -87,7 +87,7 @@
   </div>
 </nav>
 {{-- No <style> block: rule 3 / §11.1. These 14 rules are in
-     config/crosswind.ts's `dashboardPagesCss()` preflight, scoped to the
+     config/css.ts's `dashboardPagesCss()` preflight, scoped to the
      `default` layout group with the other eight page blocks. --}}
 <script client>
   // Close the workspace switcher when clicking outside it.

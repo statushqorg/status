@@ -96,7 +96,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
 
 <main class="app-shell">
 {{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
-     config/crosswind.ts. --}}
+     config/css.ts. --}}
   @if (!AUTH_USER)
     <EmptyState
       title="Sign in required"

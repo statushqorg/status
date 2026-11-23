@@ -134,7 +134,7 @@ describe('layout groups', () => {
     expect(dependencies.has(join(VIEWS, 'partials/app-nav.stx'))).toBe(true)
     /*
      * The palette used to be asserted here, because app-head.stx declared it.
-     * It is config/crosswind.ts's `paletteCss()` preflight now -- rule 3 /
+     * It is config/css.ts's `paletteCss()` preflight now -- rule 3 /
      * §11.2 -- so it reaches the page through the generated sheet rather than
      * through this include, and asserting it here would be asserting the
      * wrong mechanism. tests/unit/design-tokens.test.ts covers it instead.

@@ -197,7 +197,7 @@ useHead({ title: (siteHostName || 'Site') + ' · StatusHQ', meta: [{ name: 'robo
 
 <main class="app-shell">
 {{-- No <style> block: rule 3 / §11.1 -- see `dashboardPagesCss()` in
-     config/crosswind.ts. This page's legend is `.site-legend` there: it was
+     config/css.ts. This page's legend is `.site-legend` there: it was
      a third `.mon-legend`, at a wider gap and without the uppercase, which
      only worked while each page's CSS shipped alone. --}}
   @if (!AUTH_USER)

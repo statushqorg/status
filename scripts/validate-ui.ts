@@ -40,7 +40,7 @@ const markupFiles = files.filter(file => /\.(?:stx|html)$/.test(file))
  * The two app-wide checks at the bottom of this file -- focus treatment and
  * responsive breakpoints -- used to read resources/ alone. That stopped
  * working when the last page <style> block moved out of a view and into
- * config/crosswind.ts under stx-standards rule 3: the treatments were still
+ * config/css.ts under stx-standards rule 3: the treatments were still
  * there, in the one place the router preserves, and this script could no
  * longer see any of them. CI went red on `3135b80` and stayed red, which
  * skipped deploy-prod, so main stopped reaching production.
@@ -49,7 +49,7 @@ const markupFiles = files.filter(file => /\.(?:stx|html)$/.test(file))
  * is now supposed to live. Missing the config is a hard failure rather than an
  * empty read: a check that silently has nothing to search always passes.
  */
-const cssConfig = resolve(root, 'config/crosswind.ts')
+const cssConfig = resolve(root, 'config/css.ts')
 if (!existsSync(cssConfig))
   throw new Error(`validate-ui: expected the CSS config at ${relative(root, cssConfig)}`)
 
