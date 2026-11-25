@@ -15,6 +15,7 @@
 <script server>
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 import { authRequest } from '~/app/lib/authRequest'
 
 // Auth + active-team resolution via @stacksjs/auth's resolveTeamContext,
@@ -30,7 +31,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'maintenance'
 
 const windows = AUTH_USER
@@ -47,7 +48,7 @@ const links = windowIds.length > 0
       .where('maintenance_window_id', 'in', windowIds)
       .execute()
   : []
-const monitorCountByWindow = {}
+const monitorCountByWindow: Record<number, number> = {}
 for (const link of links)
   monitorCountByWindow[link.maintenance_window_id] = (monitorCountByWindow[link.maintenance_window_id] || 0) + 1
 
@@ -57,7 +58,7 @@ const justDeleted = query.get('deleted') === '1'
 
 // One banner per code the action redirects with; wording lives here with
 // the rest of the page copy, matching monitors/new.stx's convention.
-function errorLabel(code) {
+function errorLabel(code: string) {
   if (code === 'title_required') return 'Give the window a title. Subscribers see it.'
   if (code === 'title_too_long') return 'That title is longer than 150 characters.'
   if (code === 'description_too_long') return 'That description is longer than 2000 characters.'
@@ -72,7 +73,7 @@ function errorLabel(code) {
 // Which control the banner is about, so that one alone carries aria-invalid.
 // Marking every field would be worse than marking none. `ends_before_starts`
 // is relational, so it marks both ends of the range.
-function errorFields(code) {
+function errorFields(code: string) {
   if (code === 'title_required' || code === 'title_too_long')
     return ['mw-title']
   if (code === 'description_too_long')
@@ -96,13 +97,13 @@ const upcomingCount = windows.filter(w => w.status === 'scheduled' && Date.parse
 const recurringCount = windows.filter(w => !!w.recurrence_cron).length
 const uncoveredCount = windows.filter(w => w.status !== 'completed' && w.status !== 'cancelled' && !monitorCountByWindow[w.id]).length
 
-function fmt(iso) {
+function fmt(iso: string | null | undefined) {
   const ms = Date.parse(String(iso || ''))
   if (!Number.isFinite(ms)) return '--'
   return new Date(ms).toISOString().replace('T', ' ').slice(0, 16)
 }
 
-function durationLabel(startIso, endIso) {
+function durationLabel(startIso: string | null | undefined, endIso: string | null | undefined) {
   const a = Date.parse(String(startIso || ''))
   const b = Date.parse(String(endIso || ''))
   if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return '--'
@@ -115,14 +116,14 @@ function durationLabel(startIso, endIso) {
   return `${days}d ${hours % 24}h`
 }
 
-function statusPill(status) {
+function statusPill(status: string) {
   if (status === 'active') return 'pill pill-degraded'
   if (status === 'scheduled') return 'pill pill-unknown'
   if (status === 'completed') return 'pill pill-up'
   return 'pill pill-down'
 }
 
-function statusLabel(status) {
+function statusLabel(status: string) {
   if (status === 'active') return 'In progress'
   if (status === 'scheduled') return 'Scheduled'
   if (status === 'completed') return 'Completed'

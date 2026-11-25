@@ -14,6 +14,7 @@ import { relativeTime, siteHost, siteSlug, statusLabel, statusPillClass } from '
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 import { rowsOrEmpty } from '~/app/lib/rows'
 import { scaleLinear } from '@ts-charts/scale'
 import { curveMonotoneX, line } from '@ts-charts/shape'
@@ -47,11 +48,11 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'monitors'
 
-const SITE_STATUS_RANK = { down: 3, degraded: 2, up: 1, paused: 0, pending: 0 }
-const siteRank = m => SITE_STATUS_RANK[m.status] ?? 0
+const SITE_STATUS_RANK: Record<string, number> = { down: 3, degraded: 2, up: 1, paused: 0, pending: 0 }
+const siteRank = (m: { status: string }) => SITE_STATUS_RANK[m.status] ?? 0
 
 const wantedSlug = (typeof slug !== 'undefined' && slug) ? String(slug).toLowerCase() : ''
 
@@ -108,6 +109,8 @@ const siteServerRows = siteServerIds.length
       .execute())
   : []
 
+/** One CPU/RAM/disk reading, as the charts plot it. */
+type HostSample = { t: number, iso: string, cpu: number | null, ram: number | null, disk: number | null }
 const serverCharts = []
 for (const row of siteServerRows) {
   const serverId = Number(row.id)
@@ -124,7 +127,7 @@ for (const row of siteServerRows) {
   // machines on one line draws a sawtooth that is nobody's history.
   const newestHost = String(sampleRows[sampleRows.length - 1].host ?? 'default')
 
-  const samples = []
+  const samples: HostSample[] = []
   for (const r of sampleRows) {
     if (String(r.host ?? 'default') !== newestHost)
       continue
@@ -141,20 +144,21 @@ for (const row of siteServerRows) {
   const t1 = samples[samples.length - 1].t
   const x = scaleLinear().domain([t0, t1 === t0 ? t0 + 1 : t1]).range([CHART.left, CHART.w - CHART.right])
   const y = scaleLinear().domain([0, 100]).range([CHART.h - CHART.bottom, CHART.top])
-  const gen = key => chartLine().defined(d => Number.isFinite(d[key])).x(d => x(d.t)).y(d => y(d[key])).curve(curveMonotoneX)(samples)
+  const gen = (key: 'cpu' | 'ram' | 'disk') => chartLine().defined((d: HostSample) => Number.isFinite(d[key])).x((d: HostSample) => x(d.t)).y((d: HostSample) => y(d[key])).curve(curveMonotoneX)(samples)
   const latest = [...samples].reverse().find(s => Number.isFinite(s.cpu) || Number.isFinite(s.ram) || Number.isFinite(s.disk))
   const nowParts = []
-  if (latest && Number.isFinite(latest.cpu)) nowParts.push(Math.round(latest.cpu) + '% CPU')
-  if (latest && Number.isFinite(latest.ram)) nowParts.push(Math.round(latest.ram) + '% RAM')
-  if (latest && Number.isFinite(latest.disk)) nowParts.push(Math.round(latest.disk) + '% disk')
+  // `as number`: Number.isFinite has just ruled out null, but it is not a type guard.
+  if (latest && Number.isFinite(latest.cpu)) nowParts.push(Math.round(latest.cpu as number) + '% CPU')
+  if (latest && Number.isFinite(latest.ram)) nowParts.push(Math.round(latest.ram as number) + '% RAM')
+  if (latest && Number.isFinite(latest.disk)) nowParts.push(Math.round(latest.disk as number) + '% disk')
   const stepH = Math.max(1, Math.ceil(samples.length / 60))
   const hostHitW = (PLOT.right - PLOT.left) / Math.ceil(samples.length / stepH)
-  const clock = iso => String(iso).slice(11, 16)
-  const sampleTip = (sample) => {
+  const clock = (iso: string) => String(iso).slice(11, 16)
+  const sampleTip = (sample: HostSample) => {
     const parts = []
-    if (Number.isFinite(sample.cpu)) parts.push(Math.round(sample.cpu) + '% CPU')
-    if (Number.isFinite(sample.ram)) parts.push(Math.round(sample.ram) + '% RAM')
-    if (Number.isFinite(sample.disk)) parts.push(Math.round(sample.disk) + '% disk')
+    if (Number.isFinite(sample.cpu)) parts.push(Math.round(sample.cpu as number) + '% CPU')
+    if (Number.isFinite(sample.ram)) parts.push(Math.round(sample.ram as number) + '% RAM')
+    if (Number.isFinite(sample.disk)) parts.push(Math.round(sample.disk as number) + '% disk')
     return clock(sample.iso) + ' \u00b7 ' + (parts.length ? parts.join(' / ') : 'no sample')
   }
 
@@ -173,16 +177,16 @@ for (const row of siteServerRows) {
 }
 
 // ---- Display-only helpers (shared shape with the overview / monitor list) ----
-function typeLabel(t) {
-  const labels = { uptime: 'Uptime', ping: 'Ping', tcp_port: 'TCP port', ssl: 'SSL', dns: 'DNS', domain: 'Domain', broken_links: 'Crawl', lighthouse: 'Lighthouse', dns_blocklist: 'Blocklist', port_scan: 'Port scan', health: 'Health', cron: 'Heartbeat', performance: 'Performance', ai_check: 'AI check' }
+function typeLabel(t: string) {
+  const labels: Record<string, string> = { uptime: 'Uptime', ping: 'Ping', tcp_port: 'TCP port', ssl: 'SSL', dns: 'DNS', domain: 'Domain', broken_links: 'Crawl', lighthouse: 'Lighthouse', dns_blocklist: 'Blocklist', port_scan: 'Port scan', health: 'Health', cron: 'Heartbeat', performance: 'Performance', ai_check: 'AI check' }
   return labels[t] || String(t).replace('_', ' ')
 }
-function incidentPill(status) {
+function incidentPill(status: string) {
   if (status === 'resolved') return 'pill pill-unknown'
   if (status === 'monitoring') return 'pill pill-degraded'
   return 'pill pill-down'
 }
-function incidentLabel(status) {
+function incidentLabel(status: string) {
   if (!status) return '--'
   return status.charAt(0).toUpperCase() + status.slice(1)
 }

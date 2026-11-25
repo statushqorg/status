@@ -75,10 +75,10 @@ const __serverRow = (AUTH_USER && serverId)
   : null
 
 const range = query.get('range') || '24h'
-const RANGE_MS = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 }
+const RANGE_MS: Record<string, number> = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 }
 const since = new Date(Date.now() - (RANGE_MS[range] || RANGE_MS['24h'])).toISOString()
 
-function rangeUrl(r) {
+function rangeUrl(r: string) {
   const p = new URLSearchParams(query)
   p.set('range', r)
   return `/dashboard/servers/${serverId}?${p.toString()}`
@@ -101,7 +101,7 @@ const serverView = __serverRow
 const pill = serverView ? pillFor(serverView.status) : { cls: 'pill pill-unknown', label: 'No samples yet' }
 
 /** A threshold of 0 is off, which is different from a threshold of nothing. */
-function thresholdLabel(value) {
+function thresholdLabel(value: number) {
   return Number(value) === 0 ? 'off' : `${Number(value)}%`
 }
 
@@ -187,17 +187,19 @@ const chartHost = hostNames.includes(requestedHost)
   ? requestedHost
   : (fleet.hosts.length ? String(fleet.hosts[0].host) : (hostNames[0] || ''))
 
-function hostUrl(h) {
+function hostUrl(h: string) {
   const p = new URLSearchParams(query)
   p.set('host', h)
   return `/dashboard/servers/${serverId}?${p.toString()}`
 }
 
+/** One CPU/RAM/disk reading, as the chart plots it. */
+type HostSample = { t: number, iso: string, cpu: number | null, ram: number | null, disk: number | null }
 let hostChart = null
 {
   // Typed columns straight off the row: these are real columns now, not JSON
   // in a metadata blob, so there is nothing to parse and nothing to fail on.
-  const samples = []
+  const samples: HostSample[] = []
   for (const r of sampleRows) {
     if (chartHost && String(r.host ?? DEFAULT_HOST) !== chartHost)
       continue
@@ -213,26 +215,27 @@ let hostChart = null
     const t1 = samples[samples.length - 1].t
     const x = scaleLinear().domain([t0, t1 === t0 ? t0 + 1 : t1]).range([CHART.left, CHART.w - CHART.right])
     const y = scaleLinear().domain([0, 100]).range([CHART.h - CHART.bottom, CHART.top])
-    const gen = key => chartLine()
-      .defined(d => typeof d[key] === 'number' && Number.isFinite(d[key]))
-      .x(d => x(d.t))
-      .y(d => y(d[key]))
+    const gen = (key: 'cpu' | 'ram' | 'disk') => chartLine()
+      .defined((d: HostSample) => typeof d[key] === 'number' && Number.isFinite(d[key]))
+      .x((d: HostSample) => x(d.t))
+      .y((d: HostSample) => y(d[key]))
       .curve(curveMonotoneX)(samples)
     const latest = [...samples].reverse().find(s => s.cpu !== null || s.ram !== null || s.disk !== null)
     const nowParts = []
-    if (latest && Number.isFinite(latest.cpu)) nowParts.push(`${Math.round(latest.cpu)}% CPU`)
-    if (latest && Number.isFinite(latest.ram)) nowParts.push(`${Math.round(latest.ram)}% RAM`)
-    if (latest && Number.isFinite(latest.disk)) nowParts.push(`${Math.round(latest.disk)}% disk`)
+    // `as number`: Number.isFinite has just ruled out null, but it is not a type guard.
+    if (latest && Number.isFinite(latest.cpu)) nowParts.push(`${Math.round(latest.cpu as number)}% CPU`)
+    if (latest && Number.isFinite(latest.ram)) nowParts.push(`${Math.round(latest.ram as number)}% RAM`)
+    if (latest && Number.isFinite(latest.disk)) nowParts.push(`${Math.round(latest.disk as number)}% disk`)
     // Cap hover targets so a full day of per-minute samples does not emit
     // 1440 hit columns; thin to at most ~60 evenly spaced.
     const stepH = Math.max(1, Math.ceil(samples.length / 60))
     const hostHitW = (PLOT.right - PLOT.left) / Math.ceil(samples.length / stepH)
-    const clock = iso => String(iso).slice(11, 16)
-    const sampleTip = (s) => {
+    const clock = (iso: string) => String(iso).slice(11, 16)
+    const sampleTip = (s: HostSample) => {
       const parts = []
-      if (Number.isFinite(s.cpu)) parts.push(`${Math.round(s.cpu)}% CPU`)
-      if (Number.isFinite(s.ram)) parts.push(`${Math.round(s.ram)}% RAM`)
-      if (Number.isFinite(s.disk)) parts.push(`${Math.round(s.disk)}% disk`)
+      if (Number.isFinite(s.cpu)) parts.push(`${Math.round(s.cpu as number)}% CPU`)
+      if (Number.isFinite(s.ram)) parts.push(`${Math.round(s.ram as number)}% RAM`)
+      if (Number.isFinite(s.disk)) parts.push(`${Math.round(s.disk as number)}% disk`)
       return `${clock(s.iso)} · ${parts.length ? parts.join(' / ') : 'no sample'}`
     }
     hostChart = {
@@ -269,7 +272,7 @@ const updateRows = incidentRows.length
 
 const __incidents = incidentRows.map(i => ({
   id: Number(i.id),
-  title: String(i.title ?? i.cause ?? 'Incident'),
+  title: String(i.cause ?? 'Incident'),
   cause: String(i.cause ?? ''),
   pill: incidentPill(i, ''),
   state: i.resolved_at ? 'Resolved' : String(i.status ?? 'open'),
@@ -282,7 +285,7 @@ const __incidents = incidentRows.map(i => ({
 // The band: only open server incidents, quiet first so a box that went hot and
 // then silent reads in the order it happened.
 const openIncidents = incidentRows.filter(i => !i.resolved_at)
-function bandKind(row) {
+function bandKind(row: (typeof incidentRows)[number]) {
   const marker = String(row.impacted_checks ?? '')
   if (marker.includes('server_silent')) return 'server_silent'
   if (marker.includes('server_hot')) return 'server_hot'
