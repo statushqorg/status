@@ -12,7 +12,22 @@
     <style>, on statushq's tokens. `summary` and `active` are the only props
     and appear only in markup, so nothing crosses the server->client bridge.
     The pure date functions sit between the #region markers so
-    tests/unit/date-range-picker.test.ts evaluates the code that ships. --}}
+    tests/unit/date-range-picker.test.ts evaluates the code that ships.
+
+    The server block declares the two props, and publishes an empty payload to
+    say nothing crosses the bridge. It starts on this comment's closing line on
+    purpose: stx drops both, and a block on its own line would leave one more
+    newline in the page. --}}<script server>
+interface DateRangePickerProps {
+  /** The period as the control reads it, e.g. 'Last 24 hours'. */
+  summary: string
+  /** Whether a custom range (rather than a preset) is on screen. */
+  active: boolean
+}
+
+const { summary, active } = defineProps<DateRangePickerProps>()
+defineClientPayload({})
+</script>
 <script client>
 // #region pure
 // ---- per-app configuration --------------------------------------------------
@@ -128,7 +143,7 @@ const selHover = state('')
 
 const pickYears = (() => {
   const thisYear = Number(pickToday.slice(0, 4))
-  const out = []
+  const out: number[] = []
   for (let y = 2015; y <= thisYear; y++) out.push(y)
   return out
 })()
@@ -136,22 +151,22 @@ const pickYears = (() => {
 const calLeftCells = derived(() => pickGrid(calYm(), pickToday))
 const calRightCells = derived(() => pickGrid(pickShiftMonth(calYm(), 1), pickToday))
 
-function pickIsActive(key) {
+function pickIsActive(key: string): boolean {
   const p = pickPreset(key, pickToday)
   if (!p) return false
   if (p.range) return !pickUrlFrom && (pickUrlRange || '24h') === p.range
   return pickUrlFrom === p.from && pickUrlTo === p.to
 }
-function pickPresetClass(key) {
+function pickPresetClass(key: string): string {
   return pickIsActive(key) ? 'drp-preset is-active' : 'drp-preset'
 }
-function pickBounds() {
+function pickBounds(): { from: string, to: string } | null {
   const a = selStart()
   if (a) return pickOrder(a, selHover() || a)
   if (pickUrlFrom && pickUrlTo) return { from: pickUrlFrom, to: pickUrlTo }
   return null
 }
-function pickCellClass(c) {
+function pickCellClass(c: PickCell): string {
   const b = pickBounds()
   const inRange = !!b && c.ymd >= b.from && c.ymd <= b.to
   const edge = !!b && (c.ymd === b.from || c.ymd === b.to)
@@ -159,11 +174,11 @@ function pickCellClass(c) {
     .filter(Boolean)
     .join(' ')
 }
-function pickCellLabel(c) {
+function pickCellLabel(c: PickCell): string {
   const { y, m, d } = pickParse(c.ymd)
   return new Date(y, m, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
-function pickDay(c) {
+function pickDay(c: PickCell): void {
   if (c.future) return
   const a = selStart()
   if (!a) {
@@ -173,48 +188,49 @@ function pickDay(c) {
   }
   navigate(pickQuery(useRoute().query, pickOrder(a, c.ymd)))
 }
-function pickHover(c) {
+function pickHover(c: PickCell): void {
   if (selStart()) selHover.set(c.ymd)
 }
-function pickApply(key) {
+function pickApply(key: string): void {
   const p = pickPreset(key, pickToday)
   if (p) navigate(pickQuery(useRoute().query, p))
 }
-function pickMove(n) {
+function pickMove(n: number): void {
   calYm.set(pickShiftMonth(calYm(), n))
 }
-function pickRightYm() {
+function pickRightYm(): string {
   return pickShiftMonth(calYm(), 1)
 }
-function pickMonthIdx(ym) {
+function pickMonthIdx(ym: string): number {
   return Number(ym.slice(5, 7)) - 1
 }
-function pickYearOf(ym) {
+function pickYearOf(ym: string): number {
   return Number(ym.slice(0, 4))
 }
-function pickSetYm(y, monthIdx, fromRight) {
+function pickSetYm(y: number, monthIdx: number, fromRight: boolean): void {
   const ym = `${y}-${String(monthIdx + 1).padStart(2, '0')}`
   calYm.set(fromRight ? pickShiftMonth(ym, -1) : ym)
 }
-function pickLeftMonth(e) { pickSetYm(pickYearOf(calYm()), Number(e.target.value), false) }
-function pickLeftYear(e) { pickSetYm(Number(e.target.value), pickMonthIdx(calYm()), false) }
-function pickRightMonth(e) { pickSetYm(pickYearOf(pickRightYm()), Number(e.target.value), true) }
-function pickRightYear(e) { pickSetYm(Number(e.target.value), pickMonthIdx(pickRightYm()), true) }
+// Each fires from a month or year <select>.
+function pickLeftMonth(e: Event): void { pickSetYm(pickYearOf(calYm()), Number((e.target as HTMLSelectElement).value), false) }
+function pickLeftYear(e: Event): void { pickSetYm(Number((e.target as HTMLSelectElement).value), pickMonthIdx(calYm()), false) }
+function pickRightMonth(e: Event): void { pickSetYm(pickYearOf(pickRightYm()), Number((e.target as HTMLSelectElement).value), true) }
+function pickRightYear(e: Event): void { pickSetYm(Number((e.target as HTMLSelectElement).value), pickMonthIdx(pickRightYm()), true) }
 // A native <details> only closes from its own summary, so an open panel would
 // otherwise sit there after the pointer moves on. The transparent .drp-backdrop
 // below covers the rest of the page while the panel is open; a click on it lands
 // here and closes the panel, the same way clicking away from a menu should.
-function pickClose(e) {
-  const d = e.currentTarget.closest('details')
+function pickClose(e: Event): void {
+  const d = (e.currentTarget as HTMLElement).closest('details')
   if (d) d.removeAttribute('open')
   selStart.set('')
   selHover.set('')
 }
-function pickEscape(e) {
+function pickEscape(e: KeyboardEvent): void {
   if (e.key !== 'Escape') return
   selStart.set('')
   selHover.set('')
-  e.currentTarget.removeAttribute('open')
+  ;(e.currentTarget as HTMLElement).removeAttribute('open')
 }
 </script>
 
