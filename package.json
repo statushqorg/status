@@ -71,7 +71,7 @@
     "stx": "./buddy",
     "serve:validate": "bun scripts/validate-serve.ts",
     "typecheck:app": "bun x --bun tsc --noEmit -p tsconfig.json --pretty false",
-    "typecheck:views": "bunx --bun stx typecheck 'resources/**/*.stx' --lib storage/framework/types/request-context.d.ts --lib types/render-context.d.ts"
+    "typecheck:views": "./buddy generate:db-types -q && bunx --bun stx typecheck 'resources/**/*.stx' --lib storage/framework/types/request-context.d.ts --lib types/render-context.d.ts --lib database/types.d.ts"
   },
   "dependencies": {
     "@bughq/stacks": "^0.2.2",
