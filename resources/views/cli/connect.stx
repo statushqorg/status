@@ -76,7 +76,7 @@ const loading = state(false)
 const connected = state('')
 const confirm = state('')
 
-async function approve(e) {
+async function approve(e: Event) {
   e.preventDefault()
   if (loading())
     return

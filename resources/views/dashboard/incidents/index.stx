@@ -15,11 +15,12 @@ import { formatDateTime } from '~/app/lib/display'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import
 // { x as y }` binds undefined in a server block in this stx build, so the
 // page's own names are bound here instead.
-const formatDate = iso => formatDateTime(iso, { hour12: false })
+const formatDate = (iso: string | null | undefined) => formatDateTime(iso, { hour12: false })
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 
@@ -40,7 +41,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 // Super-admins see incidents across every team's monitors.
 const NAV_ACTIVE = 'incidents'
 
@@ -57,7 +58,7 @@ const monitorNameById = new Map(teamMonitors.map(m => [m.id, m.name]))
 
 let incidents = []
 let openCount = 0
-let statusTally = []
+let statusTally: { status: string, c: number }[] = []
 if (monitorIds.length) {
   let q = db.selectFrom('incidents').whereIn('monitor_id', monitorIds)
   if (filterStatus)
@@ -75,12 +76,12 @@ if (monitorIds.length) {
   // ledger, so the readout stays a summary while filters narrow the
   // table below it. Grouped in JS to stay dialect-agnostic.
   const all = await db.selectFrom('incidents').whereIn('monitor_id', monitorIds).execute()
-  const counts = {}
+  const counts: Record<string, number> = {}
   for (const r of all) counts[r.status] = (counts[r.status] || 0) + 1
   statusTally = Object.entries(counts).map(([status, c]) => ({ status, c }))
 }
 const incidentTotal = statusTally.reduce((sum, r) => sum + r.c, 0)
-function tallyOf(status) {
+function tallyOf(status: string) {
   const row = statusTally.find(r => r.status === status)
   return row ? row.c : 0
 }
@@ -89,18 +90,18 @@ function tallyOf(status) {
 // (pill-down), monitoring is a watch state (pill-degraded), resolved is
 // spent (pill-unknown). Never pill-up, since an incident row is never
 // "operational".
-function incidentPill(status) {
+function incidentPill(status: string) {
   if (status === 'resolved') return 'pill pill-unknown'
   if (status === 'monitoring') return 'pill pill-degraded'
   return 'pill pill-down'
 }
 
-function incidentLabel(status) {
+function incidentLabel(status: string) {
   if (!status) return '--'
   return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
-function durationLabel(startIso, endIso) {
+function durationLabel(startIso: string | null | undefined, endIso: string | null | undefined) {
   if (!startIso) return '--'
   const start = new Date(startIso).getTime()
   if (isNaN(start)) return '--'
@@ -112,7 +113,7 @@ function durationLabel(startIso, endIso) {
   return Math.floor(s / 86400) + 'd ' + Math.floor((s % 86400) / 3600) + 'h'
 }
 
-function statusUrl(s) {
+function statusUrl(s: string) {
   const p = new URLSearchParams(query)
   if (s) p.set('status', s)
   else p.delete('status')

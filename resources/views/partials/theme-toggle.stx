@@ -65,7 +65,7 @@
   // addEventListener and the toggle silently does nothing. Measured on the
   // served page; the served copy is the one that counts.
   useEventListener('click', (event) => {
-    const target = event.target
+    const target = event.target as Element | null
     if (target && typeof target.closest === 'function' && target.closest('#theme-toggle'))
       theme.toggle()
   }, { target: document })

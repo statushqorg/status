@@ -13,6 +13,7 @@
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 
@@ -35,7 +36,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'settings'
 
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
@@ -71,11 +72,11 @@ const limits = PLAN_LIMITS[currentPlan]
 const monitorCount = await db.selectFrom('monitors').where('team_id', '=', TEAM_ID).count()
 const statusPageCount = await db.selectFrom('status_pages').where('team_id', '=', TEAM_ID).count()
 
-function usagePct(used, limit) {
+function usagePct(used: number, limit: number) {
   if (!limit || !isFinite(limit)) return 0
   return Math.min(100, Math.round((used / limit) * 100))
 }
-function limitLabel(limit) {
+function limitLabel(limit: number) {
   return isFinite(limit) ? limit : '∞'
 }
 

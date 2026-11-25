@@ -57,7 +57,7 @@ const planFloor = query.get('floor') || ''
 
 // One banner, keyed by the code the action redirects with. Wording lives
 // here with the rest of the page copy; the action only names the problem.
-function errorLabel(code) {
+function errorLabel(code: string) {
   if (code === 'name_required') return 'Give the monitor a name.'
   if (code === 'name_too_long') return 'That name is longer than 150 characters.'
   if (code === 'type_invalid') return 'Pick a monitor type from the list.'
@@ -73,7 +73,7 @@ function errorLabel(code) {
 
 // Which control the banner is about, so that one alone carries aria-invalid.
 // Marking every field on the form would be worse than marking none of them.
-function errorField(code) {
+function errorField(code: string) {
   if (code === 'name_required' || code === 'name_too_long')
     return 'name'
   if (code === 'type_invalid')
@@ -423,19 +423,19 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
   // null forever and the whole progressive enhancement would silently do
   // nothing.
   var formRoot = useRef('formRoot')
-  var typeSelect = useRef('typeSelect')
-  var urlInput = useRef('urlInput')
+  var typeSelect = useRef<HTMLSelectElement>('typeSelect')
+  var urlInput = useRef<HTMLInputElement>('urlInput')
   var urlHelp = useRef('urlHelp')
   var typeHint = useRef('typeHint')
   var optionsSub = useRef('optionsSub')
 
-  function applies(el, type) {
+  function applies(el: Element, type: string) {
     var want = el.getAttribute('data-types')
     // No data-types means "every type" (e.g. the server-metrics card).
     return !want || want.split(' ').indexOf(type) !== -1
   }
 
-  function show(el, on) {
+  function show(el: HTMLElement, on: boolean) {
     el.hidden = !on
   }
 
@@ -454,14 +454,14 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
       if (typeHint.current) typeHint.current.textContent = copy.hint
     }
 
-    var fields = root.querySelectorAll('[data-types]')
+    var fields = root.querySelectorAll<HTMLElement>('[data-types]')
     for (var i = 0; i < fields.length; i++) show(fields[i], applies(fields[i], type))
 
     // A .form-row is a two-up flex container; with both children hidden it
     // would still occupy its own gap, so collapse the row itself.
-    var rows = root.querySelectorAll('.form-row')
+    var rows = root.querySelectorAll<HTMLElement>('.form-row')
     for (var r = 0; r < rows.length; r++) {
-      var kids = rows[r].querySelectorAll('.field')
+      var kids = rows[r].querySelectorAll<HTMLElement>('.field')
       var anyVisible = false
       for (var k = 0; k < kids.length; k++) if (!kids[k].hidden) anyVisible = true
       show(rows[r], anyVisible || kids.length === 0)
@@ -469,7 +469,7 @@ useHead({ title: 'New monitor · StatusHQ', meta: [{ name: 'robots', content: 'n
 
     // Same for a whole card: "Options for this type" is empty for types
     // like DNS or domain expiry, and an empty card reads as a bug.
-    var cards = root.querySelectorAll('[data-optional-card]')
+    var cards = root.querySelectorAll<HTMLElement>('[data-optional-card]')
     for (var c = 0; c < cards.length; c++) {
       if (!applies(cards[c], type)) { show(cards[c], false); continue }
       var body = cards[c].querySelector('.card-body')
