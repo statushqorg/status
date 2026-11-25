@@ -292,7 +292,7 @@ if (monitorIds.length > 0) {
 const LOCALE = String((statusPage && statusPage.locale) || 'en').toLowerCase().split('-')[0]
 const DATE_LOCALE = statusPage ? (statusPage.locale || 'en') : 'en'
 const STR: Record<string, Record<string, string>> = {
-  en: { not_found: "Status page not found", not_found_desc: "{{ t('not_found_desc') }}", pw_protected: "{{ t('pw_protected') }}", pw_incorrect: "{{ t('pw_incorrect') }}", pw_placeholder: "Password", unlock: "Unlock", email_restricted: "{{ t('email_restricted') }}", email_denied: "{{ t('email_denied') }}", cont: "Continue", ip_restricted: "Access restricted", ip_restricted_desc: "{{ t('ip_restricted_desc') }}", major_outage: "Major Outage", partial_outage: "Partial Outage", all_operational: "All Systems Operational", maintenance: "Scheduled maintenance", announcements: "Announcements", posted: "Posted", active_incidents: "Active incidents", started: "Started", monitors: "Monitors", days_ago_90: "90 days ago", today: "Today", past_incidents: "Past incidents", resolved: "Resolved", operational: "Operational", degraded: "Degraded", down: "Down", unknown: "Unknown", no_data: "No data yet", uptime: "uptime", meta_desc: "Live status and incident history" },
+  en: { not_found: "Status page not found", not_found_desc: "There's no public status page at this address.", pw_protected: "This status page is password protected.", pw_incorrect: "Incorrect password.", pw_placeholder: "Password", unlock: "Unlock", email_restricted: "Access is restricted to approved email domains.", email_denied: "That email address isn't on an approved domain.", cont: "Continue", ip_restricted: "Access restricted", ip_restricted_desc: "This status page isn't available from your network.", major_outage: "Major Outage", partial_outage: "Partial Outage", all_operational: "All Systems Operational", maintenance: "Scheduled maintenance", announcements: "Announcements", posted: "Posted", active_incidents: "Active incidents", started: "Started", monitors: "Monitors", days_ago_90: "90 days ago", today: "Today", past_incidents: "Past incidents", resolved: "Resolved", operational: "Operational", degraded: "Degraded", down: "Down", unknown: "Unknown", no_data: "No data yet", uptime: "uptime", meta_desc: "Live status and incident history" },
   es: { not_found: "Página de estado no encontrada", not_found_desc: "No hay ninguna página de estado pública en esta dirección.", pw_protected: "Esta página de estado está protegida con contraseña.", pw_incorrect: "Contraseña incorrecta.", pw_placeholder: "Contraseña", unlock: "Desbloquear", email_restricted: "El acceso está restringido a dominios de correo aprobados.", email_denied: "Esa dirección de correo no pertenece a un dominio aprobado.", cont: "Continuar", ip_restricted: "Acceso restringido", ip_restricted_desc: "Esta página de estado no está disponible desde tu red.", major_outage: "Interrupción mayor", partial_outage: "Interrupción parcial", all_operational: "Todos los sistemas operativos", maintenance: "Mantenimiento programado", announcements: "Anuncios", posted: "Publicado", active_incidents: "Incidentes activos", started: "Comenzó", monitors: "Monitores", days_ago_90: "hace 90 días", today: "Hoy", past_incidents: "Incidentes anteriores", resolved: "Resuelto", operational: "Operativo", degraded: "Degradado", down: "Caído", unknown: "Desconocido", no_data: "Sin datos aún", uptime: "de disponibilidad", meta_desc: "Estado en vivo e historial de incidentes" },
   fr: { not_found: "Page d'état introuvable", not_found_desc: "Aucune page d'état publique à cette adresse.", pw_protected: "Cette page d'état est protégée par mot de passe.", pw_incorrect: "Mot de passe incorrect.", pw_placeholder: "Mot de passe", unlock: "Déverrouiller", email_restricted: "L'accès est limité aux domaines de messagerie approuvés.", email_denied: "Cette adresse e-mail n'appartient pas à un domaine approuvé.", cont: "Continuer", ip_restricted: "Accès restreint", ip_restricted_desc: "Cette page d'état n'est pas accessible depuis votre réseau.", major_outage: "Panne majeure", partial_outage: "Panne partielle", all_operational: "Tous les systèmes opérationnels", maintenance: "Maintenance planifiée", announcements: "Annonces", posted: "Publié", active_incidents: "Incidents en cours", started: "Débuté", monitors: "Moniteurs", days_ago_90: "il y a 90 jours", today: "Aujourd'hui", past_incidents: "Incidents passés", resolved: "Résolu", operational: "Opérationnel", degraded: "Dégradé", down: "Hors service", unknown: "Inconnu", no_data: "Pas encore de données", uptime: "de disponibilité", meta_desc: "État en direct et historique des incidents" },
   de: { not_found: "Statusseite nicht gefunden", not_found_desc: "Unter dieser Adresse gibt es keine öffentliche Statusseite.", pw_protected: "Diese Statusseite ist passwortgeschützt.", pw_incorrect: "Falsches Passwort.", pw_placeholder: "Passwort", unlock: "Entsperren", email_restricted: "Der Zugriff ist auf freigegebene E-Mail-Domains beschränkt.", email_denied: "Diese E-Mail-Adresse gehört nicht zu einer freigegebenen Domain.", cont: "Weiter", ip_restricted: "Zugriff eingeschränkt", ip_restricted_desc: "Diese Statusseite ist aus Ihrem Netzwerk nicht verfügbar.", major_outage: "Schwere Störung", partial_outage: "Teilweise Störung", all_operational: "Alle Systeme betriebsbereit", maintenance: "Geplante Wartung", announcements: "Ankündigungen", posted: "Veröffentlicht", active_incidents: "Aktive Vorfälle", started: "Begonnen", monitors: "Monitore", days_ago_90: "vor 90 Tagen", today: "Heute", past_incidents: "Frühere Vorfälle", resolved: "Behoben", operational: "Betriebsbereit", degraded: "Beeinträchtigt", down: "Ausgefallen", unknown: "Unbekannt", no_data: "Noch keine Daten", uptime: "Verfügbarkeit", meta_desc: "Live-Status und Vorfallverlauf" },
@@ -368,7 +368,7 @@ function bannerDotClass(tone: string) {
       <div class="py-24 text-center">
         <p class="font-medium text-gray-400 text-sm tracking-wide uppercase">404</p>
         <h1 class="mt-2 font-semibold text-2xl text-gray-900">{{ t('not_found') }}</h1>
-        <p class="mt-2 text-gray-500">There's no public status page at this address.</p>
+        <p class="mt-2 text-gray-500">{{ t('not_found_desc') }}</p>
       </div>
     @endif
 
@@ -378,9 +378,9 @@ function bannerDotClass(tone: string) {
           <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mb-6 mx-auto h-10 w-auto" />
         @endif
         <h1 class="mb-2 font-semibold text-center text-gray-900 text-xl">{{ statusPage.title }}</h1>
-        <p class="mb-6 text-center text-gray-500 text-sm">This status page is password protected.</p>
+        <p class="mb-6 text-center text-gray-500 text-sm">{{ t('pw_protected') }}</p>
         @if (unlockError)
-          <p class="mb-4 text-center text-red-600 text-sm">Incorrect password.</p>
+          <p class="mb-4 text-center text-red-600 text-sm">{{ t('pw_incorrect') }}</p>
         @endif
         <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto space-y-3 max-w-xs">
           <input type="hidden" name="redirect" value="/status/{{ pageSlug }}" />
@@ -396,9 +396,9 @@ function bannerDotClass(tone: string) {
           <img src="{{ brandLogoUrl }}" alt="{{ statusPage.title }}" class="mb-6 mx-auto h-10 w-auto" />
         @endif
         <h1 class="mb-2 font-semibold text-center text-gray-900 text-xl">{{ statusPage.title }}</h1>
-        <p class="mb-6 text-center text-gray-500 text-sm">Access is restricted to approved email domains.</p>
+        <p class="mb-6 text-center text-gray-500 text-sm">{{ t('email_restricted') }}</p>
         @if (unlockError)
-          <p class="mb-4 text-center text-red-600 text-sm">That email address isn't on an approved domain.</p>
+          <p class="mb-4 text-center text-red-600 text-sm">{{ t('email_denied') }}</p>
         @endif
         <form method="POST" action="/api/status/{{ pageSlug }}/unlock" class="mx-auto space-y-3 max-w-xs">
           <input type="hidden" name="redirect" value="/status/{{ pageSlug }}" />
@@ -412,7 +412,7 @@ function bannerDotClass(tone: string) {
       <div class="py-24 text-center">
         <p class="font-medium text-gray-400 text-sm tracking-wide uppercase">403</p>
         <h1 class="mt-2 font-semibold text-2xl text-gray-900">{{ t('ip_restricted') }}</h1>
-        <p class="mt-2 text-gray-500">This status page isn't available from your network.</p>
+        <p class="mt-2 text-gray-500">{{ t('ip_restricted_desc') }}</p>
       </div>
     @endif
 
