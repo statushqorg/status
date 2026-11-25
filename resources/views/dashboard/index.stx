@@ -14,6 +14,7 @@
 <script server>
 import { relativeTime, siteHost, siteSlug, statusLabel, statusPillClass } from '~/app/lib/display'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 
@@ -43,7 +44,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'overview'
 
 // One unfiltered fetch of the team's fleet; the fleet tally and the
@@ -52,9 +53,9 @@ const NAV_ACTIVE = 'overview'
 const allMonitors = await teamScope(db.selectFrom('monitors')).execute()
 const monitorCount = allMonitors.length
 
-const fleetCounts = {}
+const fleetCounts: Record<string, number> = {}
 for (const m of allMonitors) fleetCounts[m.status] = (fleetCounts[m.status] || 0) + 1
-function fleetOf(status) {
+function fleetOf(status: string) {
   return fleetCounts[status] || 0
 }
 
@@ -95,8 +96,8 @@ const statusPageCount = statusPages.length
 // the link targets stay in lockstep.
 // Worst-status wins for a site's rolled-up health: a single down check makes
 // the whole site read down. Rank so down > degraded > up > paused/pending.
-const SITE_STATUS_RANK = { down: 3, degraded: 2, up: 1, paused: 0, pending: 0 }
-const siteRank = m => SITE_STATUS_RANK[m.status] ?? 0
+const SITE_STATUS_RANK: Record<string, number> = { down: 3, degraded: 2, up: 1, paused: 0, pending: 0 }
+const siteRank = (m: { status: string }) => SITE_STATUS_RANK[m.status] ?? 0
 
 const siteMap = new Map()
 for (const m of allMonitors) {
@@ -145,30 +146,30 @@ const siteCount = sites.length
 
 // Monitor status pills + labels, copied from monitors/index.stx.
 // Utility bg class for a site card's left accent rail, by rolled-up status.
-function railClass(status) {
+function railClass(status: string) {
   if (status === 'up') return 'bg-success'
   if (status === 'degraded') return 'bg-amber'
   if (status === 'down') return 'bg-danger'
   return 'bg-strong'
 }
 
-function targetLabel(url) {
+function targetLabel(url: string) {
   return String(url).replace(/^https?:\/\//, '').replace(/\/$/, '')
 }
 
-function typeLabel(t) {
-  const labels = { uptime: 'Uptime', ping: 'Ping', tcp_port: 'TCP port', ssl: 'SSL', dns: 'DNS', domain: 'Domain', broken_links: 'Crawl', lighthouse: 'Lighthouse', dns_blocklist: 'Blocklist', port_scan: 'Port scan', health: 'Health', cron: 'Heartbeat', performance: 'Performance', ai_check: 'AI check' }
+function typeLabel(t: string) {
+  const labels: Record<string, string> = { uptime: 'Uptime', ping: 'Ping', tcp_port: 'TCP port', ssl: 'SSL', dns: 'DNS', domain: 'Domain', broken_links: 'Crawl', lighthouse: 'Lighthouse', dns_blocklist: 'Blocklist', port_scan: 'Port scan', health: 'Health', cron: 'Heartbeat', performance: 'Performance', ai_check: 'AI check' }
   return labels[t] || String(t).replace('_', ' ')
 }
 
 // Incident status pills + labels, copied from incidents/index.stx.
-function incidentPill(status) {
+function incidentPill(status: string) {
   if (status === 'resolved') return 'pill pill-unknown'
   if (status === 'monitoring') return 'pill pill-degraded'
   return 'pill pill-down'
 }
 
-function incidentLabel(status) {
+function incidentLabel(status: string) {
   if (!status) return '--'
   return status.charAt(0).toUpperCase() + status.slice(1)
 }
