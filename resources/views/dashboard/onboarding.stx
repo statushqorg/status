@@ -24,6 +24,7 @@
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Dialect-agnostic DB access via the framework query builder (sqlite for
 // self-hosted single-box installs, networked Postgres for the hosted
@@ -49,7 +50,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'monitors'
 
 const monitorCount = await db.selectFrom('monitors').where('team_id', '=', TEAM_ID).count()

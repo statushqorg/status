@@ -72,7 +72,7 @@ const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? ne
 const errorCode = query.get('error') || ''
 const justSaved = query.get('saved') === '1'
 
-function errorLabel(code) {
+function errorLabel(code: string) {
   if (code === 'title_required') return 'Give the window a title. Subscribers see it.'
   if (code === 'title_too_long') return 'That title is longer than 150 characters.'
   if (code === 'description_too_long') return 'That description is longer than 2000 characters.'
@@ -87,7 +87,7 @@ function errorLabel(code) {
 // Which control the banner is about, so that one alone carries aria-invalid.
 // Marking every field would be worse than marking none. `ends_before_starts`
 // is relational, so it marks both ends of the range.
-function errorFields(code) {
+function errorFields(code: string) {
   if (code === 'title_required' || code === 'title_too_long')
     return ['mw-title']
   if (code === 'description_too_long')
@@ -131,7 +131,7 @@ const statusOptions = [
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
-function fmt(ms) {
+function fmt(ms: number) {
   if (!Number.isFinite(ms)) return '--'
   return new Date(ms).toISOString().replace('T', ' ').slice(0, 16)
 }

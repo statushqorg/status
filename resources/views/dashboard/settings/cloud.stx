@@ -14,6 +14,7 @@
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Auth + team resolution — see resources/views/dashboard/monitors/index.stx
 // for the full rationale.
@@ -31,7 +32,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'settings'
 
 // Guarded because stx swallows a server-block error and renders the page with
@@ -47,7 +48,8 @@ if (TEAM_ID !== -1) {
     creds = (await db.selectFrom('cloud_credentials').where('team_id', '=', TEAM_ID).where('provider', '=', 'aws').limit(1).execute())[0] || null
   }
   catch (error) {
-    credsError = error && error.message ? String(error.message) : String(error)
+    const e = error as { message?: unknown } | null | undefined
+    credsError = e && e.message ? String(e.message) : String(error)
   }
 }
 const hasSecret = !!(creds && creds.secret_access_key_encrypted)
@@ -57,14 +59,14 @@ const awsRegion = creds ? (creds.region || 'us-east-1') : 'us-east-1'
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const saved = query.get('saved') === '1'
 const errorCode = query.get('error') || ''
-const ERROR_MESSAGES = {
+const ERROR_MESSAGES: Record<string, string> = {
   access_key_required: 'Enter the AWS access key ID.',
   secret_required: 'Enter the AWS secret access key.',
 }
 const errorMessage = ERROR_MESSAGES[errorCode] || ''
 
 // Which control the banner is about, so that one alone carries aria-invalid.
-const ERROR_FIELDS = {
+const ERROR_FIELDS: Record<string, string[]> = {
   access_key_required: ['access_key_id'],
   secret_required: ['secret_access_key'],
 }

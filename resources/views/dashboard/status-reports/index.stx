@@ -11,6 +11,7 @@ import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 import { formatDateTime } from '~/app/lib/display'
 
 // Auth + active-team resolution via @stacksjs/auth's resolveTeamContext,
@@ -33,7 +34,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'incidents'
 
 const reports = AUTH_USER
@@ -42,7 +43,7 @@ const reports = AUTH_USER
 
 // Monitor counts per report, in one pivot query.
 const reportIds = reports.map((r) => r.id)
-const monitorCount = {}
+const monitorCount: Record<number, number> = {}
 if (reportIds.length) {
   const pivots = await db.selectFrom('status_report_monitors').whereIn('status_report_id', reportIds).execute()
   for (const p of pivots) monitorCount[p.status_report_id] = (monitorCount[p.status_report_id] || 0) + 1
@@ -54,13 +55,13 @@ const flashError = query.get('error') || ''
 const activeCount = reports.filter((r) => r.status !== 'resolved').length
 const resolvedCount = reports.length - activeCount
 
-function statusClass(status) {
+function statusClass(status: string) {
   if (status === 'resolved') return 'pill pill-up'
   if (status === 'monitoring') return 'pill pill-degraded'
   return 'pill pill-unknown'
 }
 
-function statusLabel(status) {
+function statusLabel(status: string) {
   const s = String(status || 'unknown')
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
@@ -68,14 +69,14 @@ function statusLabel(status) {
 // Shared display helper (migration Phase 5).
 const dateLabel = formatDateTime
 
-function errorLabel(code) {
+function errorLabel(code: string) {
   if (code === 'title') return 'A title is required.'
   if (code === 'status') return 'Pick a valid status.'
   return ''
 }
 
 // Which control the banner is about, so that one alone carries aria-invalid.
-function errorFields(code) {
+function errorFields(code: string) {
   if (code === 'title')
     return ['sr-title']
   if (code === 'status')

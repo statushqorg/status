@@ -14,6 +14,7 @@ import { formatDateTime, statusLabel, statusPillClass } from '~/app/lib/display'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import
 // { x as y }` binds undefined in a server block in this stx build, so the
@@ -44,7 +45,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'status-pages'
 const pageId = (typeof id !== 'undefined' && id) ? Number(id) : 0
 const statusPage = pageId
@@ -66,18 +67,21 @@ if (statusPage && statusPage.branding) {
 // Assigned monitors: the pivot rows joined back to their monitors in JS
 // (portable, and inner-join semantics preserved — a pivot whose monitor
 // was deleted drops out via the null filter).
-let assignedMonitors = []
+/** A monitor on this page, with its pivot's display settings. */
+type AssignedMonitor = { pivot_id: number, monitor_id: number, name: string, type: string, status: string, display_name: string, display_order: number }
+let assignedMonitors: AssignedMonitor[] = []
 if (statusPage) {
   const pivots = await db.selectFrom('status_page_monitors').where('status_page_id', '=', statusPage.id).execute()
   const pivotMonIds = pivots.map(p => p.monitor_id)
   const pivotMons = pivotMonIds.length ? await db.selectFrom('monitors').whereIn('id', pivotMonIds).execute() : []
   const monById = new Map(pivotMons.map(m => [m.id, m]))
-  assignedMonitors = pivots
+  assignedMonitors = (pivots
     .map((p) => {
       const m = monById.get(p.monitor_id)
       return m ? { pivot_id: p.id, monitor_id: m.id, name: m.name, type: m.type, status: m.status, display_name: p.display_name, display_order: p.display_order } : null
     })
-    .filter(Boolean)
+    // filter(Boolean) drops the nulls, which TS cannot see through.
+    .filter(Boolean) as AssignedMonitor[])
     .sort((a, b) => (a.display_order - b.display_order) || String(a.name).localeCompare(String(b.name)))
 }
 
@@ -108,18 +112,18 @@ if (statusPage && assignedIds.length > 0) {
 }
 
 // Display-only helpers below: none of these touch queries or auth.
-function mwClass(status) {
+function mwClass(status: string) {
   if (status === 'active') return 'pill pill-degraded'
   if (status === 'scheduled') return 'pill pill-unknown'
   return 'pill pill-unknown'
 }
 
-function mwLabel(status) {
+function mwLabel(status: string) {
   const s = String(status || 'unknown')
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function accessLabel(t) {
+function accessLabel(t: string) {
   if (t === 'public') return 'Public'
   if (t === 'password') return 'Password'
   if (t === 'email_domain') return 'Email domain'

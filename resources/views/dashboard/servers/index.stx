@@ -25,6 +25,7 @@ import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { serverFormErrorFields, serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 import { rowsOrEmpty } from '~/app/lib/rows'
 
 const agoLabel = relativeTime
@@ -39,7 +40,7 @@ const AUTH_USER = TEAM_CTX.user
 const TEAM_ID = TEAM_CTX.teamId ?? -1
 const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'servers'
 
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
@@ -71,7 +72,7 @@ const sampleRows = serverIds.length
   : []
 
 /** The highest reading in the window, which is what a threshold is judged on. */
-function worst(rows, key) {
+function worst<TRow>(rows: TRow[], key: keyof TRow) {
   let top = null
   for (const row of rows) {
     const value = Number(row[key])
@@ -100,7 +101,7 @@ for (const row of monitorRows) {
   monitorCountByServer.set(id, (monitorCountByServer.get(id) || 0) + 1)
 }
 
-function pct(value) {
+function pct(value: number | null | undefined) {
   return value === null || value === undefined ? '--' : `${Math.round(value)}%`
 }
 
