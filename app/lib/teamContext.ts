@@ -46,8 +46,8 @@ import { log } from '@stacksjs/logging'
  * Re-resolves after creating so `teams`, `role` and the switcher list come
  * back populated rather than hand-assembled here.
  */
-export async function resolveHealedTeamContext(request: unknown, opts?: unknown): Promise<TeamContext> {
-  const ctx = await resolveTeamContext(request as never, opts as never) as TeamContext
+export async function resolveHealedTeamContext(request: unknown, opts?: Parameters<typeof resolveTeamContext>[1]): Promise<TeamContext> {
+  const ctx = await resolveTeamContext(request as never, opts) as TeamContext
 
   if (!ctx?.user || ctx.teamId != null)
     return ctx
@@ -60,12 +60,24 @@ export async function resolveHealedTeamContext(request: unknown, opts?: unknown)
   if (created == null)
     return ctx
 
-  return await resolveTeamContext(request as never, opts as never) as TeamContext
+  return await resolveTeamContext(request as never, opts) as TeamContext
+}
+
+/**
+ * The signed-in user as the views read it: a `users` row, of which they touch
+ * these four columns. `is_super_admin` is a 0/1 integer on SQLite and a boolean
+ * on Postgres, so the views coerce it with `!!` rather than compare it.
+ */
+export interface TeamUser {
+  id: number
+  email: string
+  name?: string | null
+  is_super_admin?: boolean | number | null
 }
 
 /** The shape the dashboard views destructure. */
 interface TeamContext {
-  user: unknown
+  user: TeamUser | null
   teamId: number | null
   role: string | null
   teams: Array<{ id: number, name: string, role: string }>

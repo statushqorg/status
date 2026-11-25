@@ -34,13 +34,18 @@
     // Per-site markers; allowPatterns stays empty (§12.1).
     // stx-strict-ignore-next-line document.addEventListener -- delegated, and must run without the runtime
     document.addEventListener('submit', function (event) {
-      var form = event.target
-      if (!form || typeof form.matches !== 'function' || !form.matches('form[data-confirm]'))
+      // A submit event's target is always the form, so instanceof costs nothing
+      // and is what types `form` for the checker in a block that cannot carry
+      // annotations (it ships as written). const, not var, so that narrowing
+      // still holds inside the .then callback below.
+      const form = event.target
+      if (!(form instanceof HTMLFormElement) || !form.matches('form[data-confirm]'))
         return
 
       event.preventDefault()
 
-      var body = form.getAttribute('data-confirm')
+      // Never null: the selector above requires the attribute.
+      var body = form.getAttribute('data-confirm') || ''
       var heading = form.getAttribute('data-confirm-title') || 'Are you sure?'
 
       var ask = window.stxConfirm
@@ -48,16 +53,18 @@
             title: heading,
             confirmText: form.getAttribute('data-confirm-action') || 'Continue',
             cancelText: form.getAttribute('data-confirm-cancel') || 'Cancel',
-            type: form.getAttribute('data-confirm-type') || 'error',
+            // The two kinds the header documents; anything else reads as error,
+            // as a missing attribute always has.
+            type: form.getAttribute('data-confirm-type') === 'warning' ? 'warning' : 'error',
           })
         // stx-strict-ignore-next-line window.confirm -- the documented fallback when stxConfirm is absent
         : Promise.resolve(window.confirm(heading + ' ' + body))
 
       Promise.resolve(ask).then(function (ok) {
-        {{-- form.submit() does not re-fire this listener, so a second attempt is
-             still guarded without a flag to track it. It also skips constraint
-             validation, which is safe here: the submit event only fires once the
-             browser has already validated, so that has happened by now. --}}
+        // form.submit() does not re-fire this listener, so a second attempt is
+        // still guarded without a flag to track it. It also skips constraint
+        // validation, which is safe here: the submit event only fires once the
+        // browser has already validated, so that has happened by now.
         if (ok)
           form.submit()
       })
