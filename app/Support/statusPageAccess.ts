@@ -1,18 +1,18 @@
 /**
  * Pure access-control checks for gated status pages (stacksjs/status#1
- * Phase 12). Kept as plain functions (not an Action) — reused both from
- * UnlockStatusPageAction and, inline/duplicated per the established
- * per-view convention (see resources/views/status/[slug].stx,
- * resources/views/index.stx), from the SSR script-server blocks that
- * render the gate.
+ * Phase 12). Kept as plain functions (not an Action) — reused by
+ * UnlockStatusPageAction, IncidentFeedAction, and the server blocks of
+ * resources/views/status/[slug].stx and status/[slug]/incidents/[id].stx,
+ * which import isIpAllowed rather than carrying copies of it.
  */
 import { decrypt } from '@stacksjs/security'
 
 /**
  * Whether a visitor may see a status page's content, given its access_type.
- * The single source of truth for the *decision* (the [slug].stx view still
- * inlines the same branches per the per-view convention above, since stx
- * script-server blocks can't import TS under app/Actions). Any server action
+ * The single source of truth for the *decision*. The two status-page views
+ * still spell out the same branches around isIpAllowed rather than calling
+ * this; a server block can import from app/ (migration Phase 5), so that is
+ * history rather than a constraint. Any server action
  * that exposes page-scoped data — the RSS feed, incident detail, etc. — must
  * gate on this so a `password`/`email_domain`/`ip_allowlist` page never leaks
  * through a side channel that only checked `is_public`.
@@ -80,10 +80,8 @@ export function isEmailDomainAllowed(email: string, allowedDomains: string[]): b
  * ranges of a family it has an address in. Malformed entries are skipped
  * (never a match), and an empty visitor or empty allowlist fails closed.
  *
- * NOTE: keep in sync with the inline copy in
- * resources/views/status/[slug].stx (the per-request gate — this module's
- * `isIpAllowed` is the canonical, unit-tested reference the view mirrors,
- * per the established self-contained-view convention).
+ * The one copy: both status-page views import this, so the page and its
+ * incident detail cannot disagree about who is let in.
  */
 export function isIpAllowed(ip: string, ranges: string[]): boolean {
   if (!ip || ranges.length === 0) return false
