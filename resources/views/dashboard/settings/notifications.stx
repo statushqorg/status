@@ -12,6 +12,7 @@ import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { CHANNEL_TYPES, channelTypeLabel } from '~/app/lib/channelConfig'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 
@@ -32,7 +33,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'settings'
 const channels = await db.selectFrom('notification_channels').where('team_id', '=', TEAM_ID).orderBy('name', 'asc').execute()
 
@@ -43,13 +44,13 @@ const created = query.get('created') === '1'
 // Failure codes from DashboardCreateChannelAction (app/lib/channelConfig's
 // BuildConfigResult). Each says which field to go back and fix, since the
 // form redirects rather than re-rendering with the values still in it.
-const ERRORS = {
+const ERRORS: Record<string, string> = {
   missing_config: 'That channel type needs its connection details filled in.',
   invalid_headers: 'Extra headers must be a JSON object, like {"Authorization": "Bearer ..."}.',
   unknown_type: 'Pick a channel type from the list.',
   invalid_teams_url: 'That is not a Teams Workflows URL. Old Office 365 connector URLs (outlook.office.com) no longer deliver, so create a Workflow in the channel and paste its URL.',
 }
-const errorMessage = ERRORS[query.get('error')] || ''
+const errorMessage = ERRORS[query.get('error') ?? ''] || ''
 
 // Which control the banner is about, so that one alone carries aria-invalid.
 // `missing_config` and `invalid_headers` are about the per-type fields, whose
@@ -64,9 +65,9 @@ const enabledCount = channels.filter((c) => c.enabled).length
 // monochrome path data (single currentColor path, so it reads in both
 // themes). Email, SMS, and webhook have no brand, so they get generic
 // outline marks. Rendered inside a .chan-ico span at 18px.
-function channelIcon(type) {
-  const svg = (body) => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">' + body + '</svg>'
-  const ICONS = {
+function channelIcon(type: string) {
+  const svg = (body: string) => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">' + body + '</svg>'
+  const ICONS: Record<string, string> = {
     slack: '<path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>',
     discord: '<path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>',
     teams: '<path d="M20.625 5.775a2.813 2.813 0 1 0-3.128-4.192 2.813 2.813 0 0 0 3.128 4.192zM14.727 6.786c.036.238.055.478.055.72v6.297a1.79 1.79 0 0 1-1.789 1.79h-2.588a5.53 5.53 0 0 1-.157.42 5.63 5.63 0 0 1-4.955 3.286c-.06.002-.12.003-.181.003v3.11c0 .29.15.559.396.712.246.152.552.166.812.036l7.891-3.945a1.61 1.61 0 0 0 .89-1.44V8.4a1.61 1.61 0 0 0-.89-1.44l-.02-.01a5.596 5.596 0 0 1 .845-.164zm7.756.678H16.32a.75.75 0 0 0-.75.75v6.844a4.126 4.126 0 0 0 8.244-.223V8.964a1.5 1.5 0 0 0-1.5-1.5zM11.25 7.5H1.5a1.5 1.5 0 0 0-1.5 1.5v6a1.5 1.5 0 0 0 1.5 1.5h9.75a1.5 1.5 0 0 0 1.5-1.5V9a1.5 1.5 0 0 0-1.5-1.5zM9.334 11.05H7.42v5.075H6.037V11.05H4.132V9.9h5.202z"/>',

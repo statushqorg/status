@@ -61,12 +61,13 @@ if (report) {
   const pivotMonIds = pivots.map(p => p.monitor_id)
   const pivotMons = pivotMonIds.length ? await db.selectFrom('monitors').whereIn('id', pivotMonIds).execute() : []
   const monById = new Map(pivotMons.map(m => [m.id, m]))
-  assignedMonitors = pivots
+  assignedMonitors = (pivots
     .map((p) => {
       const m = monById.get(p.monitor_id)
       return m ? { monitor_id: m.id, name: m.name, type: m.type, status: m.status } : null
     })
-    .filter(Boolean)
+    // filter(Boolean) drops the nulls, which TS cannot see through.
+    .filter(Boolean) as { monitor_id: number, name: string, type: string, status: string }[])
     .sort((a, b) => String(a.name).localeCompare(String(b.name)))
 
   const assignedSet = new Set(assignedMonitors.map(m => m.monitor_id))
@@ -84,7 +85,7 @@ const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? ne
 const flashPosted = query.get('posted') === '1'
 const flashError = query.get('error') || ''
 
-function statusClass(status) {
+function statusClass(status: string) {
   if (status === 'resolved') return 'pill pill-up'
   if (status === 'monitoring') return 'pill pill-degraded'
   return 'pill pill-unknown'
@@ -93,7 +94,7 @@ function statusClass(status) {
 // different vocabulary from a monitor's -- hence the name. It used to be
 // called statusLabel, which collided with the shared monitor-status helper
 // this page also needs.
-function reportStatusLabel(status) {
+function reportStatusLabel(status: string) {
   const s = String(status || 'unknown')
   return s.charAt(0).toUpperCase() + s.slice(1)
 }

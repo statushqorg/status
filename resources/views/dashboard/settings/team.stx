@@ -13,6 +13,7 @@ import { isoDate } from '~/app/lib/display'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 
@@ -35,7 +36,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 const NAV_ACTIVE = 'settings'
 
 const team = (await db.selectFrom('teams').where('id', '=', TEAM_ID).limit(1).execute())[0]
@@ -46,7 +47,13 @@ const members = await db.selectFrom('team_members').where('team_id', '=', TEAM_I
 // render (with defaults) before the report columns exist.
 let REPORT_SETTINGS = { frequency: 'none', recipients: '' }
 try {
-  const reportRow = (await db.selectFrom('teams').where('id', '=', TEAM_ID).limit(1).execute())[0]
+  // The three report_* columns come from migration 0000000195, not from the
+  // Team model, and generate:db-types only types a model-backed table from its
+  // model, so the generated row omits them (stacksjs/stacks#3393). Stated here
+  // rather than widened.
+  const reportRow = (await db.selectFrom('teams').where('id', '=', TEAM_ID).limit(1).execute())[0] as
+    | (typeof team & { report_frequency?: string | null, report_recipients?: string | null })
+    | undefined
   if (reportRow) {
     REPORT_SETTINGS = {
       frequency: reportRow.report_frequency || 'none',
@@ -65,7 +72,7 @@ const pendingCount = members.filter((m) => m.status === 'pending').length
 // is what an audit column wants.
 const dateLabel = isoDate
 
-function reportFrequencyLabel(freq) {
+function reportFrequencyLabel(freq: string) {
   if (freq === 'monthly') return 'Monthly'
   if (freq === 'weekly') return 'Weekly'
   return 'Off'
@@ -75,11 +82,11 @@ function reportFrequencyLabel(freq) {
 // rather than re-rendering.
 const rosterQuery = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const roleSaved = rosterQuery.get('saved') === '1'
-const ROLE_ERRORS = {
+const ROLE_ERRORS: Record<string, string> = {
   last_owner: 'That is the team’s only owner. Promote someone else to owner first, or the team would be left with nobody who can administer it.',
   bad_role: 'Pick a role from the list.',
 }
-const roleError = ROLE_ERRORS[rosterQuery.get('error')] || ''
+const roleError = ROLE_ERRORS[rosterQuery.get('error') ?? ''] || ''
 
 const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19)
 

@@ -57,7 +57,7 @@ const acceptHint = hasAccount
 
 const query = (typeof __stxServeSearch !== 'undefined' && __stxServeSearch) ? new URLSearchParams(__stxServeSearch) : new URLSearchParams()
 const errorCode = query.get('error') || ''
-const ERROR_MESSAGES = {
+const ERROR_MESSAGES: Record<string, string> = {
   bad_credentials: 'That password does not match the existing account for this email. Enter your current password to accept.',
   weak_password: 'Password must be at least 6 characters.',
   name_required: 'Please enter your name.',

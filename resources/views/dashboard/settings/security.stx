@@ -95,7 +95,7 @@ if (AUTH_USER && TWO_FA_ENABLED) {
 const RECOVERY_LOW = RECOVERY_LEFT !== null && RECOVERY_LEFT <= 2
 const RECOVERY_PILL = RECOVERY_LEFT === 0 ? 'pill pill-down' : (RECOVERY_LOW ? 'pill pill-degraded' : 'pill pill-up')
 
-function recoveryLabel(left) {
+function recoveryLabel(left: number) {
   if (left === 0)
     return 'You have no recovery codes left. If you lose your authenticator app you will be locked out of this account. Generate a new set now.'
   if (left === 1)
@@ -145,7 +145,7 @@ const flashError = query.get('error') || ''
 // answer in place when the page's script submits them, and only come back
 // here when the browser submitted the form itself (scripts off): see
 // app/lib/recoveryCodesFallback.ts.
-function errorLabel(code) {
+function errorLabel(code: string) {
   if (code === 'bad_password') return 'Incorrect password. Two-factor auth is still enabled.'
   if (code === 'invalid_code') return 'That code did not match. Scan the current QR secret and try again.'
   if (code === 'setup_expired') return 'That setup session expired. Start again to get a fresh secret.'
@@ -158,7 +158,7 @@ function errorLabel(code) {
 // Which control the banner is about, so that one alone carries aria-invalid.
 // An expired setup, a factor that is already on and a lockout are about the
 // account's state, not a field, so they mark nothing.
-function errorFields(code) {
+function errorFields(code: string) {
   if (code === 'bad_password')
     return ['two-factor-password']
   if (code === 'invalid_code')
@@ -174,7 +174,7 @@ const invalidFields = errorLabel(flashError) ? errorFields(flashError) : []
 // is what an audit column wants.
 const dateLabel = isoDate
 
-function credentialLabel(id) {
+function credentialLabel(id: string | null | undefined) {
   const s = String(id || '')
   return s.length > 18 ? s.slice(0, 18) + '…' : s
 }

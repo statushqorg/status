@@ -12,6 +12,7 @@
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 
@@ -32,7 +33,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 // Super-admins see every team's status pages.
 const NAV_ACTIVE = 'status-pages'
 
@@ -45,7 +46,7 @@ const publicCount = statusPages.filter((p) => p.access_type === 'public').length
 const restrictedCount = statusPages.length - publicCount
 const domainCount = statusPages.filter((p) => p.custom_domain).length
 
-function accessLabel(t) {
+function accessLabel(t: string) {
   if (t === 'public') return 'Public'
   if (t === 'password') return 'Password'
   if (t === 'email_domain') return 'Email domain'

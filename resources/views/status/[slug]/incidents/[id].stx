@@ -8,7 +8,7 @@ import { db } from '@stacksjs/database'
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import
 // { x as y }` binds undefined in a server block in this stx build, so the
 // page's own names are bound here instead.
-const formatDate = iso => formatDateTime(iso, { year: true, empty: '' })
+const formatDate = (iso: string | null | undefined) => formatDateTime(iso, { year: true, empty: '' })
 
 // Dialect-agnostic DB access via the framework query builder (works on
 // sqlite for self-hosted single-box installs and on the networked
@@ -30,7 +30,7 @@ const statusPage = pageSlug
 // parent [slug].stx gate is meaningless if this sibling view skips it. Same
 // inline/self-contained-per-view convention documented in [slug].stx; KEEP IN
 // SYNC with app/Actions/StatusPages/AccessControl.ts (the canonical version).
-function ipv4ToInt(ip) {
+function ipv4ToInt(ip: string) {
   const parts = String(ip).trim().split('.')
   if (parts.length !== 4) return null
   let result = 0
@@ -43,14 +43,14 @@ function ipv4ToInt(ip) {
   return result >>> 0
 }
 
-function ipv6ToBigInt(ip) {
+function ipv6ToBigInt(ip: string) {
   let s = String(ip).trim()
   const pct = s.indexOf('%')
   if (pct !== -1) s = s.slice(0, pct)
   if (s.length === 0 || s.includes(':::')) return null
   const doubleColon = s.indexOf('::')
   if (doubleColon !== -1 && s.indexOf('::', doubleColon + 1) !== -1) return null
-  const expandTail = (groups) => {
+  const expandTail = (groups: string[]): string[] | null => {
     if (groups.length === 0) return groups
     const last = groups[groups.length - 1]
     if (!last.includes('.')) return groups
@@ -58,7 +58,7 @@ function ipv6ToBigInt(ip) {
     if (v4 === null) return null
     return [...groups.slice(0, -1), ((v4 >>> 16) & 0xFFFF).toString(16), (v4 & 0xFFFF).toString(16)]
   }
-  let groups
+  let groups: string[]
   if (doubleColon === -1) {
     const expanded = expandTail(s.split(':'))
     if (expanded === null || expanded.length !== 8) return null
@@ -81,7 +81,7 @@ function ipv6ToBigInt(ip) {
   return result
 }
 
-function matchCidr4(ipInt, range) {
+function matchCidr4(ipInt: number, range: string) {
   if (!range.includes('/')) return ipv4ToInt(range) === ipInt
   const [base, bitsStr] = range.split('/')
   const baseInt = ipv4ToInt(base)
@@ -91,7 +91,7 @@ function matchCidr4(ipInt, range) {
   return (ipInt & mask) === (baseInt & mask)
 }
 
-function matchCidr6(ipBig, range) {
+function matchCidr6(ipBig: bigint, range: string) {
   if (!range.includes('/')) {
     const only = ipv6ToBigInt(range)
     return only !== null && only === ipBig
@@ -105,7 +105,7 @@ function matchCidr6(ipBig, range) {
   return (ipBig & mask) === (baseBig & mask)
 }
 
-function isIpAllowed(ip, ranges) {
+function isIpAllowed(ip: string, ranges: string[]) {
   if (!ip || ranges.length === 0) return false
   let v4 = null
   let v6 = null
@@ -178,7 +178,7 @@ const pageTitle = incident ? `${incident.monitor_name} incident` : 'Incident not
 if (!statusPage || !incident)
   notFound()
 
-function statusBadgeClass(status) {
+function statusBadgeClass(status: string) {
   if (status === 'resolved') return 'text-xs font-medium uppercase tracking-wide text-emerald-600'
   if (status === 'monitoring') return 'text-xs font-medium uppercase tracking-wide text-sky-600'
   return 'text-xs font-medium uppercase tracking-wide text-amber-600'
