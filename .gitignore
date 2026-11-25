@@ -95,8 +95,12 @@ storage/framework/stx/
 # tsc's incremental build cache. Local-only and rewritten on every typecheck.
 tsconfig.tsbuildinfo
 
-# Table types `buddy generate:types` writes from the live database. Derived,
-# and nothing needs it: tsc passes without it and CI never generates it.
+# Table types `buddy generate:db-types` derives from database/migrations (no
+# database needed; the same migrations give the same file). `typecheck:views`
+# regenerates it before every run and hands it to `stx typecheck`, which is
+# what types `db.selectFrom(...)` rows in the templates; without it they fall
+# back to the framework's default tables, or to unknown. Derived, so not
+# committed: a committed copy would go stale the first time a model changed.
 database/types.d.ts
 
 # Migration scratch the ORM writes during a local `buddy migrate`. The schema

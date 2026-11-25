@@ -54,7 +54,8 @@ const MAPPED_ELSEWHERE = [
 
 /** The `code === '…'` comparisons inside one function body. */
 function codesIn(source: string, fn: string): Set<string> {
-  const start = source.indexOf(`function ${fn}(code)`)
+  // `(code)` or `(code: string)`: the pages are being typed for stx typecheck.
+  const start = source.search(new RegExp(`function ${fn}\\(code(?:: [^)]*)?\\)`))
   expect(start, `${fn} not found`).toBeGreaterThan(-1)
   const body = source.slice(start, source.indexOf('\n}', start))
   return new Set([...body.matchAll(/code === '([a-z_]+)'/g)].map(m => m[1]))

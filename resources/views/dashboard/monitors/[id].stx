@@ -40,6 +40,7 @@ const chartArea = area
 // NB: `import { x as y }` does NOT work in a server block in this stx build --
 // the alias binds undefined. Import the real names, then bind locally below.
 import { checkPillClass } from '~/app/lib/appHealth'
+import type { NormalizedCheck } from '~/app/lib/appHealth'
 import { uptimeRequestFormValues } from '~/app/lib/monitorForm'
 import { formatDateTime, incidentPillClass, relativeTime, serverStatusPill, siteHost, siteSlug, statusLabel, statusPillClass } from '~/app/lib/display'
 import { describeCadence, formatDurationSeconds, pingUrls, summarizeHeartbeat } from '~/app/lib/heartbeat'
@@ -69,7 +70,6 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 // Super-admins can open any team's monitor; members only their own team's.
 const NAV_ACTIVE = 'monitors'
 
@@ -97,7 +97,7 @@ const monitorSiteSlug = siteSlug(monitorSiteHost)
 const stClass = statusPillClass
 const stLabel = statusLabel
 const formatDate = formatDateTime
-const agoLabel = iso => relativeTime(iso, '--')
+const agoLabel = (iso: string | null | undefined) => relativeTime(iso, '--')
 
 // Incident status -> pill class: resolved reads muted, monitoring reads
 const recentChecks = monitor
@@ -113,10 +113,10 @@ const incidents = monitor
 // and posts the whole grid at once, so it needs the full team list —
 // showing only the attached ones is what made routing feel like a search
 // through a dropdown rather than a set of switches.
-let routableChannels = []
+let routableChannels: { id: number, name: string, type: string, routed: boolean, firesOn: string }[] = []
 if (monitor) {
   const links = await db.selectFrom('monitor_notification_channels').where('monitor_id', '=', monitor.id).execute()
-  const firesOnByChannel = {}
+  const firesOnByChannel: Record<number, string> = {}
   for (const l of links) firesOnByChannel[l.notification_channel_id] = l.fires_on || 'both'
   const teamChans = await db.selectFrom('notification_channels').where('team_id', '=', monitor.team_id).execute()
   routableChannels = teamChans
@@ -147,7 +147,7 @@ const routedChannelCount = routedChannels.length
 // so a mismatched id must render as detached rather than leak another team's
 // box name. See §6.2's auto-CRUD note.
 let serverCard = null
-let teamServerChoices = []
+let teamServerChoices: { id: number, name: string }[] = []
 if (monitor) {
   const rows = await rowsOrEmpty(() => db.selectFrom('servers').where('team_id', '=', monitor.team_id).select(['id', 'name', 'status']).execute())
   teamServerChoices = rows
@@ -172,8 +172,8 @@ const serverSuggestion = (monitor && !serverCard && teamServerChoices.length)
 
 const flashServer = query.get('server') === '1'
 
-const FIRES_ON_LABELS = { both: 'Down + issues', down: 'Down only', issue: 'Issues only' }
-function firesOnLabel(value) {
+const FIRES_ON_LABELS: Record<string, string> = { both: 'Down + issues', down: 'Down only', issue: 'Issues only' }
+function firesOnLabel(value: string) {
   return FIRES_ON_LABELS[value] || FIRES_ON_LABELS.both
 }
 
@@ -185,8 +185,8 @@ if (monitor) {
   monitorAssertions = (await db.selectFrom('assertions').where('monitor_id', '=', monitor.id).orderBy('sort_order', 'asc').orderBy('id', 'asc').execute())
     .map(a => ({ id: a.id, target: a.target, property: a.property || '', compare: a.compare, expected: a.expected || '' }))
 }
-const COMPARE_LABELS = { eq: 'equals', not_eq: 'not equals', gt: 'greater than', gte: '>=', lt: 'less than', lte: '<=', contains: 'contains', not_contains: 'not contains', empty: 'is empty', not_empty: 'is present' }
-function assertionLabel(a) {
+const COMPARE_LABELS: Record<string, string> = { eq: 'equals', not_eq: 'not equals', gt: 'greater than', gte: '>=', lt: 'less than', lte: '<=', contains: 'contains', not_contains: 'not contains', empty: 'is empty', not_empty: 'is present' }
+function assertionLabel(a: { target: string, property: string, compare: string, expected: string }) {
   const subject = a.target === 'body' && a.property ? a.property : (a.target === 'header' ? `header ${a.property}` : a.target.replace('_', ' '))
   const cmp = COMPARE_LABELS[a.compare] || a.compare
   const needsValue = a.compare !== 'empty' && a.compare !== 'not_empty'
@@ -198,9 +198,9 @@ function assertionLabel(a) {
 // Opsgenie, Pushover, and ntfy use the official Simple Icons monochrome
 // path data; email, SMS, and webhook get generic outline marks. Rendered
 // inside a .chan-ico span at 18px, inheriting currentColor.
-function channelIcon(type) {
-  const svg = (body) => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">' + body + '</svg>'
-  const ICONS = {
+function channelIcon(type: string) {
+  const svg = (body: string) => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">' + body + '</svg>'
+  const ICONS: Record<string, string> = {
     slack: '<path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>',
     discord: '<path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>',
     teams: '<path d="M20.625 5.775a2.813 2.813 0 1 0-3.128-4.192 2.813 2.813 0 0 0 3.128 4.192zM14.727 6.786c.036.238.055.478.055.72v6.297a1.79 1.79 0 0 1-1.789 1.79h-2.588a5.53 5.53 0 0 1-.157.42 5.63 5.63 0 0 1-4.955 3.286c-.06.002-.12.003-.181.003v3.11c0 .29.15.559.396.712.246.152.552.166.812.036l7.891-3.945a1.61 1.61 0 0 0 .89-1.44V8.4a1.61 1.61 0 0 0-.89-1.44l-.02-.01a5.596 5.596 0 0 1 .845-.164zm7.756.678H16.32a.75.75 0 0 0-.75.75v6.844a4.126 4.126 0 0 0 8.244-.223V8.964a1.5 1.5 0 0 0-1.5-1.5zM11.25 7.5H1.5a1.5 1.5 0 0 0-1.5 1.5v6a1.5 1.5 0 0 0 1.5 1.5h9.75a1.5 1.5 0 0 0 1.5-1.5V9a1.5 1.5 0 0 0-1.5-1.5zM9.334 11.05H7.42v5.075H6.037V11.05H4.132V9.9h5.202z"/>',
@@ -234,7 +234,7 @@ const chartChecks = monitor
 const CHART = { w: 1280, h: 200, top: 14, right: 14, bottom: 30, left: 64 }
 const PLOT = { left: CHART.left, right: CHART.w - CHART.right, labelY: CHART.h - 8, top: CHART.top, bottom: CHART.h - CHART.bottom }
 
-function intervalLabel(sec) {
+function intervalLabel(sec: number | null | undefined) {
   if (!sec) return '--'
   if (sec < 60) return 'every ' + sec + 's'
   if (sec === 60) return 'every minute'
@@ -245,7 +245,7 @@ function intervalLabel(sec) {
   return 'every ' + Math.round(sec / 86400) + 'd'
 }
 
-function fmtDur(ms) {
+function fmtDur(ms: number | null | undefined) {
   if (ms === null || ms === undefined) return '--'
   if (ms < 1000) return Math.round(ms) + 'ms'
   if (ms < 60000) return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's'
@@ -262,14 +262,14 @@ if (chartChecks.length > 1) {
   const values = chartChecks.map(c => c.response_time_ms)
   const x = scaleLinear().domain([0, values.length - 1]).range([CHART.left, CHART.w - CHART.right])
   const y = scaleLinear().domain([0, Math.max(...values, 1)]).nice().range([CHART.h - CHART.bottom, CHART.top])
-  const lineGen = chartLine().x((_d, i) => x(i)).y(d => y(d)).curve(curveMonotoneX)
-  const areaGen = chartArea().x((_d, i) => x(i)).y0(y(0)).y1(d => y(d)).curve(curveMonotoneX)
-  const hhmm = iso => String(iso).slice(11, 16)
+  const lineGen = chartLine().x((_d: number, i: number) => x(i)).y((d: number) => y(d)).curve(curveMonotoneX)
+  const areaGen = chartArea().x((_d: number, i: number) => x(i)).y0(y(0)).y1((d: number) => y(d)).curve(curveMonotoneX)
+  const hhmm = (iso: string) => String(iso).slice(11, 16)
   const hitW = (PLOT.right - PLOT.left) / values.length
   rtChart = {
     linePath: lineGen(values),
     areaPath: areaGen(values),
-    ticks: y.ticks(3).filter(t => t > 0).map(t => ({ y: y(t).toFixed(1), label: fmtDur(t) })),
+    ticks: y.ticks(3).filter((t: number) => t > 0).map((t: number) => ({ y: y(t).toFixed(1), label: fmtDur(t) })),
     baselineY: y(0).toFixed(1),
     xFirst: hhmm(chartChecks[0].checked_at),
     xLast: hhmm(chartChecks[chartChecks.length - 1].checked_at),
@@ -292,12 +292,12 @@ const range = query.get('range') || '24h'
 // over the preset. The chart is day-bucketed for a custom span, like 7d/30d.
 const qFrom = query.get('from')
 const qTo = query.get('to')
-const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+const isDay = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
 const isCustom = isDay(qFrom) && isDay(qTo)
 const customFrom = isCustom ? String(qFrom).slice(0, 10) : ''
 const customTo = isCustom ? String(qTo).slice(0, 10) : ''
-const fmtDayLabel = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-const RANGE_LABEL = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' }
+const fmtDayLabel = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+const RANGE_LABEL: Record<string, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' }
 const rangeLabel = isCustom
   ? (customFrom.slice(0, 4) === customTo.slice(0, 4) ? `${fmtDayLabel(customFrom)} \u2013 ${fmtDayLabel(customTo)}, ${customTo.slice(0, 4)}` : `${fmtDayLabel(customFrom)}, ${customFrom.slice(0, 4)} \u2013 ${fmtDayLabel(customTo)}, ${customTo.slice(0, 4)}`)
   : (RANGE_LABEL[range] || RANGE_LABEL['24h'])
@@ -310,7 +310,7 @@ const flashSaved = query.get('saved') === '1'
 const routingSaved = query.get('routing') === '1'
 const formError = query.get('error') || ''
 const planFloor = query.get('floor') || ''
-function formErrorLabel(code) {
+function formErrorLabel(code: string) {
   if (code === 'name_required') return 'Give the monitor a name.'
   if (code === 'name_too_long') return 'That name is longer than 150 characters.'
   if (code === 'type_invalid') return 'Pick a monitor type from the list.'
@@ -327,7 +327,7 @@ function formErrorLabel(code) {
 // Marking all 22 controls on this form would be worse than marking none.
 // `plan_interval` is a plan ceiling rather than a bad value, but the interval
 // field is still the one to change, so it is marked too.
-function errorFields(code) {
+function errorFields(code: string) {
   if (code === 'name_required' || code === 'name_too_long')
     return ['edit-name']
   if (code === 'type_invalid')
@@ -343,7 +343,7 @@ const invalidFields = formErrorLabel(formError) ? errorFields(formError) : []
 
 // Fail-soft exactly like every job reader: a malformed config prefills as
 // empty rather than breaking the page.
-let monitorCfg = {}
+let monitorCfg: Record<string, unknown> = {}
 try {
   monitorCfg = monitor && monitor.config ? JSON.parse(monitor.config) : {}
 }
@@ -353,7 +353,7 @@ catch (err) {
 // The uptime request settings as the form shows them (app/lib/monitorForm.ts).
 const uptimeRequest = uptimeRequestFormValues(monitorCfg)
 const requestMethods = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
-function cfgValue(key) {
+function cfgValue(key: string) {
   const value = monitorCfg[key]
   if (value === undefined || value === null) return ''
   return Array.isArray(value) ? value.join(', ') : value
@@ -431,14 +431,14 @@ const monitorTypes = [
   { value: 'port_scan', label: 'Port scan' },
   { value: 'ai_check', label: 'AI check' },
 ]
-const RANGE_CONFIG = {
+const RANGE_CONFIG: Record<string, { sinceMs: number, granularity: string }> = {
   '24h': { sinceMs: 24 * 60 * 60 * 1000, granularity: 'hour' },
   '7d': { sinceMs: 7 * 24 * 60 * 60 * 1000, granularity: 'day' },
   '30d': { sinceMs: 30 * 24 * 60 * 60 * 1000, granularity: 'day' },
 }
-let granularity
-let fromMs
-let toMs
+let granularity: string
+let fromMs: number
+let toMs: number
 if (isCustom) {
   fromMs = Date.parse(`${customFrom}T00:00:00.000Z`)
   toMs = Date.parse(`${customTo}T23:59:59.999Z`)
@@ -453,7 +453,7 @@ else {
 const since = new Date(fromMs).toISOString()
 const until = new Date(toMs).toISOString()
 
-function rangeUrl(r) {
+function rangeUrl(r: string) {
   const p = new URLSearchParams(query)
   p.set('range', r)
   return '/dashboard/monitors/' + monitorId + '?' + p.toString()
@@ -464,14 +464,14 @@ function rangeUrl(r) {
 // old `%Y-%m-%d %H:00` key; `day` buckets reproduce `date(checked_at)`.
 // CPU/RAM come from each row's JSON metadata; the average ignores rows
 // that don't carry a numeric sample, matching SQL's AVG-skips-NULL.
-function bucketKey(iso) {
+function bucketKey(iso: string) {
   const s = String(iso)
   return granularity === 'hour' ? `${s.slice(0, 10)} ${s.slice(11, 13)}:00` : s.slice(0, 10)
 }
-let volumeBuckets = []
+let volumeBuckets: { bucket: string, request_count: number }[] = []
 if (monitor) {
   const rows = await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).where('checked_at', '>=', since).where('checked_at', '<=', until).execute()
-  const byBucket = new Map()
+  const byBucket = new Map<string, { bucket: string, request_count: number }>()
   for (const r of rows) {
     const key = bucketKey(r.checked_at)
     let b = byBucket.get(key)
@@ -491,7 +491,7 @@ const totalChecksInRange = volumeBuckets.reduce((sum, b) => sum + b.request_coun
 // Sparse buckets were the old "two giant bars" bug: only buckets that
 // happened to contain checks were drawn, each stretched across the
 // full width.
-const denseKeys = []
+const denseKeys: string[] = []
 {
   const stepMs = granularity === 'hour' ? 3600000 : 86400000
   for (let t = fromMs; t <= toMs; t += stepMs)
@@ -506,7 +506,7 @@ if (denseBuckets.length > 0) {
   const xBand = scaleBand().domain(denseBuckets.map(b => b.bucket)).range([CHART.left, CHART.w - CHART.right]).padding(0.25)
   const y = scaleLinear().domain([0, Math.max(...counts, 1)]).nice().range([CHART.h - CHART.bottom, CHART.top])
   const labelEvery = Math.max(1, Math.ceil(denseBuckets.length / 6))
-  const xLabel = k => granularity === 'hour' ? k.slice(11) : k.slice(5)
+  const xLabel = (k: string) => granularity === 'hour' ? k.slice(11) : k.slice(5)
   volChart = {
     bars: denseBuckets.map(b => ({
       x: xBand(b.bucket).toFixed(1),
@@ -521,7 +521,7 @@ if (denseBuckets.length > 0) {
       w: xBand.step().toFixed(1),
       tip: b.bucket + ' \u00b7 ' + b.request_count + ' check' + (b.request_count === 1 ? '' : 's'),
     })),
-    ticks: y.ticks(3).filter(t => t > 0 && Number.isInteger(t)).map(t => ({ y: y(t).toFixed(1), label: String(t) })),
+    ticks: y.ticks(3).filter((t: number) => t > 0 && Number.isInteger(t)).map((t: number) => ({ y: y(t).toFixed(1), label: String(t) })),
     baselineY: y(0).toFixed(1),
     xLabels: denseBuckets.filter((_b, i) => i % labelEvery === 0).map(b => ({ x: (xBand(b.bucket) + xBand.bandwidth() / 2).toFixed(1), label: xLabel(b.bucket) })),
   }
@@ -543,7 +543,7 @@ if (denseBuckets.length > 0) {
 // beside a green "Up" pill after one bad minute per day. Maintenance windows
 // were not excluded either, which the other two both do.
 const since90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
-let uptimeSummary = { pct: null, days: [], upChecks: 0, totalChecks: 0 }
+let uptimeSummary: ReturnType<typeof computeUptime> = { pct: null, days: [], upChecks: 0, totalChecks: 0 }
 if (monitor) {
   const rows = await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).where('checked_at', '>=', since90).execute()
   const intervals = (await maintenanceIntervalsByMonitor([monitor.id], {
@@ -565,7 +565,7 @@ const totalDaysWithData = uptimeDays.filter((d) => d.status !== 'unknown').lengt
 
 // Maps a day status onto the .uptime-bars tick classes (default tick is
 // accent = up; warn/down carry their own colors; unknown is faint).
-function dayTickClass(status) {
+function dayTickClass(status: string) {
   if (status === 'degraded') return 'warn'
   if (status === 'down') return 'down'
   if (status === 'unknown') return 'unknown'
@@ -611,12 +611,13 @@ if (latestPortScan) {
 // Blocklist detail: the latest check's recorded IP + which zones (if any)
 // list it, plus whether that IP is a shared CDN edge, so the panel can
 // caveat a listing and offer a real "check it yourself" link.
-const DNSBL_LABELS = { 'zen.spamhaus.org': 'Spamhaus ZEN', 'b.barracudacentral.org': 'Barracuda', 'dnsbl.sorbs.net': 'SORBS', 'bl.spamcop.net': 'SpamCop' }
+const DNSBL_LABELS: Record<string, string> = { 'zen.spamhaus.org': 'Spamhaus ZEN', 'b.barracudacentral.org': 'Barracuda', 'dnsbl.sorbs.net': 'SORBS', 'bl.spamcop.net': 'SpamCop' }
 let blocklist = null
 if (monitor && monitor.type === 'dns_blocklist') {
   const row = (await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).orderByDesc('id').limit(1).execute())[0]
   if (row) {
-    let meta = {}
+    // What RunBlocklistCheck stores on the check result.
+    let meta: { listedOn?: unknown, ip?: string | null } = {}
     try { meta = JSON.parse(row.metadata || '{}') } catch {}
     const listedOn = Array.isArray(meta.listedOn) ? meta.listedOn : []
     const ip = meta.ip || null
@@ -650,7 +651,8 @@ let __appHealth = null
 if (monitor && monitor.type === 'health') {
   const row = (await db.selectFrom('check_results').where('monitor_id', '=', monitor.id).orderByDesc('id').limit(1).execute())[0]
   if (row) {
-    let meta = {}
+    // What RunHealthCheck stores on the check result.
+    let meta: { appHealth?: { checks?: NormalizedCheck[], stale?: boolean, finishedAt?: string | null } } = {}
     try { meta = JSON.parse(row.metadata || '{}') } catch {}
     const report = meta.appHealth
     if (report && Array.isArray(report.checks) && report.checks.length > 0) {
