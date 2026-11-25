@@ -12,7 +12,7 @@ import { cache } from '@stacksjs/cache'
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import
 // { x as y }` binds undefined in a server block in this stx build, so the
 // page's own names are bound here instead.
-const formatDate = iso => formatDateTime(iso, { locale: DATE_LOCALE, empty: '' })
+const formatDate = (iso: string | null | undefined) => formatDateTime(iso, { locale: DATE_LOCALE, empty: '' })
 
 // Dialect-agnostic DB access (sqlite self-hosted / networked Postgres hosted).
 
@@ -103,7 +103,9 @@ if (statusPage && statusPage.branding) {
 // Assigned monitors, joined back to their pivots in JS (portable). A real
 // monitor-name map is kept alongside for the incident lists below, which
 // label by the actual monitor name rather than the page's display_name.
-let monitors = []
+/** One monitor as this page lists it. `inMaintenance` is set after the windows load. */
+type StatusMonitor = { id: number, name: string, status: string, groupId: number | null, _order: number, _realName: string, _interval: number, inMaintenance?: boolean }
+let monitors: StatusMonitor[] = []
 const monitorRealNameById = new Map()
 if (statusPage) {
   const pivots = await db.selectFrom('status_page_monitors').where('status_page_id', '=', statusPage.id).execute()
@@ -111,7 +113,7 @@ if (statusPage) {
   const pms = pmIds.length ? await db.selectFrom('monitors').whereIn('id', pmIds).execute() : []
   const byId = new Map(pms.map(m => [m.id, m]))
   for (const m of pms) monitorRealNameById.set(m.id, m.name)
-  monitors = pivots
+  monitors = (pivots
     .map((p) => {
       const m = byId.get(p.monitor_id)
       if (!m) return null
@@ -127,7 +129,8 @@ if (statusPage) {
         _interval: m.check_interval_seconds,
       }
     })
-    .filter(Boolean)
+    // filter(Boolean) drops the nulls, which TS cannot see through.
+    .filter(Boolean) as StatusMonitor[])
     .sort((a, b) => (a._order - b._order) || String(a._realName).localeCompare(String(b._realName)))
 }
 
@@ -190,7 +193,7 @@ const UPTIME_DAYS = 90
 // second region never renders, so no shared cache is needed.
 
 const UPTIME_TTL_SECONDS = 60
-const uptimeByMonitor = {}
+const uptimeByMonitor: Record<number, { bars: { date: string, status: string, up: number, total: number }[], pct: number | null }> = {}
 for (const m of monitors) {
   uptimeByMonitor[m.id] = await cache.getOrSet(`status-uptime:${m.id}:${UPTIME_DAYS}`, async () => {
     const sinceMs = Date.now() - UPTIME_DAYS * 86400000
@@ -218,20 +221,20 @@ for (const m of monitors) {
   }, UPTIME_TTL_SECONDS)
 }
 
-function uptimeBarColor(status) {
+function uptimeBarColor(status: string) {
   if (status === 'up') return '#10b981'
   if (status === 'degraded') return '#f59e0b'
   if (status === 'down') return '#ef4444'
   return '#e5e7eb'
 }
 
-function uptimePctLabel(monitorId) {
+function uptimePctLabel(monitorId: number) {
   const u = uptimeByMonitor[monitorId]
   if (!u || u.pct === null) return t('no_data')
   return u.pct.toFixed(2) + '% ' + t('uptime')
 }
 
-function uptimeBars(monitorId) {
+function uptimeBars(monitorId: number) {
   return (uptimeByMonitor[monitorId] && uptimeByMonitor[monitorId].bars) || []
 }
 
@@ -241,7 +244,7 @@ let activeIncidents = []
 let resolvedIncidents = []
 if (monitorIds.length > 0) {
   const incRows = await db.selectFrom('incidents').whereIn('monitor_id', monitorIds).execute()
-  const withName = (i) => ({
+  const withName = (i: (typeof incRows)[number]) => ({
     id: i.id, cause: i.cause, status: i.status,
     started_at: i.started_at, resolved_at: i.resolved_at,
     monitor_name: monitorRealNameById.get(i.monitor_id) || '',
@@ -288,14 +291,14 @@ if (monitorIds.length > 0) {
 // require app/ TS). Unknown locales fall back to English key-by-key.
 const LOCALE = String((statusPage && statusPage.locale) || 'en').toLowerCase().split('-')[0]
 const DATE_LOCALE = statusPage ? (statusPage.locale || 'en') : 'en'
-const STR = {
+const STR: Record<string, Record<string, string>> = {
   en: { not_found: "Status page not found", not_found_desc: "{{ t('not_found_desc') }}", pw_protected: "{{ t('pw_protected') }}", pw_incorrect: "{{ t('pw_incorrect') }}", pw_placeholder: "Password", unlock: "Unlock", email_restricted: "{{ t('email_restricted') }}", email_denied: "{{ t('email_denied') }}", cont: "Continue", ip_restricted: "Access restricted", ip_restricted_desc: "{{ t('ip_restricted_desc') }}", major_outage: "Major Outage", partial_outage: "Partial Outage", all_operational: "All Systems Operational", maintenance: "Scheduled maintenance", announcements: "Announcements", posted: "Posted", active_incidents: "Active incidents", started: "Started", monitors: "Monitors", days_ago_90: "90 days ago", today: "Today", past_incidents: "Past incidents", resolved: "Resolved", operational: "Operational", degraded: "Degraded", down: "Down", unknown: "Unknown", no_data: "No data yet", uptime: "uptime", meta_desc: "Live status and incident history" },
   es: { not_found: "Página de estado no encontrada", not_found_desc: "No hay ninguna página de estado pública en esta dirección.", pw_protected: "Esta página de estado está protegida con contraseña.", pw_incorrect: "Contraseña incorrecta.", pw_placeholder: "Contraseña", unlock: "Desbloquear", email_restricted: "El acceso está restringido a dominios de correo aprobados.", email_denied: "Esa dirección de correo no pertenece a un dominio aprobado.", cont: "Continuar", ip_restricted: "Acceso restringido", ip_restricted_desc: "Esta página de estado no está disponible desde tu red.", major_outage: "Interrupción mayor", partial_outage: "Interrupción parcial", all_operational: "Todos los sistemas operativos", maintenance: "Mantenimiento programado", announcements: "Anuncios", posted: "Publicado", active_incidents: "Incidentes activos", started: "Comenzó", monitors: "Monitores", days_ago_90: "hace 90 días", today: "Hoy", past_incidents: "Incidentes anteriores", resolved: "Resuelto", operational: "Operativo", degraded: "Degradado", down: "Caído", unknown: "Desconocido", no_data: "Sin datos aún", uptime: "de disponibilidad", meta_desc: "Estado en vivo e historial de incidentes" },
   fr: { not_found: "Page d'état introuvable", not_found_desc: "Aucune page d'état publique à cette adresse.", pw_protected: "Cette page d'état est protégée par mot de passe.", pw_incorrect: "Mot de passe incorrect.", pw_placeholder: "Mot de passe", unlock: "Déverrouiller", email_restricted: "L'accès est limité aux domaines de messagerie approuvés.", email_denied: "Cette adresse e-mail n'appartient pas à un domaine approuvé.", cont: "Continuer", ip_restricted: "Accès restreint", ip_restricted_desc: "Cette page d'état n'est pas accessible depuis votre réseau.", major_outage: "Panne majeure", partial_outage: "Panne partielle", all_operational: "Tous les systèmes opérationnels", maintenance: "Maintenance planifiée", announcements: "Annonces", posted: "Publié", active_incidents: "Incidents en cours", started: "Débuté", monitors: "Moniteurs", days_ago_90: "il y a 90 jours", today: "Aujourd'hui", past_incidents: "Incidents passés", resolved: "Résolu", operational: "Opérationnel", degraded: "Dégradé", down: "Hors service", unknown: "Inconnu", no_data: "Pas encore de données", uptime: "de disponibilité", meta_desc: "État en direct et historique des incidents" },
   de: { not_found: "Statusseite nicht gefunden", not_found_desc: "Unter dieser Adresse gibt es keine öffentliche Statusseite.", pw_protected: "Diese Statusseite ist passwortgeschützt.", pw_incorrect: "Falsches Passwort.", pw_placeholder: "Passwort", unlock: "Entsperren", email_restricted: "Der Zugriff ist auf freigegebene E-Mail-Domains beschränkt.", email_denied: "Diese E-Mail-Adresse gehört nicht zu einer freigegebenen Domain.", cont: "Weiter", ip_restricted: "Zugriff eingeschränkt", ip_restricted_desc: "Diese Statusseite ist aus Ihrem Netzwerk nicht verfügbar.", major_outage: "Schwere Störung", partial_outage: "Teilweise Störung", all_operational: "Alle Systeme betriebsbereit", maintenance: "Geplante Wartung", announcements: "Ankündigungen", posted: "Veröffentlicht", active_incidents: "Aktive Vorfälle", started: "Begonnen", monitors: "Monitore", days_ago_90: "vor 90 Tagen", today: "Heute", past_incidents: "Frühere Vorfälle", resolved: "Behoben", operational: "Betriebsbereit", degraded: "Beeinträchtigt", down: "Ausgefallen", unknown: "Unbekannt", no_data: "Noch keine Daten", uptime: "Verfügbarkeit", meta_desc: "Live-Status und Vorfallverlauf" },
   pt: { not_found: "Página de status não encontrada", not_found_desc: "Não há nenhuma página de status pública neste endereço.", pw_protected: "Esta página de status é protegida por senha.", pw_incorrect: "Senha incorreta.", pw_placeholder: "Senha", unlock: "Desbloquear", email_restricted: "O acesso é restrito a domínios de e-mail aprovados.", email_denied: "Esse endereço de e-mail não pertence a um domínio aprovado.", cont: "Continuar", ip_restricted: "Acesso restrito", ip_restricted_desc: "Esta página de status não está disponível na sua rede.", major_outage: "Interrupção grave", partial_outage: "Interrupção parcial", all_operational: "Todos os sistemas operacionais", maintenance: "Manutenção programada", announcements: "Comunicados", posted: "Publicado", active_incidents: "Incidentes ativos", started: "Iniciado", monitors: "Monitores", days_ago_90: "90 dias atrás", today: "Hoje", past_incidents: "Incidentes anteriores", resolved: "Resolvido", operational: "Operacional", degraded: "Degradado", down: "Fora do ar", unknown: "Desconhecido", no_data: "Sem dados ainda", uptime: "de disponibilidade", meta_desc: "Status ao vivo e histórico de incidentes" },
 }
-function t(key) { const d = STR[LOCALE] || STR.en; return (d && d[key] != null) ? d[key] : (STR.en[key] != null ? STR.en[key] : key) }
+function t(key: string) { const d = STR[LOCALE] || STR.en; return (d && d[key] != null) ? d[key] : (STR.en[key] != null ? STR.en[key] : key) }
 
 // Monitors under active maintenance are represented by the maintenance banner,
 // not the outage banner, so they don't count toward the overall page status.
@@ -311,7 +314,7 @@ const pageTitle = statusPage ? statusPage.title : t('not_found')
 // produced a second <title> that lost to this one anyway.
 const docTitle = statusPage ? statusPage.title + ' status' : t('not_found')
 
-function monitorDotClass(monitor) {
+function monitorDotClass(monitor: StatusMonitor) {
   if (monitor.inMaintenance) return 'bg-blue-500'
   const status = monitor.status
   if (status === 'up') return 'bg-emerald-500'
@@ -320,7 +323,7 @@ function monitorDotClass(monitor) {
   return 'bg-gray-300'
 }
 
-function monitorLabel(monitor) {
+function monitorLabel(monitor: StatusMonitor) {
   if (monitor.inMaintenance) return t('maintenance')
   const status = monitor.status
   if (status === 'up') return t('operational')
@@ -329,13 +332,13 @@ function monitorLabel(monitor) {
   return t('unknown')
 }
 
-function bannerClass(tone) {
+function bannerClass(tone: string) {
   if (tone === 'up') return 'mb-8 flex items-center gap-3 rounded-xl border px-5 py-4 border-emerald-200 bg-emerald-50'
   if (tone === 'degraded') return 'mb-8 flex items-center gap-3 rounded-xl border px-5 py-4 border-amber-200 bg-amber-50'
   return 'mb-8 flex items-center gap-3 rounded-xl border px-5 py-4 border-red-200 bg-red-50'
 }
 
-function bannerDotClass(tone) {
+function bannerDotClass(tone: string) {
   if (tone === 'up') return 'h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500'
   if (tone === 'degraded') return 'h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500'
   return 'h-2.5 w-2.5 shrink-0 rounded-full bg-red-500'

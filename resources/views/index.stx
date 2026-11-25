@@ -48,18 +48,20 @@ const hostAccessGated = statusPageForHost && statusPageForHost.access_type && st
 // per the per-view convention. Unknown locales fall back to English.
 const LOCALE = String((statusPageForHost && statusPageForHost.locale) || 'en').toLowerCase().split('-')[0]
 const DATE_LOCALE = statusPageForHost ? (statusPageForHost.locale || 'en') : 'en'
-const STR = {
+const STR: Record<string, Record<string, string>> = {
   en: { major_outage: "Major Outage", partial_outage: "Partial Outage", all_operational: "All Systems Operational", maintenance: "Scheduled maintenance", announcements: "Announcements", posted: "Posted", active_incidents: "Active incidents", monitors: "Monitors", days_ago_90: "90 days ago", today: "Today", operational: "Operational", degraded: "Degraded", down: "Down", unknown: "Unknown", no_data: "No data yet", uptime: "uptime", host_restricted: "This status page is access-restricted.", gate_visit_pre: "Visit", gate_visit_post: "to sign in." },
   es: { major_outage: "Interrupción mayor", partial_outage: "Interrupción parcial", all_operational: "Todos los sistemas operativos", maintenance: "Mantenimiento programado", announcements: "Anuncios", posted: "Publicado", active_incidents: "Incidentes activos", monitors: "Monitores", days_ago_90: "hace 90 días", today: "Hoy", operational: "Operativo", degraded: "Degradado", down: "Caído", unknown: "Desconocido", no_data: "Sin datos aún", uptime: "de disponibilidad", host_restricted: "Esta página de estado tiene acceso restringido.", gate_visit_pre: "Visita", gate_visit_post: "para iniciar sesión." },
   fr: { major_outage: "Panne majeure", partial_outage: "Panne partielle", all_operational: "Tous les systèmes opérationnels", maintenance: "Maintenance planifiée", announcements: "Annonces", posted: "Publié", active_incidents: "Incidents en cours", monitors: "Moniteurs", days_ago_90: "il y a 90 jours", today: "Aujourd'hui", operational: "Opérationnel", degraded: "Dégradé", down: "Hors service", unknown: "Inconnu", no_data: "Pas encore de données", uptime: "de disponibilité", host_restricted: "L'accès à cette page d'état est restreint.", gate_visit_pre: "Visitez", gate_visit_post: "pour vous connecter." },
   de: { major_outage: "Schwere Störung", partial_outage: "Teilweise Störung", all_operational: "Alle Systeme betriebsbereit", maintenance: "Geplante Wartung", announcements: "Ankündigungen", posted: "Veröffentlicht", active_incidents: "Aktive Vorfälle", monitors: "Monitore", days_ago_90: "vor 90 Tagen", today: "Heute", operational: "Betriebsbereit", degraded: "Beeinträchtigt", down: "Ausgefallen", unknown: "Unbekannt", no_data: "Noch keine Daten", uptime: "Verfügbarkeit", host_restricted: "Diese Statusseite ist zugriffsbeschränkt.", gate_visit_pre: "Besuchen Sie", gate_visit_post: "um sich anzumelden." },
   pt: { major_outage: "Interrupção grave", partial_outage: "Interrupção parcial", all_operational: "Todos os sistemas operacionais", maintenance: "Manutenção programada", announcements: "Comunicados", posted: "Publicado", active_incidents: "Incidentes ativos", monitors: "Monitores", days_ago_90: "90 dias atrás", today: "Hoje", operational: "Operacional", degraded: "Degradado", down: "Fora do ar", unknown: "Desconhecido", no_data: "Sem dados ainda", uptime: "de disponibilidade", host_restricted: "Esta página de status tem acesso restrito.", gate_visit_pre: "Acesse", gate_visit_post: "para entrar." },
 }
-function t(key) { const d = STR[LOCALE] || STR.en; return (d && d[key] != null) ? d[key] : (STR.en[key] != null ? STR.en[key] : key) }
+function t(key: string) { const d = STR[LOCALE] || STR.en; return (d && d[key] != null) ? d[key] : (STR.en[key] != null ? STR.en[key] : key) }
 
 // Assigned monitors joined back to their pivots in JS (portable); a real
 // monitor-name map is kept for the incident list below.
-let hostMonitors = []
+/** One monitor as the custom-domain page lists it. */
+type HostMonitor = { id: number, name: string, status: string, groupId: number | null, _order: number, _realName: string }
+let hostMonitors: HostMonitor[] = []
 const hostMonitorRealNameById = new Map()
 if (statusPageForHost && !hostAccessGated) {
   const pivots = await statusDb.selectFrom('status_page_monitors').where('status_page_id', '=', statusPageForHost.id).execute()
@@ -67,13 +69,14 @@ if (statusPageForHost && !hostAccessGated) {
   const mons = ids.length ? await statusDb.selectFrom('monitors').whereIn('id', ids).execute() : []
   const byId = new Map(mons.map(m => [m.id, m]))
   for (const m of mons) hostMonitorRealNameById.set(m.id, m.name)
-  hostMonitors = pivots
+  hostMonitors = (pivots
     .map((p) => {
       const m = byId.get(p.monitor_id)
       if (!m) return null
       return { id: m.id, name: p.display_name || m.name, status: m.status || 'unknown', groupId: p.status_page_component_group_id, _order: p.display_order, _realName: m.name }
     })
-    .filter(Boolean)
+    // filter(Boolean) drops the nulls, which TS cannot see through.
+    .filter(Boolean) as HostMonitor[])
     .sort((a, b) => (a._order - b._order) || String(a._realName).localeCompare(String(b._realName)))
 }
 
@@ -105,7 +108,7 @@ const HOST_UPTIME_DAYS = 90
 // both its slug page and a custom domain recomputes once.
 
 const HOST_UPTIME_TTL_SECONDS = 60
-const hostUptimeByMonitor = {}
+const hostUptimeByMonitor: Record<number, { bars: { date: string, status: string }[], pct: number | null }> = {}
 for (const m of hostMonitors) {
   hostUptimeByMonitor[m.id] = await hostCache.getOrSet(`status-uptime-host:${m.id}:${HOST_UPTIME_DAYS}`, async () => {
     const sinceMs = Date.now() - HOST_UPTIME_DAYS * 86400000
@@ -113,8 +116,8 @@ for (const m of hostMonitors) {
     const rows = await statusDb.selectFrom('check_results')
       .where('monitor_id', '=', m.id).where('checked_at', '>=', sinceIso)
       .orderBy('checked_at', 'asc').execute()
-    const bars = []
-    const dayIndex = {}
+    const bars: { date: string, status: string }[] = []
+    const dayIndex: Record<string, number> = {}
     for (let i = 0; i < HOST_UPTIME_DAYS; i++) {
       const key = new Date(sinceMs + i * 86400000).toISOString().slice(0, 10)
       dayIndex[key] = bars.length
@@ -135,18 +138,18 @@ for (const m of hostMonitors) {
   }, HOST_UPTIME_TTL_SECONDS)
 }
 
-function hostUptimeBars(id) {
+function hostUptimeBars(id: number) {
   return (hostUptimeByMonitor[id] && hostUptimeByMonitor[id].bars) || []
 }
 
-function hostUptimeBarColor(status) {
+function hostUptimeBarColor(status: string) {
   if (status === 'up') return '#10b981'
   if (status === 'degraded') return '#f59e0b'
   if (status === 'down') return '#ef4444'
   return '#e5e7eb'
 }
 
-function hostUptimePctLabel(id) {
+function hostUptimePctLabel(id: number) {
   const u = hostUptimeByMonitor[id]
   if (!u || u.pct === null) return t('no_data')
   return u.pct.toFixed(2) + '% ' + t('uptime')
@@ -160,13 +163,13 @@ function hostUptimePctLabel(id) {
 // blip and rare red. Precomputed as named consts because the @foreach directive
 // takes a bare variable, not an object-literal argument.
 const SHOWCASE_BARS = 56
-function mockUptimeBars(dips) {
+function mockUptimeBars(dips: Record<number, string>) {
   const map = dips || {}
-  const out = []
+  const out: string[] = []
   for (let i = 0; i < SHOWCASE_BARS; i++) out.push(map[i] || 'up')
   return out
 }
-function mockBarColor(status) {
+function mockBarColor(status: string) {
   if (status === 'degraded') return 'var(--amber)'
   if (status === 'down') return 'var(--danger)'
   return 'var(--success)'
@@ -214,20 +217,20 @@ const hostOverallLabel = hostHasDown ? t('major_outage') : hostHasDegraded ? t('
 const docLang = statusPageForHost ? statusPageForHost.locale : 'en'
 const docTheme = statusPageForHost ? statusPageForHost.force_theme : 'system'
 
-function hostFormatDate(iso) {
+function hostFormatDate(iso: string | null | undefined) {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleString(DATE_LOCALE, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function hostMonitorDotClass(status) {
+function hostMonitorDotClass(status: string) {
   if (status === 'up') return 'bg-emerald-500'
   if (status === 'degraded') return 'bg-amber-500'
   if (status === 'down') return 'bg-red-500'
   return 'bg-gray-300'
 }
 
-function hostMonitorLabel(status) {
+function hostMonitorLabel(status: string) {
   if (status === 'up') return t('operational')
   if (status === 'degraded') return t('degraded')
   if (status === 'down') return t('down')
@@ -239,7 +242,7 @@ function hostMonitorLabel(status) {
 // hand-duplicated <article> blocks. Interpolating into a `d` attribute value
 // is escaping-safe regardless of the templating engine's HTML-escaping
 // behavior for `{{ }}` — path data never contains `<`, `>`, or `&`.
-function iconPath(name) {
+function iconPath(name: string) {
   if (name === 'pulse') return 'M2.25 12h3.4l2.1-5.4 3.2 10.8 2.4-7.2 1.7 4.2h6.7'
   if (name === 'shield') return 'M12 2.75 4.5 5.5v6c0 5 3.2 8.4 7.5 10.25 4.3-1.85 7.5-5.25 7.5-10.25v-6L12 2.75Zm-2.9 9.35 2.1 2.1 4.6-4.9'
   if (name === 'globe') return 'M12 2.75a9.25 9.25 0 1 0 0 18.5 9.25 9.25 0 0 0 0-18.5Zm0 0c2.4 2.5 3.7 5.7 3.7 9.25s-1.3 6.75-3.7 9.25m0-18.5c-2.4 2.5-3.7 5.7-3.7 9.25s1.3 6.75 3.7 9.25M2.9 9h18.2M2.9 15h18.2'
