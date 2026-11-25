@@ -50,6 +50,7 @@ import { config } from '@stacksjs/config'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
 import { db } from '@stacksjs/database'
+import type { FluentChain } from '@stacksjs/database'
 
 // Display helpers live in app/lib/display (migration Phase 5). NB: `import
 // { x as y }` binds undefined in a server block in this stx build, so the
@@ -84,7 +85,7 @@ const IS_SUPER = !!(AUTH_USER && AUTH_USER.is_super_admin)
 const SWITCHABLE_TEAMS = TEAM_CTX.teams
 const SEE_ALL = IS_SUPER && !TEAM_CTX.activeTeamId
 const ACTIVE_TEAM_NAME = (TEAM_CTX.teams.find(t => t.id === TEAM_ID) || {}).name || ''
-const teamScope = qb => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
+const teamScope = <TRow>(qb: FluentChain<TRow>): FluentChain<TRow> => SEE_ALL ? qb : qb.where('team_id', '=', TEAM_ID)
 // The realtime channel is keyed by the team's unguessable uuid (see
 // app/Commands/Realtime.ts) so the broadcaster's WS server can stay
 // unauthenticated without leaking a team's status feed to id-guessers.
@@ -102,11 +103,11 @@ const filterStatus = query.get('status') || ''
 const flashDeleted = query.get('deleted') === '1'
 
 const idxRange = query.get('range') || '24h'
-const IDX_RANGE_MS = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 }
+const IDX_RANGE_MS: Record<string, number> = { '24h': 24 * 60 * 60 * 1000, '7d': 7 * 24 * 60 * 60 * 1000, '30d': 30 * 24 * 60 * 60 * 1000 }
 const idxSince = new Date(Date.now() - (IDX_RANGE_MS[idxRange] || IDX_RANGE_MS['24h'])).toISOString()
 const checksInRange = await db.selectFrom('check_results').where('checked_at', '>=', idxSince).count()
 
-function idxRangeUrl(r) {
+function idxRangeUrl(r: string) {
   const p = new URLSearchParams(query)
   p.set('range', r)
   return '/dashboard/monitors?' + p.toString()
@@ -134,29 +135,29 @@ const __monitorRows = allMonitors
 
 // Fleet totals for the stat strip: always the UNFILTERED team fleet, so
 // the readout stays a fleet summary while filters narrow the table.
-const fleetCounts = {}
+const fleetCounts: Record<string, number> = {}
 for (const m of allMonitors) fleetCounts[m.status] = (fleetCounts[m.status] || 0) + 1
 const fleet = Object.entries(fleetCounts).map(([status, c]) => ({ status, c }))
 const fleetCount = allMonitors.length
-function fleetOf(status) {
+function fleetOf(status: string) {
   const row = fleet.find(r => r.status === status)
   return row ? row.c : 0
 }
 
 // Latest non-null response time per displayed monitor, precomputed (the
 // template can't await a per-row query). `>= 0` excludes NULLs portably.
-const lastResponseByMonitor = {}
+const lastResponseByMonitor: Record<number, number | null> = {}
 for (const m of __monitorRows) {
   const row = (await db.selectFrom('check_results').where('monitor_id', '=', m.id).where('response_time_ms', '>=', 0).orderByDesc('id').limit(1).execute())[0]
   lastResponseByMonitor[m.id] = row ? row.response_time_ms : null
 }
-function lastResponseMs(id) {
+function lastResponseMs(id: number) {
   return lastResponseByMonitor[id] ?? null
 }
 
 // Crawls, port scans, and Lighthouse runs take seconds to minutes; showing
 // their duration as raw milliseconds (108413ms) reads as a bug. Humanize.
-function fmtDuration(ms) {
+function fmtDuration(ms: number | null) {
   if (ms === null) return '--'
   if (ms < 1000) return ms + 'ms'
   if (ms < 60000) return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's'
@@ -165,34 +166,34 @@ function fmtDuration(ms) {
 
 // The full URL repeated per row is noise; the host + path carries the
 // same information under the monitor name.
-function targetLabel(url) {
+function targetLabel(url: string) {
   return String(url).replace(/^https?:\/\//, '').replace(/\/$/, '')
 }
 
-function typeLabel(t) {
-  const labels = { uptime: 'Uptime', ping: 'Ping', tcp_port: 'TCP port', ssl: 'SSL', dns: 'DNS', domain: 'Domain', broken_links: 'Crawl', lighthouse: 'Lighthouse', dns_blocklist: 'Blocklist', port_scan: 'Port scan', health: 'Health', cron: 'Heartbeat', performance: 'Performance', ai_check: 'AI check' }
+function typeLabel(t: string) {
+  const labels: Record<string, string> = { uptime: 'Uptime', ping: 'Ping', tcp_port: 'TCP port', ssl: 'SSL', dns: 'DNS', domain: 'Domain', broken_links: 'Crawl', lighthouse: 'Lighthouse', dns_blocklist: 'Blocklist', port_scan: 'Port scan', health: 'Health', cron: 'Heartbeat', performance: 'Performance', ai_check: 'AI check' }
   return labels[t] || t.replace('_', ' ')
 }
 
 // Last 12 check outcomes per displayed monitor (oldest -> newest) for the
 // mini tick strip; one bounded query per row, same pattern as the
 // last-response lookup above.
-const recentChecksByMonitor = {}
+const recentChecksByMonitor: Record<number, string[]> = {}
 for (const m of __monitorRows) {
   const rows = await db.selectFrom('check_results').where('monitor_id', '=', m.id).orderByDesc('id').limit(12).execute()
   recentChecksByMonitor[m.id] = rows.map(r => r.status).reverse()
 }
-function tickClass(status) {
+function tickClass(status: string) {
   if (status === 'up') return ''
   if (status === 'degraded') return 'warn'
   if (status === 'down') return 'down'
   return 'unknown'
 }
-function recentChecks(id) {
+function recentChecks(id: number) {
   return recentChecksByMonitor[id] || []
 }
 
-function typeUrl(t) {
+function typeUrl(t: string) {
   const p = new URLSearchParams(query)
   if (t) p.set('type', t)
   else p.delete('type')
@@ -200,7 +201,7 @@ function typeUrl(t) {
   return '/dashboard/monitors' + (s ? '?' + s : '')
 }
 
-function statusUrl(s) {
+function statusUrl(s: string) {
   const p = new URLSearchParams(query)
   if (s) p.set('status', s)
   else p.delete('status')
@@ -391,7 +392,7 @@ const MONITOR_ROW_COUNT = __monitorRows.length
     var rowsTable = useRef('rowsTable')
     var liveDot = useRef('liveDot')
 
-    function stClass(status) {
+    function stClass(status: string) {
       if (status === 'up') return 'pill pill-up'
       if (status === 'degraded') return 'pill pill-degraded'
       if (status === 'down') return 'pill pill-down'
@@ -401,7 +402,7 @@ const MONITOR_ROW_COUNT = __monitorRows.length
     // cell the server rendered, so any disagreement shows up as a label that
     // flips on the first live update. A browser script can't import app/ TS,
     // which is why this copy exists at all.
-    function stLabel(status) {
+    function stLabel(status: string) {
       if (status === 'up') return 'Up'
       if (status === 'degraded') return 'Degraded'
       if (status === 'down') return 'Down'
@@ -411,13 +412,13 @@ const MONITOR_ROW_COUNT = __monitorRows.length
 
     // Mirror the server-side fmtDuration / agoLabel so live updates format
     // identically to the on-load render.
-    function fmtDuration(ms) {
+    function fmtDuration(ms: number | null | undefined) {
       if (ms == null) return '--'
       if (ms < 1000) return ms + 'ms'
       if (ms < 60000) return (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's'
       return Math.round(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's'
     }
-    function agoLabel(iso) {
+    function agoLabel(iso: string | null | undefined) {
       if (!iso) return 'never'
       var s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
       if (s < 60) return s + 's ago'
@@ -426,7 +427,8 @@ const MONITOR_ROW_COUNT = __monitorRows.length
       return Math.floor(s / 86400) + 'd ago'
     }
 
-    function applyUpdate(data) {
+    /** A `monitor:updated` broadcast (app/Realtime/broadcastMonitorUpdate.ts). */
+    function applyUpdate(data: { id: number, status: string, responseTimeMs?: number | null, lastCheckedAt?: string | null }) {
       var container = rowsTable.current
       if (!container) return
       var row = container.querySelector('[data-monitor-id="' + data.id + '"]')
@@ -470,14 +472,14 @@ const MONITOR_ROW_COUNT = __monitorRows.length
     // over TLS it's expected to be reverse-proxied as wss on the page host.
     var scheme = (location.protocol === 'https:') ? 'wss' : RT.scheme
     var url = scheme + '://' + location.hostname + ':' + RT.port + '/ws'
-    var ws = null
+    var ws: WebSocket | null = null
     var backoff = 1000
     var closedByUs = false
 
     // Read through the ref on every call, not once at setup: this block's
     // top level runs before refs are populated, so capturing `.current` here
     // would have pinned a null and the live dot would never have appeared.
-    function setLive(on) {
+    function setLive(on: boolean) {
       var el = liveDot.current
       if (el) el.hidden = !on
     }
@@ -496,7 +498,8 @@ const MONITOR_ROW_COUNT = __monitorRows.length
         var msg
         try { msg = JSON.parse(ev.data) } catch (e) { return }
         if (msg.event === 'connection_established') {
-          ws.send(JSON.stringify({ event: 'subscribe', channel: TEAM_CHANNEL }))
+          // Set: this handler is on the socket connect() just assigned.
+          ws!.send(JSON.stringify({ event: 'subscribe', channel: TEAM_CHANNEL }))
           return
         }
         if (msg.event === 'subscription_succeeded') { setLive(true); return }
@@ -505,7 +508,7 @@ const MONITOR_ROW_COUNT = __monitorRows.length
         }
       })
       ws.addEventListener('close', function () { setLive(false); if (!closedByUs) schedule() })
-      ws.addEventListener('error', function () { try { ws.close() } catch (e) {} })
+      ws.addEventListener('error', function () { try { ws!.close() } catch (e) {} })
     }
 
     function schedule() {

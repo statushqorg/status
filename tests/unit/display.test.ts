@@ -130,8 +130,11 @@ describe('the browser copy in monitors/index.stx', () => {
       else if (client[i] === '}' && --depth === 0)
         break
     }
+    // The block is TypeScript (stx transpiles client scripts), so strip the
+    // types the same way before compiling the copy as plain JS.
+    const js = new Bun.Transpiler({ loader: 'ts' }).transformSync(client.slice(start, i + 1))
     // eslint-disable-next-line no-new-func
-    return new Function(`${client.slice(start, i + 1)}; return ${name}`)() as (status: string) => string
+    return new Function(`${js}; return ${name}`)() as (status: string) => string
   }
 
   test('its stLabel agrees with statusLabel for every status', () => {
