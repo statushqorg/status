@@ -34,12 +34,9 @@
     // Per-site markers; allowPatterns stays empty (§12.1).
     // stx-strict-ignore-next-line document.addEventListener -- delegated, and must run without the runtime
     document.addEventListener('submit', function (event) {
-      // A submit event's target is always the form, so instanceof costs nothing
-      // and is what types `form` for the checker in a block that cannot carry
-      // annotations (it ships as written). const, not var, so that narrowing
-      // still holds inside the .then callback below.
-      const form = event.target
-      if (!(form instanceof HTMLFormElement) || !form.matches('form[data-confirm]'))
+      // A submit event's target is always the form.
+      var form = event.target as HTMLFormElement
+      if (!form.matches('form[data-confirm]'))
         return
 
       event.preventDefault()

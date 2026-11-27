@@ -68,10 +68,9 @@
     document.body.appendChild(tip)
     // stx-strict-ignore-next-line document.addEventListener -- useEventListener is not in scope in a plain block
     document.addEventListener('mousemove', function (e) {
-      // instanceof is what types the target for the checker in a block that
-      // ships as written and so cannot carry annotations. A mousemove target is
-      // always an Element (SVG included), so it rules out nothing real.
-      var hit = e.target instanceof Element && e.target.classList.contains('chart-hit') ? e.target : null
+      // A mousemove target is always an Element (SVG included).
+      var target = e.target as Element
+      var hit = target.classList.contains('chart-hit') ? target : null
       var marker = hit && hit.parentElement ? hit.parentElement.querySelector('.chart-marker') : null
       if (!hit) {
         tip.style.display = 'none'
@@ -105,9 +104,7 @@
   // Same shape as the chart tooltip above: one delegated listener rather than a
   // handler per button, so blocks added to a page later are covered too.
   (function () {
-    // The default is only there to type `text` for the checker: a plain block
-    // ships as written, so it cannot carry an annotation (stacksjs/stx#2228).
-    function legacyCopy(text = '') {
+    function legacyCopy(text: string) {
       // stx-strict-ignore-next-line document.createElement -- offscreen textarea for execCommand
       var ta = document.createElement('textarea')
       ta.value = text
@@ -154,13 +151,14 @@
 
     // stx-strict-ignore-next-line document.addEventListener -- delegated so later blocks are covered
     document.addEventListener('click', function (event) {
-      // const, so the narrowing below still holds inside settle().
-      const btn = event.target instanceof Element ? event.target.closest('.copy-btn') : null
+      // A click target is always an Element. const, so the null check below
+      // still narrows btn inside settle().
+      const btn = (event.target as Element).closest('.copy-btn')
       if (!btn) return
       var pre = btn.parentElement && btn.parentElement.querySelector('pre.code-block')
       if (!pre) return
 
-      var settle = function (ok = false) {
+      var settle = function (ok: boolean) {
         // Never claim a copy that did not happen: a denied clipboard permission
         // leaves the operator pasting nothing into a root shell.
         btn.textContent = ok ? 'Copied' : 'Press \u2318C'
