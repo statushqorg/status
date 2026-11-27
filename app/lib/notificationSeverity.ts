@@ -41,7 +41,9 @@ export function incidentSeverityForType(monitorType: string): IncidentSeverity {
  * the pre-Server marker and stays in the set so the incidents the backfill
  * resolved keep rendering and routing exactly as they did.
  */
-const ISSUE_CHECK_TYPES = new Set(['server_metrics', 'server_hot', 'server_silent'])
+// Rolling latency regressions also carry their own marker, including on
+// health and TCP monitors whose connectivity incidents remain outages.
+const ISSUE_CHECK_TYPES = new Set(['server_metrics', 'server_hot', 'server_silent', 'performance'])
 
 /**
  * The severity an incident represents, preferring what the incident says

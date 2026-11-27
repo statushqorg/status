@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const included = [
@@ -64,6 +65,19 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`{
+  "cause": "Response time degraded: p95 over the
+    last hour (612ms) is 2.4x the 7-day
+    baseline (255ms)",
+  "status": "monitoring",
+  "impacted_checks": [{
+    "type": "performance",
+    "recentP95": 612,
+    "baselineP95": 255
+  }]
+}`, 'json')
 </script>
 
 @extends('layouts/marketing')
@@ -189,17 +203,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre>{
-  <span class="str">"cause"</span>: <span class="str">"Response time degraded: p95 over the
-    last hour (612ms) is 2.4x the 7-day
-    baseline (255ms)"</span>,
-  <span class="str">"status"</span>: <span class="str">"monitoring"</span>,
-  <span class="str">"impacted_checks"</span>: [{
-    <span class="str">"type"</span>: <span class="str">"performance"</span>,
-    <span class="str">"recentP95"</span>: 612,
-    <span class="str">"baselineP95"</span>: 255
-  }]
-}</pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>

@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const included = [
@@ -64,6 +65,16 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`# a cron entry and four numbers: a complete agent
+* * * * * /opt/scripts/report-metrics.sh
+
+# report-metrics.sh
+curl -fsS -X POST \\
+  "https://statushq.org/api/agent/$METRICS_TOKEN/metrics" \\
+  -d cpuPercent=42 -d ramPercent=71 \\
+  -d ramUsedMb=5816 -d ramTotalMb=8192`, 'bash')
 </script>
 
 @extends('layouts/marketing')
@@ -131,14 +142,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt"># a cron entry and four numbers: a complete agent</span>
-* * * * * /opt/scripts/report-metrics.sh
-
-<span class="cmt"># report-metrics.sh</span>
-curl -fsS -X POST \
-  <span class="str">"https://statushq.org/api/agent/$METRICS_TOKEN/metrics"</span> \
-  -d cpuPercent=42 -d ramPercent=71 \
-  -d ramUsedMb=5816 -d ramTotalMb=8192</pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>

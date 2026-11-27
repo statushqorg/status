@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const included = [
@@ -64,6 +65,17 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`# GET https://api.yourcompany.com/health
+{
+  "status": "degraded",
+  "checks": {
+    "database": true,
+    "redis": true,
+    "queue_backlog": false
+  }
+}`, 'bash')
 </script>
 
 @extends('layouts/marketing')
@@ -94,15 +106,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt"># GET https://api.yourcompany.com/health</span>
-{
-  <span class="str">"status"</span>: <span class="str">"degraded"</span>,
-  <span class="str">"checks"</span>: {
-    <span class="str">"database"</span>: true,
-    <span class="str">"redis"</span>: true,
-    <span class="str">"queue_backlog"</span>: false
-  }
-}</pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>

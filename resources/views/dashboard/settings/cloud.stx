@@ -13,6 +13,7 @@
 <script server>
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
+import { highlightCode } from '~/app/lib/highlight'
 import { db } from '@stacksjs/database'
 import type { FluentChain } from '@stacksjs/database'
 
@@ -89,6 +90,8 @@ const IAM_POLICY = JSON.stringify({
     },
   ],
 }, null, 2)
+// The same policy syntax-highlighted on the server (app/lib/highlight.ts), printed raw.
+const iamPolicyHtml = await highlightCode(IAM_POLICY, 'json')
 
 useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', content: 'noindex' }] })
 </script>
@@ -187,7 +190,7 @@ useHead({ title: 'Cloud credentials · StatusHQ', meta: [{ name: 'robots', conte
           <li><code>ec2:DescribeInstances</code>, to locate the monitored instance by id or tag.</li>
           <li><code>ec2-instance-connect:SendSSHPublicKey</code>, to push a one-time SSH key so the installer can connect (no long-lived key pair).</li>
         </ul>
-        <pre class="iam-policy">{{ IAM_POLICY }}</pre>
+        <pre class="iam-policy">{!! iamPolicyHtml !!}</pre>
         <p class="help">Scope <code>Resource</code> to specific instance ARNs if you want to restrict provisioning to particular boxes.</p>
       </div>
     </section>

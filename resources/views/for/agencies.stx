@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const modules = [
@@ -82,6 +83,16 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`# new-client.sh, straight from your template
+curl -X POST https://statushq.org/api/monitors \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -d '{
+    "name": "New client site",
+    "url": "https://client-site.example",
+    "type": "uptime"
+  }'`, 'bash')
 </script>
 
 @extends('layouts/marketing')
@@ -188,14 +199,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt"># new-client.sh, straight from your template</span>
-curl -X POST https://statushq.org/api/monitors \
-  -H <span class="str">"Authorization: Bearer $TOKEN"</span> \
-  -d <span class="str">'{
-    "name": "New client site",
-    "url": "https://client-site.example",
-    "type": "uptime"
-  }'</span></pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>

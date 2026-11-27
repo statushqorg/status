@@ -63,6 +63,17 @@ describe('incidentSeverity (the incident\'s own marker wins)', () => {
     expect(incidentSeverity('uptime', JSON.stringify([{ type: 'server_metrics' }]))).toBe('issue')
   })
 
+  test('latency regressions on health and TCP monitors fire on issue channels', () => {
+    const marker = JSON.stringify([{ type: 'performance', recentP95: 60, baselineP95: 20 }])
+    for (const type of ['health', 'tcp_port']) {
+      const severity = incidentSeverity(type, marker)
+      expect(severity).toBe('issue')
+      expect(channelFiresFor('issue', severity)).toBe(true)
+      expect(channelFiresFor('down', severity)).toBe(false)
+      expect(incidentSeverity(type, JSON.stringify([{ type, regions: ['test-region'] }]))).toBe('down')
+    }
+  })
+
   test('without a marker the monitor type decides, and unreadable JSON falls back rather than throwing', () => {
     expect(incidentSeverity('uptime', null)).toBe('down')
     expect(incidentSeverity('dns', null)).toBe('issue')

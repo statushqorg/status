@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const modules = [
@@ -74,6 +75,26 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`// app/Jobs/NightlyBackup.ts
+export default new Job({
+  name: 'NightlyBackup',
+  queue: 'maintenance',
+
+  async handle() {
+    await runBackup()
+
+    // last line: report success
+    await fetch('https://statushq.org/api/ping/your-token')
+  },
+})`, 'typescript')
+const snippet2Html = await highlightCode(`// routes/api.ts
+route.get('/health', () => ({
+  db: db.isConnected(),
+  queue: queue.isRunning(),
+  storage: storage.isWritable(),
+}))`, 'typescript')
 </script>
 
 @extends('layouts/marketing')
@@ -120,18 +141,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt">// app/Jobs/NightlyBackup.ts</span>
-export default new Job({
-  name: <span class="str">'NightlyBackup'</span>,
-  queue: <span class="str">'maintenance'</span>,
-
-  async handle() {
-    await runBackup()
-
-    <span class="cmt">// last line: report success</span>
-    await fetch(<span class="str">'https://statushq.org/api/ping/your-token'</span>)
-  },
-})</pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>
@@ -148,12 +158,7 @@ export default new Job({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt">// routes/api.ts</span>
-route.get(<span class="str">'/health'</span>, () => ({
-  db: db.isConnected(),
-  queue: queue.isRunning(),
-  storage: storage.isWritable(),
-}))</pre></div>
+            <div class="code-panel"><pre>{!! snippet2Html !!}</pre></div>
           </div>
         </div>
       </section>

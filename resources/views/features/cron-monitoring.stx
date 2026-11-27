@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const included = [
@@ -64,6 +65,17 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`# crontab: nightly database backup at 02:00
+0 2 * * * /opt/scripts/backup.sh
+
+# backup.sh
+set -euo pipefail
+pg_dump "$DATABASE_URL" | gzip > /backups/nightly.sql.gz
+
+# last line: report in. no ping means an alert.
+curl -fsS https://statushq.org/api/ping/9f2ac81d54e04b7f`, 'bash')
 </script>
 
 @extends('layouts/marketing')
@@ -131,15 +143,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt"># crontab: nightly database backup at 02:00</span>
-0 2 * * * /opt/scripts/backup.sh
-
-<span class="cmt"># backup.sh</span>
-set -euo pipefail
-pg_dump <span class="str">"$DATABASE_URL"</span> | gzip &gt; /backups/nightly.sql.gz
-
-<span class="cmt"># last line: report in. no ping means an alert.</span>
-curl -fsS https://statushq.org/api/ping/9f2ac81d54e04b7f</pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>

@@ -10,6 +10,8 @@
  * `rounded-card`, and so on.
  */
 
+import { SYNTAX_DARK, SYNTAX_LIGHT, syntaxTokenRules, syntaxVariables } from '@stacksjs/components'
+
 /**
  * The design tokens, declared once.
  *
@@ -36,6 +38,7 @@
 function paletteCss(): string {
   return `:root {
   color-scheme: light;
+  ${syntax(SYNTAX_LIGHT_AA)}
   --bg: #fbfbfa;
   --surface: #ffffff;
   --surface-2: #f2f3f1;
@@ -63,6 +66,7 @@ function paletteCss(): string {
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
+    ${syntax(SYNTAX_DARK)}
     color-scheme: dark;
     --bg: #080b0a;
     --surface: #101413;
@@ -86,6 +90,7 @@ function paletteCss(): string {
 }
 
 html[data-theme="dark"] {
+  ${syntax(SYNTAX_DARK)}
   color-scheme: dark;
   --bg: #080b0a;
   --surface: #101413;
@@ -660,7 +665,10 @@ html:has(meta[name="stx-layout-group"][content="default"]) {
       font-size: 0.78rem;
       line-height: 1.6;
       overflow-x: auto;
+      /* Dark in both themes, so its syntax colours are the dark set. */
+      ${syntax(SYNTAX_DARK)}
     }
+    ${syntaxTokenRules()}
 
     /* Copy affordance for .code-block. The wrapper and the button are attached by
        the script at the end of this partial, not written into the five call sites
@@ -1437,9 +1445,10 @@ html:has(meta[name="stx-layout-group"][content="home"], meta[name="stx-layout-gr
       line-height: 1.7;
       background: #0d1210;
       overflow-x: auto;
+      /* Dark in both themes, so its syntax colours are the dark set. */
+      ${syntax(SYNTAX_DARK)}
     }
-    .code-panel .cmt { color: #5c6864; }
-    .code-panel .str { color: #c5b3ff; }
+    ${syntaxTokenRules()}
     .code-panel pre { margin: 0; font: inherit; }
 
     /* ------------------------------------------------------------------ */
@@ -3087,6 +3096,24 @@ html:has(meta[name="stx-layout-group"]) select:not([multiple]):not([size]) {
   print-color-adjust: exact;
 }
 `
+
+/**
+ * Syntax highlighting (app/lib/highlight.ts). The highlighter writes a class on
+ * each token and no colour. The `--stx-syntax-*` properties, stx's own GitHub
+ * light and dark pair, are part of the palette's three rules in paletteCss(),
+ * so theme-following code (the IAM policy) follows the toggle; the dark code
+ * surfaces (.code-block, .code-panel) set the dark set on themselves; and the
+ * token rules sit beside those surfaces in the dashboard and marketing sheets.
+ * It replaces the hand-written .cmt / .str spans.
+ *
+ * Light-theme comments use GitHub's #57606a: stx's #6e7781 is under 4.5:1 on
+ * this app's off-white surfaces.
+ */
+const SYNTAX_LIGHT_AA: Readonly<Record<string, string>> = { ...SYNTAX_LIGHT, comment: '#57606a' }
+
+function syntax(palette: Readonly<Record<string, string>>): string {
+  return syntaxVariables(palette, '').replace(/\n/g, ' ')
+}
 
 export default {
   content: [

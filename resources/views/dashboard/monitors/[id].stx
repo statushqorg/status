@@ -20,6 +20,7 @@
 <script server>
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
+import { highlightCode } from '~/app/lib/highlight'
 import { channelTypeLabel } from '~/app/lib/channelConfig'
 import { maintenanceIntervalsByMonitor } from '~/app/lib/maintenance'
 import { computeUptime, roundMsForInterval } from '~/app/lib/uptime'
@@ -412,6 +413,15 @@ if (__heartbeatRow) {
     pingUrl: hbUrls.success,
     startUrl: hbUrls.start,
     failUrl: hbUrls.fail,
+    // The two snippets under the ping URL, syntax-highlighted on the server
+    // (app/lib/highlight.ts) and printed raw. On this `__` object so the URLs,
+    // which are the endpoint's only credential, stay out of the client payload.
+    pingHtml: await highlightCode(
+      `# at the end of the job, on success only\n${hbUrls.success}\n\n`
+      + `# optional: bracket the run to measure its duration and report a non-zero exit\n${hbUrls.start}\n${hbUrls.fail}`,
+      'bash',
+    ),
+    crontabHtml: await highlightCode(`0 2 * * *  /path/to/job.sh && curl -fsS -m 10 --retry 3 ${hbUrls.success}`, 'bash'),
   }
 }
 
@@ -890,14 +900,9 @@ const HEARTBEAT_HAS_FAILED = !!__heartbeat?.hasFailed
               @endif
             </dl>
             <p class="subhead">Ping this URL when the job finishes successfully. Treat it as a secret &mdash; it is the only credential this endpoint has.</p>
-            <pre class="code-block"># at the end of the job, on success only
-{{ __heartbeat.pingUrl }}
-
-# optional: bracket the run to measure its duration and report a non-zero exit
-{{ __heartbeat.startUrl }}
-{{ __heartbeat.failUrl }}</pre>
+            <pre class="code-block">{!! __heartbeat.pingHtml !!}</pre>
             <p class="subhead">In a crontab, that is:</p>
-            <pre class="code-block">0 2 * * *  /path/to/job.sh &amp;&amp; curl -fsS -m 10 --retry 3 {{ __heartbeat.pingUrl }}</pre>
+            <pre class="code-block">{!! __heartbeat.crontabHtml !!}</pre>
           @else
             <p class="subhead">This monitor has no heartbeat configured, so nothing is watching it and it has no ping URL &mdash; it can never alert. Saving the monitor settings below generates one.</p>
           @endif
