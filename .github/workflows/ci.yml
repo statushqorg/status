@@ -106,6 +106,36 @@ jobs:
           fi
           echo "App code typechecks clean ($(grep -c 'error TS' /tmp/tsc.log || true) dependency diagnostics ignored)"
 
+      # tsc never reads .stx files, so the views get their own check. stx
+      # typecheck exits non-zero on errors but 0 on warnings, so the log is
+      # read as well: zero errors, a summary line present (a crash prints none),
+      # and no warning beyond the two that were looked at and left on purpose:
+      # REALTIME (monitors/index) and __typeCopy (monitors/new), both values on
+      # the implicit bridge. Any new warning fails the job.
+      - name: Typecheck views (stx)
+        run: |
+          set +e
+          bun run typecheck:views 2>&1 | tee /tmp/stx-typecheck.log
+          code=${PIPESTATUS[0]}
+          set -e
+          if ! grep -qE 'Checked [0-9]+ script block' /tmp/stx-typecheck.log; then
+            echo "::error::stx typecheck printed no summary, so it did not finish"
+            exit 1
+          fi
+          if [ "$code" -ne 0 ] || ! grep -qE '[^0-9]0 error\(s\)' /tmp/stx-typecheck.log; then
+            echo "::error::stx typecheck reported errors, see the log above"
+            exit 1
+          fi
+          unexpected=$(grep -E ' warning TS' /tmp/stx-typecheck.log \
+            | grep -vE 'monitors/index\.stx:[0-9]+:[0-9]+ +warning TS0 .*untyped: REALTIME\.' \
+            | grep -vE 'monitors/new\.stx:[0-9]+:[0-9]+ +warning TS0 .*untyped: __typeCopy\.' || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::stx typecheck has warnings beyond the two accepted ones:"
+            echo "$unexpected"
+            exit 1
+          fi
+          echo "Views typecheck clean (0 errors; only the two accepted warnings)"
+
   test:
     runs-on: ${{ matrix.os }}
     permissions:
