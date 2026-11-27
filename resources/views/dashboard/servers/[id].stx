@@ -27,6 +27,7 @@ import { incidentPillClass, relativeTime, serverStatusPill, statusLabel, statusP
 import { aggregateHostStatus, DEFAULT_HOST, readingsFromSamples } from '~/app/lib/agentHosts'
 import { resolveHealedTeamContext } from '~/app/lib/teamContext'
 import { authRequest } from '~/app/lib/authRequest'
+import { highlightCode } from '~/app/lib/highlight'
 import { serverFormErrorFields, serverFormErrorLabel } from '~/app/lib/serverForm'
 import { db } from '@stacksjs/database'
 import { rowsOrEmpty } from '~/app/lib/rows'
@@ -309,10 +310,22 @@ const appUrl = (config && config.app && config.app.url) ? String(config.app.url)
 // inside a mustache; the strings are built here for the same reason.
 let __agentInstall = null
 if (__serverRow && __serverRow.metrics_token) {
+  const install = `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --token=${__serverRow.metrics_token}`
+  const uninstall = `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --uninstall`
+  const endpoint = `${appUrl}/api/agent/${__serverRow.metrics_token}/metrics`
+  const push = `curl -fsS -X POST ${endpoint} \\\n`
+    + `  -H 'Content-Type: application/json' \\\n`
+    + `  -d '{"host":"web-01","cpuPercent":37,"ramPercent":38,"ramUsedMb":6112,"ramTotalMb":16384,"diskPercent":68}'`
+  // The *Html fields are the same commands syntax-highlighted on the server
+  // (app/lib/highlight.ts), printed raw. They live on this object so they keep
+  // its `__` name and stay out of the client payload with the token they carry.
   __agentInstall = {
-    install: `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --token=${__serverRow.metrics_token}`,
-    uninstall: `curl -fsSL ${appUrl}/install-agent.sh | sudo sh -s -- --uninstall`,
-    endpoint: `${appUrl}/api/agent/${__serverRow.metrics_token}/metrics`,
+    install,
+    uninstall,
+    endpoint,
+    installHtml: await highlightCode(install, 'bash'),
+    uninstallHtml: await highlightCode(uninstall, 'bash'),
+    pushHtml: await highlightCode(push, 'bash'),
   }
 }
 
@@ -526,16 +539,14 @@ const INCIDENT_COUNT = __incidents.length
             <p class="card-copy"><strong>Waiting for the first sample.</strong> Nothing is being watched on this box yet. Run the command below and the page fills in within a minute.</p>
           @endif
           <p class="card-copy">Run this on the server you want to watch. It installs a small collector and a systemd timer (or a cron entry where systemd is absent), then sends a first sample so you know it works before you walk away:</p>
-          <pre class="code-block">{{ __agentInstall.install }}</pre>
+          <pre class="code-block">{!! __agentInstall.installHtml !!}</pre>
           <p class="card-copy">Safe to re-run. That is also how you upgrade the collector. It reports CPU, memory and disk once a minute; pass <code>--interval=</code> to change the cadence (keep it under the missed-push window), <code>--mount=</code> to watch a volume other than <code>/</code>, or <code>--url=</code> for a self-hosted install.</p>
           <details>
             <summary>Other options</summary>
             <p class="card-copy">Remove it again:</p>
-            <pre class="code-block">{{ __agentInstall.uninstall }}</pre>
+            <pre class="code-block">{!! __agentInstall.uninstallHtml !!}</pre>
             <p class="card-copy">Or skip the installer entirely. Anything that can POST this JSON on a schedule works:</p>
-            <pre class="code-block">curl -fsS -X POST {{ __agentInstall.endpoint }} \
-  -H 'Content-Type: application/json' \
-  -d '{"host":"web-01","cpuPercent":37,"ramPercent":38,"ramUsedMb":6112,"ramTotalMb":16384,"diskPercent":68}'</pre>
+            <pre class="code-block">{!! __agentInstall.pushHtml !!}</pre>
             <p class="card-copy"><code>cpuPercent</code>, <code>ramPercent</code>, <code>ramUsedMb</code> and <code>ramTotalMb</code> are required (percentages 0-100); <code>diskPercent</code> is optional. <code>host</code> is optional but send it if more than one machine shares this token. Without it every box collapses into a single <code>default</code> series.</p>
           </details>
         </div>
