@@ -1,4 +1,5 @@
 <script server>
+import { highlightCode } from '~/app/lib/highlight'
 const appName = process.env.APP_NAME || 'StatusHQ'
 
 const modules = [
@@ -78,6 +79,22 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
   '@type': 'FAQPage',
   mainEntity: faqs.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 }).replace(/</g, '\u003c') }] })
+// The code samples below, highlighted on the server (app/lib/highlight.ts)
+// so the page ships coloured HTML and no highlighter.
+const snippet1Html = await highlightCode(`# deploy.sh: register the service you just shipped
+curl -X POST https://statushq.org/api/monitors \\
+  -H "Authorization: Bearer $API_TOKEN" \\
+  -d '{ "name": "orders-api", "url": "https://api.example.com/health" }'
+
+# then verify it answers, right now, out of band
+curl -X POST https://statushq.org/api/monitors/42/check \\
+  -H "Authorization: Bearer $API_TOKEN"`, 'bash')
+const snippet2Html = await highlightCode(`#!/bin/sh
+# nightly-backup.sh
+pg_dump "$DATABASE_URL" | gzip > /backups/db-$(date +%F).sql.gz
+
+# last line, success path only: report in
+curl -fsS https://statushq.org/api/ping/your-token`, 'bash')
 </script>
 
 @extends('layouts/marketing')
@@ -124,14 +141,7 @@ useHead({ script: [{ type: 'application/ld+json', content: JSON.stringify({
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt"># deploy.sh: register the service you just shipped</span>
-curl -X POST https://statushq.org/api/monitors \
-  -H <span class="str">"Authorization: Bearer $API_TOKEN"</span> \
-  -d <span class="str">'{ "name": "orders-api", "url": "https://api.example.com/health" }'</span>
-
-<span class="cmt"># then verify it answers, right now, out of band</span>
-curl -X POST https://statushq.org/api/monitors/42/check \
-  -H <span class="str">"Authorization: Bearer $API_TOKEN"</span></pre></div>
+            <div class="code-panel"><pre>{!! snippet1Html !!}</pre></div>
           </div>
         </div>
       </section>
@@ -148,12 +158,7 @@ curl -X POST https://statushq.org/api/monitors/42/check \
             </p>
           </div>
           <div class="split-panel">
-            <div class="code-panel"><pre><span class="cmt">#!/bin/sh</span>
-<span class="cmt"># nightly-backup.sh</span>
-pg_dump <span class="str">"$DATABASE_URL"</span> | gzip > /backups/db-$(date +%F).sql.gz
-
-<span class="cmt"># last line, success path only: report in</span>
-curl -fsS https://statushq.org/api/ping/your-token</pre></div>
+            <div class="code-panel"><pre>{!! snippet2Html !!}</pre></div>
           </div>
         </div>
       </section>
